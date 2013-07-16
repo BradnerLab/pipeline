@@ -13,24 +13,6 @@ from utils import *
 
 #as of now the number of bins to sample the space is hard wired
 nBins = 200
-# bamList = ['/nfs/young_ata4/bam/hg18/mm1s/10282011_D0DKLACXX_8.ACAGTG.hg18.bwt.sorted.bam',
-#            '/nfs/young_ata4/bam/hg18/mm1s/10282011_D0DKLACXX_8.CAGATC.hg18.bwt.sorted.bam',
-#            '/nfs/young_ata4/bam/hg18/mm1s/12022011_B0A1WABXX_3.TGACCA.hg18.bwt.sorted.bam',
-#            ]
-
-#bamList = ['/nfs/young_ata4/bam/hg18/mm1s/12022011_B0A1WABXX_5.TAGCTT.hg18.bwt.sorted.bam',
-#           '/nfs/young_ata4/bam/hg18/mm1s/12022011_B0A1WABXX_4.CAGATC.hg18.bwt.sorted.bam',
-#           ]
-
-
-#gff = '/nfs/young_ata4/myc_111311/gff/irf4.gff'
-
-#outFolder = '/nfs/young_ata4/myc_111311/bamPlot/'
-
-# colorList = ['0,0,0',
-#              '0,0,128',
-#              '255,165,0'
-#              ]
 
 def loadAnnotFile(genome):
 
@@ -38,12 +20,10 @@ def loadAnnotFile(genome):
     load in the annotation and create a geneDict and transcription collection
     '''
     genomeDict = {
-        'HG18':'/nfs/young_ata4/gff/annotation/hg18/hg18_refseq.ucsc',
-        'MM9': '/nfs/young_ata4/gff/annotation/mm9/mm9_refseq.ucsc',
-        'hg18':'/nfs/young_ata4/gff/annotation/hg18/hg18_refseq.ucsc',
-        'mm9': '/nfs/young_ata4/gff/annotation/mm9/mm9_refseq.ucsc',
-        'rn5': '/nfs/young_ata4/gff/annotation/rn5/rn5_refseq.ucsc',
-        'RN5': '/nfs/young_ata4/gff/annotation/rn5/rn5_refseq.ucsc',
+        'HG18':'./annotation/hg18_refseq.ucsc',
+        'MM9': './annotation/mm9_refseq.ucsc',
+        'hg18':'./annotation/hg18_refseq.ucsc',
+        'mm9': './annotation/mm9_refseq.ucsc',
         }
 
     annotFile = genomeDict[genome]
@@ -238,7 +218,7 @@ def callRPlot(nameTable,diagramTable,plotTable,yScale,plotStyle,fileName):
     calls the R plotting thingy
     '''
 
-    cmd = 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/bamPlot.R' % (nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
+    cmd = 'R --no-save %s %s %s %s %s %s < ./bamPlot.R' % (nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
     print('calling command %s' % (cmd))
     os.system(cmd)
 
