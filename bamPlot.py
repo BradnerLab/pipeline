@@ -37,7 +37,7 @@ def loadAnnotFile(genome):
 def tasteTheRainbow(n):
     
     '''
-    samples muthafucking rainbow color space bitches
+    samples rainbow color space
     '''
     from colorsys import hsv_to_rgb
     
@@ -358,6 +358,8 @@ def main():
         
         #output
         outFolder = options.output
+        if outFolder[-1] != '/':
+            outFolder+='/'
         try:
             foo = os.listdir(outFolder)
         except OSError:

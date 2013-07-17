@@ -204,6 +204,83 @@ def importRefseq(refseqFile, returnMultiples = False):
         return refseqTable,refseqDict
 
 
+
+
+
+#10/13/08
+#make genes
+#turns a refseq ID into a Gene object from utility module
+def makeGenes(annotFile,geneList=[],asDict = False):
+    '''
+    takes in a refseq or ensembl annotation file and enters all identifiers in the geneList into a list as gene objects
+    '''
+    if asDict:
+        genes = {}
+    else:
+        genes = []
+    if type(geneList) == str:
+        print('importing gene list from %s' % (geneList))
+        geneList = parseTable(geneList,'\t')
+        geneList = [line[0] for line in geneList]
+
+
+    if upper(annotFile).count('REFSEQ') == 1:
+        refTable,refDict = importRefseq(annotFile)
+
+
+        if len(geneList) == 0:
+            geneList = refDict.keys()
+        for refseqID in geneList:
+            if refDict.has_key(refseqID):
+                geneIndex = refDict[refseqID][0]
+            else:
+                #print('no such gene ' + str(refseqID))
+                continue
+
+            geneLine = refTable[int(geneIndex)]
+            exonStarts = map(int,geneLine[9].split(',')[:-1])
+            exonEnds = map(int,geneLine[10].split(',')[:-1])
+            
+            gene = Gene(refseqID,geneLine[2],geneLine[3],[int(geneLine[4]),int(geneLine[5])],[int(geneLine[6]),int(geneLine[7])],exonStarts,exonEnds,geneLine[12])
+
+            if asDict:
+                genes[refseqID] = gene
+            else:
+                genes.append(gene)
+
+    return genes
+
+
+#04/07/09
+#makes a LocusCollection w/ each transcript as a locus
+#bob = makeTranscriptCollection('/Users/chazlin/genomes/mm8/mm8refseq.txt')
+def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList = []):
+    '''
+    makes a LocusCollection w/ each transcript as a locus
+    takes in either a refseqfile or an ensemblGFF
+    '''
+    if upper(annotFile).count('REFSEQ') == 1:
+        refseqTable,refseqDict = importRefseq(annotFile)
+        locusList = []
+        ticker = 0
+        if len(geneList) == 0:
+            geneList =refseqDict.keys()
+        for line in refseqTable[1:]:
+            if geneList.count(line[1]) > 0:
+                if line[3] == '-':
+                    locus = Locus(line[2],int(line[4])-downSearch,int(line[5])+upSearch,line[3],line[1])
+                else:
+                    locus = Locus(line[2],int(line[4])-upSearch,int(line[5])+downSearch,line[3],line[1])
+                locusList.append(locus)
+                ticker = ticker + 1
+                if ticker%1000 == 0:
+                    print(ticker)
+            
+
+    transCollection = LocusCollection(locusList,window)
+
+    return transCollection
+
 #==================================================================
 #========================LOCUS INSTANCE============================
 #==================================================================
@@ -436,6 +513,132 @@ class LocusCollection:
             else:
                 continue
         return stitchedCollection
+
+
+
+#==================================================================
+#========================GENE INSTANCE============================
+#==================================================================
+# this is a gene object.  unlike the previous gene_object, this actually represents
+# a gene, as opposed to a whole set of genes, which was a poor design in the first place.
+class Gene:
+    # name = name of the gene (string)
+    # txCoords = list of coords defining the boundaries of the transcipt
+    # cdCoords = list of coords defining the beginning and end of the coding region
+    # exStarts = list of coords marking the beginning of each exon
+    # exEnds = list of coords marking the end of each exon
+    # IF THIS IS A NON-CODING GENE, cdCoords => [0,0]
+#    def __init__(self,name,chr,sense,txCoords,cdCoords,exStarts,exEnds):
+#        self._name = name
+#        self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense)
+#        self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
+#
+#        exStarts = map(lambda i: i, exStarts)
+#        exEnds = map(lambda i: i, exEnds)
+#        exStarts.sort()
+#        exEnds.sort()
+#        
+#        self._txExons = []
+#        self._cdExons = []
+#        self._introns = []
+#        
+#        for n in range(len(exStarts)):
+#            if n==0:
+#                self._txExons.append(Locus(chr,txCoords[0],exEnds[n]-1,sense))
+#                self._cdExons.append(Locus(chr,cdCoords[0],exEnds[n]-1,sense))
+#            elif n==len(exStarts)-1:
+#                self._txExons.append(Locus(chr,txCoords[0],txCoords[1],sense))
+#                self._cdExons.append(Locus(chr,cdCoords[0],cdCoords[1],sense))
+#            else:
+#                newExon = Locus(chr,exStarts[n],exEnds[n]-1,sense)
+#                self._txExons.append(newExon)
+#                self._cdExons.append(newExon)
+#            if n < len(exStarts)-1: self._introns.append(Locus(chr,exEnds[n],exStarts[n+1]-1,sense))
+#
+#        if sense=='+':
+#            self._fpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
+#            self._tpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
+#        elif sense=='-':
+#            self._fpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
+#            self._tpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
+    def __init__(self,name,chr,sense,txCoords,cdCoords,exStarts,exEnds,commonName=''):
+         self._name = name
+         self._commonName = commonName
+         self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense,self._name)
+         if cdCoords == None:
+             self._cdLocus = None
+         else:
+             self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
+
+         exStarts = map(lambda i: i, exStarts)
+         exEnds = map(lambda i: i, exEnds)
+         exStarts.sort()
+         exEnds.sort()
+
+         self._txExons = []
+         self._cdExons = []
+         self._introns = []
+
+         cd_exon_count = 0
+
+         for n in range(len(exStarts)):
+             first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
+             second_locus = Locus(chr,exEnds[n],exEnds[n],sense)
+
+             # Add the transcription unit exon
+             tx_exon = Locus(chr,exStarts[n],exEnds[n],sense)
+
+             self._txExons.append(tx_exon)
+
+             # Add Coding Exons
+             # Need to make sure that the current exon is actually in the coding region of the gene first
+             if self.isCoding() and tx_exon.overlaps(self._cdLocus):
+                 if not first_locus.overlaps(self._cdLocus):
+                     first_coord = min(cdCoords)
+                 else:
+                     first_coord = exStarts[n]
+
+                 if not second_locus.overlaps(self._cdLocus):
+                     second_coord = max(cdCoords)
+                 else:
+                     second_coord = exEnds[n]
+
+                 new_cd_exon = Locus(chr,first_coord,second_coord,sense)
+                 self._cdExons.append(new_cd_exon)
+
+             # Add Introns
+             if n < len(exStarts)-1:
+                 self._introns.append(Locus(chr,exEnds[n]+1,exStarts[n +1]-1,sense))
+
+         if self.isCoding():
+             if sense=='+':
+                 self._fpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
+                 self._tpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
+             elif sense=='-':
+                 self._fpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
+                 self._tpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
+         else:
+             self._fpUTR = None
+             self._tpUTR = None
+            
+    def commonName(self): return self._commonName
+    def name(self): return self._name
+    def chr(self): return self._txLocus.chr()
+    def sense(self): return self._txLocus.sense()
+    def txLocus(self): return self._txLocus   ## locus of full transcript
+    def cdLocus(self): return self._cdLocus   ## locus from start codon to end codon
+    def txExons(self): return map(lambda i: i, self._txExons)  ## list of loci
+    def cdExons(self): return map(lambda i: i, self._cdExons)  ## list of loci
+    def introns(self): return map(lambda i: i, self._introns)  ## list of loci
+    def fpUtr(self): return self._fpUTR  ## locus
+    def tpUtr(self): return self._tpUTR  ## locus
+    def isCoding(self): return not(self._cdLocus.start()==0 and self._cdLocus.end()==0)  # boolean; is this gene protein-coding?
+    def tss(self,upstream = 0,downstream = 0):
+        if self._txLocus.sense() == '-':
+            return Locus(self._txLocus.chr(),self._txLocus.end()-downstream,self._txLocus.end()+upstream,self._txLocus.sense(),self._name)
+        else:
+            return Locus(self._txLocus.chr(),self._txLocus.start()-upstream,self._txLocus.start()+downstream,self._txLocus.sense(),self._name)
+    def __hash__(self): return self._txLocus.__hash__()
 
 
 
