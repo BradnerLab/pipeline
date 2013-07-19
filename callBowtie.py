@@ -18,9 +18,9 @@ import random
 #command arguments
 bowtieString = '/usr/local/bowtie-0.12.8/bowtie'
 samtoolsString = 'samtools'
-#tempParentFolder = '/ifs/labs/bradner/BOWTIE_TEMP/'
+tempParentFolder = '/ifs/labs/bradner/BOWTIE_TEMP/'
 
-tempParentFolder = '/mnt/d0-0/share/bradnerlab/projects/anna/BOWTIE_TEMP/'
+#tempParentFolder = '/mnt/d0-0/share/bradnerlab/projects/anna/BOWTIE_TEMP/'
 
 #===================================================================
 #=============================FUNCTIONS=============================
@@ -140,13 +140,24 @@ def removeTempFastqCmd(fileNameDict):
 def generateTempBamCmd(samtoolsString,fileNameDict):
 
     '''
-    uses samtools to conver the sam to a bam
+    uses samtools to convert the sam to a bam
     '''
     tempSamFile = fileNameDict['tempSamFile']
     tempBamFile = fileNameDict['tempBamFile']
 
     cmd = "%s view -bS '%s' > '%s'" % (samtoolsString,tempSamFile,tempBamFile)
     
+    return cmd
+
+#change into temp directory
+
+def changeTempDir(fileNameDict):
+
+    '''
+    changes into the temp directory
+    '''
+    tempFolder = fileNameDict['tempFolder']
+    cmd = "cd %s" % (tempFolder)
     return cmd
 
 #sort
@@ -170,7 +181,7 @@ def indexBamCmd(samtoolsString,fileNameDict):
     '''
 
     tempSortedBamFile=fileNameDict['tempSortedBamFile']
-    cmd = "%s index '%s'" % (samtoolsString,tempSortedBamFile)
+    cmd = "%s index '%s.bam'" % (samtoolsString,tempSortedBamFile)
 
     return cmd
 
@@ -283,6 +294,10 @@ def main():
     cmd = generateTempBamCmd(samtoolsString,fileNameDict)
     bashFile.write(cmd+'\n')
 
+    #change into the temp directory
+    cmd = changeTempDir(fileNameDict)
+    bashFile.write(cmd+'\n')
+
     #sort the bam
     cmd = sortBamCmd(samtoolsString,fileNameDict)
     bashFile.write(cmd+'\n')
@@ -292,16 +307,16 @@ def main():
     bashFile.write(cmd+'\n')
 
     #remove sam
-    cmd = rmSamCmd(fileNameDict)
-    bashFile.write(cmd+'\n')
+    #cmd = rmSamCmd(fileNameDict)
+    #bashFile.write(cmd+'\n')
 
     #mv bams
-    cmd = mvBamCmd(fileNameDict)
-    bashFile.write(cmd+'\n')
+    #cmd = mvBamCmd(fileNameDict)
+    #bashFile.write(cmd+'\n')
 
     #cleanup
-    cmd = rmTempFiles(fileNameDict)
-    bashFile.write(cmd+'\n')
+    #cmd = rmTempFiles(fileNameDict)
+    #bashFile.write(cmd+'\n')
 
 
     bashFile.close()
