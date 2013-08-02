@@ -281,6 +281,41 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
 
     return transCollection
 
+
+#06/11/09                                                                                                                              
+#import bound region                                                                                                                   
+#imports a bound region file and turns it into a locus collection                                                                      
+#bound region files are output by my pipeline as Name_boundFile.txt files                                                              
+def importBoundRegion(boundRegionFile,name):
+    '''                                                                                                                                
+    imports bound regions in either bed format or in error model format                                                                
+    '''
+
+    bound = parseTable(boundRegionFile,'\t')
+    lociList = []
+    ticker = 1
+    #                                                                                                                                  
+    if boundRegionFile.split('.')[-1] == 'bed':
+        bed = True
+    else:
+        bed = False
+    if bed:
+        for line in bound:
+            if ticker%1000 == 0:
+                print(ticker)
+            lociList.append(Locus(line[0],int(line[1]),int(line[2]),'.',ID = name + '_' + str(ticker)))
+            ticker = ticker + 1
+    else:
+        for line in bound:
+            if ticker%1000 == 0:
+                print(ticker)
+
+            lociList.append(Locus('chr'+line[0],int(line[1]),int(line[2]),'.',ID = name + '_' + str(ticker)))
+            ticker = ticker + 1
+    return LocusCollection(lociList,500)
+
+
+
 #==================================================================
 #========================LOCUS INSTANCE============================
 #==================================================================
