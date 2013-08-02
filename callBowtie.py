@@ -202,7 +202,7 @@ def mvBamCmd(fileNameDict):
     groupHeader = fileNameDict['groupHeader']
     finalFolder = fileNameDict['finalFolder']
 
-    cmd = "mv '%s*' '%s'" % (groupHeader,finalFolder)
+    cmd = "mv %s* %s" % (groupHeader,finalFolder)
     
     return cmd
 
@@ -307,12 +307,12 @@ def main():
     bashFile.write(cmd+'\n')
 
     #remove sam
-    #cmd = rmSamCmd(fileNameDict)
-    #bashFile.write(cmd+'\n')
+    cmd = rmSamCmd(fileNameDict)
+    bashFile.write(cmd+'\n')
 
     #mv bams
-    #cmd = mvBamCmd(fileNameDict)
-    #bashFile.write(cmd+'\n')
+    cmd = mvBamCmd(fileNameDict)
+    bashFile.write(cmd+'\n')
 
     #cleanup
     #cmd = rmTempFiles(fileNameDict)
