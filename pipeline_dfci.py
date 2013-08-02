@@ -5,10 +5,18 @@
 
 
 import sys
+sys.path.append('/mnt/d0-0/share/bradnerlab/src/cl512/pipeline/')
+
+print(sys.version)
+
+
+
 from utils import *
 
+import subprocess
 import time
 import re
+import random
 #the master data table
 #everything starts with this
 #format is as follows
@@ -67,7 +75,7 @@ def formatDataTable(dataFile):
 
     dataTable = parseTable(dataFile,'\t')
 
-    newDataTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGION','ENRICHED_MACS','COLOR']]
+    newDataTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGION','ENRICHED_MACS','COLOR','FASTQ_FILE']]
     #first check to make sure the table is formatted correctly
     
     for line in dataTable[1:]:
@@ -79,11 +87,11 @@ def formatDataTable(dataFile):
             print(line)
         #if the first three are filled in, check to make sure there are 8 columns
         else:
-            if len(line) > 3 and len(line) < 8:
-                newLine = line + (8-len(line))*['']
+            if len(line) > 3 and len(line) < 9:
+                newLine = line + (9-len(line))*['']
                 newDataTable.append(newLine)
-            elif len(line) >= 8:
-                newLine = line[0:8]
+            elif len(line) >= 9:
+                newLine = line[0:9]
                 newDataTable.append(newLine)
     
     #lower case all of the genomes
@@ -114,7 +122,7 @@ def loadDataTable(dataFile):
     #first check to make sure the table is formatted correctly
     for line in dataTable:
         #print(line)
-        if len(line) != 8:
+        if len(line) != 9:
             print('this line did not pass')
             print(line)
             dataTable = formatDataTable(dataFile)
@@ -139,6 +147,7 @@ def loadDataTable(dataFile):
         dataDict[line[3]]['background'] = line[4]
         dataDict[line[3]]['enrichedMacs'] = line[6]
         dataDict[line[3]]['color'] = line[7]
+        dataDict[line[3]]['fastq']=line[8]
             
 
     return dataDict
@@ -347,7 +356,7 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
 
     mergeShFile.close()
 
-    runCmd = "bsub -o /dev/null 'bash %s'" % (mergedFullPath+'.sh')
+    runCmd = " 'bash %s'" % (mergedFullPath+'.sh')
     os.system(runCmd)
 
     dataTable = parseTable(dataFile,'\t')
@@ -377,6 +386,10 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
 
         namesList = dataDict.keys()
 
+    #a timestamp to name this pipeline batch of files
+    timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    #a random integer ticker to help name files
+    randTicker = random.randint(0,10000)
 
     for name in namesList:
         
@@ -425,14 +438,29 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
         bamFile = dataDict[name]['bam']
         backgroundName =  dataDict[name]['background']
         backgroundBamFile = dataDict[backgroundName]['bam']
+        macsString = '/usr/local/python-2.7.2/bin/macs14'
         if upper(genome[0:2]) == 'HG':
-            cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'macs14 -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50'" % (bamFile,backgroundBamFile,name,pvalue)
+            cmd = "%s -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
         elif upper(genome[0:2]) == 'MM':
-            cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50'" % (bamFile,backgroundBamFile,name,pvalue)
+            cmd = "%s -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
         elif upper(genome[0:2]) == 'RN':
-            cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50'" % (bamFile,backgroundBamFile,name,pvalue)
+            cmd = "%s -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
         print(cmd)
-        os.system(cmd)
+
+        bashFileName = '/mnt/d0-0/share/bradnerlab/src/cl512/temp/macs_%s_%s.sh' % (timeStamp,randTicker)
+        bashFile = open(bashFileName,'w')
+        bashFile.write("cd %s\n" % (outdir))
+        bashFile.write(cmd)
+        bashFile.close()
+        bashCommand = 'qsub %s' % (bashFileName) 
+        print(bashCommand)
+        os.system(bashCommand)
+
+        randTicker+=1
+
+
+
+
 
 #==========================================================================
 #===================FORMAT MACS OUTPUT=====================================
@@ -463,7 +491,7 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
     if wigLink:
         genome = lower(dataDict[namesList[0]]['genome'])
         cellType = lower(namesList[0].split('_')[0])
-        wigLinkFolder = '/lab/solexa_young/bam/wiggles/%s/%s' % (genome,cellType)
+        wigLinkFolder = '/mnt/d0-0/share/bradnerlab/genomebrowser/wiggles/%s/%s' % (genome,cellType)
         formatFolder(wigLinkFolder,True)
 
 
@@ -471,6 +499,13 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
 
     dataTableRows = [line[3] for line in dataTable]
     for name in namesList:
+
+        if wigLink:
+            genome = lower(dataDict[name]['genome'])
+            cellType = lower(name.split('_')[0])
+            wigLinkFolder = '/mnt/d0-0/share/bradnerlab/genomebrowser/wiggles/%s/%s' % (genome,cellType)
+            formatFolder(wigLinkFolder,True)
+
         outwiggleFileName = '%s%s_treat_afterfiting_all.wig.gz' % (wiggleFolder,name)
         #find the row in the old dataTable
         print('looking for macs output for %s' % (name))
@@ -957,7 +992,13 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
     dataDict = loadDataTable(dataFile)
     if mappedFolder[-1] != '/':
         mappedFolder+='/'
-
+    #a timestamp to name this pipeline batch of files
+    timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    #a random integer ticker to help name files
+    randTicker = random.randint(0,10000)
+    bashFileName = '/mnt/d0-0/share/bradnerlab/src/cl512/temp/mapBam_%s_%s.sh' % (timeStamp,randTicker)
+    bashFile = open(bashFileName,'w')
+    ticker = 0
     for gffFile in gffList:
         
         #check to make sure gff exists
@@ -989,9 +1030,10 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
         if len(nameList) == 0:
             nameList = dataDict.keys()
         
+        
 
         for name in nameList:
-            
+            print ('mapping %s to %s' % (name,gffFile))
             #filter based on celltype
             cellName = name.split('_')[0]
             if cellTypeList.count(cellName) != 1:
@@ -999,20 +1041,29 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
             fullBamFile = dataDict[name]['bam']
             outFile = outdir+gffName+'_'+name+'.gff'
 
+
+
             if overWrite:
-                cmd1 = "bsub -o /dev/null -R 'rusage[mem=2200]' 'python /nfs/young_ata/scripts/bamToGFF.py -d -f 1 -e 200 -r -m %s -b %s -i %s -o %s'" % (nBin,fullBamFile,gffFile,outFile)
-                print(cmd1)
-                os.system(cmd1)
+                cmd1 = "python /mnt/d0-0/share/bradnerlab/src/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                bashFile.write(cmd1)
+                bashFile.write('\n')
+
             else:
                 try:
                     Foo = open(outFile,'r')
                     print('File %s Already Exists, not mapping' % (outFile))
                 except IOError:
+                    cmd1 = "python /mnt/d0-0/share/bradnerlab/src/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                    bashFile.write(cmd1)
+                    bashFile.write('\n')
 
-                    cmd1 = "bsub -o /dev/null -R 'rusage[mem=2200]' 'python /nfs/young_ata/scripts/bamToGFF.py -d -f 1 -e 200 -r -m %s -b %s -i %s -o %s'" % (nBin,fullBamFile,gffFile,outFile)
-                    print(cmd1)
-                    os.system(cmd1)
 
+
+    bashFile.close()
+            
+    bashCommand = 'qsub %s' % (bashFileName) 
+    print(bashCommand)
+            #os.system(bashCommand)
 
 #==========================================================================
 #===================MAKING GFF LISTS=======================================
@@ -1316,7 +1367,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     bamList = [dataDict[name]['bam'] for name in namesList]
     bamString = join(bamList,',')
     genome = lower(dataDict[namesList[0]]['genome'])
-    cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s'" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
+    cmd = " ' 'python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s'" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
 
     #cmd = "python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g hg18 -p multiple -y uniform -b %s -i %s -o %s" % (nameString,titleString,colorString,bamString,locusString,outputFolder)
     print(cmd)
@@ -1453,6 +1504,13 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
     
     gffString = join(gffList,',')
 
+    timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    #a random integer ticker to help name files
+    randTicker = random.randint(0,10000)
+    bashFileName = '/mnt/d0-0/share/bradnerlab/src/cl512/temp/mapMetaCall_%s_%s.sh' % (timeStamp,randTicker)
+    bashFile = open(bashFileName,'w')
+
+
     for cellType in cellTypeList:
         
 
@@ -1469,19 +1527,29 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
                     
             bamFile = dataDict[name]['bam']
 
-            cmd = 'python /nfs/young_ata/CYL_code/temp/reef/makeBamMeta.py -c -n %s -g %s -b %s -o %s' % (name,gffString,bamFile,outdir)
+            cmd = '/usr/local/bin/python2.7 /mnt/d0-0/share/bradnerlab/src/cl512/pipeline/makeBamMeta.py -c -n %s -g %s -b %s -o %s' % (name,gffString,bamFile,outdir)
             if overwrite == False:
                 try:
                     foo = open('%s%s_metaSettings.txt' % (outdir,name),'r')
                     print('meta for %s already exists, skipping.' % (name))
                     continue
                 except IOError:
-                    print(cmd)
-                    os.system(cmd)
+                    #print(cmd)
+                    bashFile.write(cmd)
+                    bashFile.write('\n')
+                    #subprocess.call(cmd,shell=True)
+                    #os.system(cmd)
             else:
 
-                print(cmd)
-                os.system(cmd)
+                #print(cmd)
+                bashFile.write(cmd)
+                bashFile.write('\n')
+
+                #subprocess.call(cmd,shell=True)
+                #os.system(cmd)
+        bashFile.close()
+        print(bashFileName)
+
 
 #==========================================================================
 #===================MANUALLY FINISH METAS==================================
@@ -1503,7 +1571,7 @@ def finishMetas(metaFolder,settingsFileList=[]):
 
     for settingsFile in settingsFileList:
         settingsName = settingsFile[0:-17]
-        cmd = 'bsub -o /dev/null python /nfs/young_ata/CYL_code/temp/reef/makeBamMeta.py -c -f -n %s -o %s' % (settingsName,metaFolder)
+        cmd = ' python /mnt/d0-0/share/bradnerlab/src/cl512/pipeline/makeBamMeta.py -c -f -n %s -o %s' % (settingsName,metaFolder)
         
         print(cmd)
         os.system(cmd)
@@ -1545,12 +1613,12 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
         color = dataDict[name]['color']
         output = outputFolder + '%s_%s_%s_order.png' % (gffName,name,orderByName)
         if relative:
-            cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
-            #cmd = "bsub -R 'rusage[mem=2200]' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
+            cmd = " ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
+            #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
             
         else:
-            cmd = "bsub -o /dev/null -R 'rusage[mem=2200]' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
-            #cmd = "bsub -R 'rusage[mem=2200]' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
+            cmd = " ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
+            #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
             
         #cmd = 'R --no-save %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R' % (referenceMappedGFF,mappedGFF,color,output,geneListFile)
         print(cmd)
@@ -1591,7 +1659,7 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 #         except IOError:
 #             print('WARNING: No .sam file for %s' % (name))
 #             continue
-#         cmd = 'bsub -o /dev/null python /nfs/young_ata/CYL_code/samToYLF.py %s %s BWT1,BWT2' % (dataDict[name]['sam'],dataDict[name]['ylf'])
+#         cmd = ' python /nfs/young_ata/CYL_code/samToYLF.py %s %s BWT1,BWT2' % (dataDict[name]['sam'],dataDict[name]['ylf'])
 #         if overwrite:
 #             print('making a .ylf for %s' % (name))
 #             os.system(cmd)
