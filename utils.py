@@ -1,3 +1,16 @@
+#SET OF GENERAL UTILITY FUNCTIONS FOR SEQ DATA
+#last modified 130801
+
+#Locus, LocusCollection, and Gene classes were generously provided by Graham Ruby
+#Additional functions are found from online sources and are noted in the comments
+
+
+
+#==================================================================
+#===========================DEPENDENCIES===========================
+#==================================================================
+
+
 import os
 import gzip
 
@@ -10,11 +23,52 @@ import datetime
 
 from collections import defaultdict
 
-#SET OF UTILITY FUNCTIONS FOR mapEnhancerFromFactor.py
+#==================================================================
+#======================TABLE OF CONTENTS===========================
+#==================================================================
+
+#1. Input/Output and file handling functions
+
+#def open(file,mode='r'):  <- replaces open with a version that can handle gzipped files
+#def parseTable(fn, sep, header = False,excel = False): <- opens standard delimited files
+#def unParseTable(table, output, sep): <- writes standard delimited files, opposite of parseTable
+#def gffToBed(gff,output= ''): <- converts standard UCSC gff format files to UCSC bed format files
+#def formatFolder(folderName,create=False): <- checks for the presence of any folder and makes it if create =True
+
+#2. Gene annotation functions
+#def makeStartDict(annotFile,geneList = []): <- takes a standard UCSC refseq table and creates a dictionary keyed by refseq ID with info about each transcript
+#def getTSSs(geneList,refseqTable,refseqDict): <- returns the TSS location of any gene
+#def importRefseq(refseqFile, returnMultiples = False): <- imports a standard UCSC refseq annotation file into a dictionary
+#def makeGenes(annotFile,geneList=[],asDict = False): <- takes a UCSC refseq annotation file and a gene list and makes a list or dictionary of Gene class objects
+#def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList = []): <- takes a UCSC refseq annotation file and makes a LocusCollection where each locus is a full transcript
+#def importBoundRegion(boundRegionFile,name): <- imports a bound region file (a standard bed or macs output bed)
+
+#3. Locus class
+#class Locus(chr,start,end,sense,ID) <- standard locus class for tracking genomic loci
+#class LocusCollection(lociList,windowSize=500) <- a collection of locus objects used for querying large sets of loci
+
+#4. Gene class
+#class Gene(name,chr,sense,txCoords,cdCoords,exStarts,exEnds,commonName=''): <- gene class object that contains all annotation information about a given transcript
+
+#5. Locus functions
+#def locusCollectionToGFF(locusCollection): <- turns a locus collection into a gff
+#def gffToLocusCollection(gff,window =500): <- turns a gff into a locus collection (reverse of gff)
+#def makeTSSLocus(gene,startDict,upstream,downstream): <- from a start dict makes a locus surrounding the tss
+#def makeSearchLocus(locus,upSearch,downSearch): <- takes an existing locus and makes a larger flanking locus
+
+
+#6. Bam class
+#class Bam(bamFile) <- a class for handling and manipulating bam objects.  requires samtools
+
+#7. Misc. functions
+#def uniquify(seq, idfun=None):  <- makes a list unique
+#def order(x, NoneIsLast = True, decreasing = False): <- returns the ascending or descending order of a list
+
 
 #==================================================================
 #==========================I/O FUNCTIONS===========================
 #==================================================================
+
 bopen=open
 def open(file,mode='r'):
 
@@ -22,6 +76,27 @@ def open(file,mode='r'):
                return gzip.open(file,mode+'b')
        else:
                return bopen(file,mode)
+
+#parseTable 4/14/08
+#takes in a table where columns are separated by a given symbol and outputs
+#a nested list such that list[row][col]
+#example call:
+#table = parseTable('file.txt','\t')
+def parseTable(fn, sep, header = False,excel = False):
+    fh = open(fn)
+    lines = fh.readlines()
+    fh.close()
+    if excel:
+        lines = lines[0].split('\r')
+    if lines[0].count('\r') > 0:
+        lines = lines[0].split('\r')
+    table = []
+    if header == True:
+        lines =lines[1:]
+    for i in lines:
+        table.append(i[:-1].split(sep))
+
+    return table
 
 
 
@@ -45,27 +120,6 @@ def unParseTable(table, output, sep):
             fh_out.write('\n')
 
     fh_out.close()
-
-#parseTable 4/14/08
-#takes in a table where columns are separated by a given symbol and outputs
-#a nested list such that list[row][col]
-#example call:
-#table = parseTable('file.txt','\t')
-def parseTable(fn, sep, header = False,excel = False):
-    fh = open(fn)
-    lines = fh.readlines()
-    fh.close()
-    if excel:
-        lines = lines[0].split('\r')
-    if lines[0].count('\r') > 0:
-        lines = lines[0].split('\r')
-    table = []
-    if header == True:
-        lines =lines[1:]
-    for i in lines:
-        table.append(i[:-1].split(sep))
-
-    return table
 
 
 
@@ -162,16 +216,6 @@ def getTSSs(geneList,refseqTable,refseqDict):
     return TSS
 
 
-#12/29/08
-#refseqFromKey(refseqKeyList,refseqDict,refseqTable)
-#function that grabs refseq lines from refseq IDs
-def refseqFromKey(refseqKeyList,refseqDict,refseqTable):
-    typeRefseq = []
-    for name in refseqKeyList:
-        if refseqDict.has_key(name):
-            typeRefseq.append(refseqTable[refseqDict[name][0]])
-    return typeRefseq
-
 
 
 #10/13/08
@@ -203,6 +247,16 @@ def importRefseq(refseqFile, returnMultiples = False):
     else:
         return refseqTable,refseqDict
 
+
+#12/29/08
+#refseqFromKey(refseqKeyList,refseqDict,refseqTable)
+#function that grabs refseq lines from refseq IDs
+def refseqFromKey(refseqKeyList,refseqDict,refseqTable):
+    typeRefseq = []
+    for name in refseqKeyList:
+        if refseqDict.has_key(name):
+            typeRefseq.append(refseqTable[refseqDict[name][0]])
+    return typeRefseq
 
 
 
