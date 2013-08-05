@@ -81,7 +81,13 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
         if matrix:
             nBin = int(matrix)
             binSize = gffLocus.len()/nBin
-            
+            #some regions will be too short to get info on
+            if binSize == 0:
+                clusterLine = [gffLocus.ID(),gffLocus.__str__()] + ['NA']*nBin
+                newGFF.append(clusterLine)
+                continue
+
+
         #flippy flip if sense is negative
         if sense == '-':
             bamSense = string.translate(gffLocus.sense(),senseTrans)
@@ -103,6 +109,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
             denList = denList[::-1]
 
         #converting from units of total bp of read sequence per bin to rpm/bp
+        
         denList = [round(float(x)/binSize/MMR,4) for x in denList]
         
         #if the gff region is - strand, flip the
