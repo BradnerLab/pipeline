@@ -7,7 +7,9 @@
 import sys
 sys.path.append('/mnt/d0-0/share/bradnerlab/src/cl512/pipeline/')
 
+print('\nUsing following version of python:\n')
 print(sys.version)
+print('\n\n')
 
 
 
