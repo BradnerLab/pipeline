@@ -372,7 +372,7 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
 #===================CALLING MACS ==========================================
 #==========================================================================
 
-def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
+def callMacsQsub(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
 
     '''
     calls the macs error model
@@ -462,13 +462,87 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
 
 
 
+def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
+
+    '''
+    calls the macs error model
+    '''
+    dataDict = loadDataTable(dataFile)
+
+    if macsFolder[-1] != '/':
+        macsFolder+='/'
+    formatFolder(macsFolder,True)
+
+    #if no names are given, process all the data
+    if len(namesList) == 0:
+
+        namesList = dataDict.keys()
+
+
+    for name in namesList:
+        
+        #skip if a background set
+        if upper(dataDict[name]['background']) == 'NONE':
+            continue
+
+        #check for the bam
+        try:
+            bam = open(dataDict[name]['bam'],'r')
+            hasBam = True
+        except IOError:
+            hasBam = False
+
+        #check for background
+        try:
+            backgroundName = dataDict[name]['background']
+            backbroundBam = open(dataDict[backgroundName]['bam'],'r')
+            hasBackground = True
+        except IOError:
+            hasBackground = False
+
+        if not hasBam:
+            print('no bam found for %s. macs not called' % (name))
+            continue
+
+        if not hasBackground:
+            print('no background bam %s found for dataset %s. macs not called' % (backgroundName,name))
+            continue
+        #make a new folder for every dataset
+        outdir = macsFolder+name
+        #print(outdir)
+        try:
+            foo = os.listdir(outdir)
+            if not overwrite:
+                print('MACS output already exists for %s. OVERWRITE = FALSE' % (name))
+                continue
+            
+        except OSError:
+            os.system('mkdir %s' % (outdir))
+            
+        os.chdir(outdir)
+        genome = dataDict[name]['genome']
+        #print('USING %s FOR THE GENOME' % genome)
+        
+        bamFile = dataDict[name]['bam']
+        backgroundName =  dataDict[name]['background']
+        backgroundBamFile = dataDict[backgroundName]['bam']
+        if upper(genome[0:2]) == 'HG':
+            cmd = "macs14 -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+        elif upper(genome[0:2]) == 'MM':
+            cmd = "macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+        elif upper(genome[0:2]) == 'RN':
+            cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+        print(cmd)
+        os.system(cmd)
+
+
 
 
 #==========================================================================
 #===================FORMAT MACS OUTPUT=====================================
 #==========================================================================
 
-def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink=True):
+def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink=False):
 
     dataDict = loadDataTable(dataFile)
 
@@ -1369,10 +1443,12 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     bamList = [dataDict[name]['bam'] for name in namesList]
     bamString = join(bamList,',')
     genome = lower(dataDict[namesList[0]]['genome'])
-    cmd = " ' 'python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s'" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
+    os.chdir('/ark/home/cl512/src/pipeline/')
+    cmd = "python /ark/home/cl512/src/pipeline/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
 
     #cmd = "python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g hg18 -p multiple -y uniform -b %s -i %s -o %s" % (nameString,titleString,colorString,bamString,locusString,outputFolder)
     print(cmd)
+    #os.system('mkdir test')
     os.system(cmd)
 
 #==========================================================================
@@ -1627,7 +1703,52 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
         os.system(cmd)
 
 
+#==========================================================================
+#==============================CALLING ROSE================================
+#==========================================================================
 
+
+
+def callRose(dataFile,macsEnrichedFolder,namesList=[],extraMap = []):
+
+    '''
+    calls rose w/ standard parameters
+    '''
+
+    dataDict = pipeline_dfci.loadDataTable(dataFile)
+    
+
+    #a timestamp to name this pipeline batch of files
+    timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    #a random integer ticker to help name files
+    randTicker = random.randint(0,10000)
+
+
+    bashFileName = '/ark/home/cl512/ressrv19/src/cl512/temp/rose_%s_%s.sh' % (timeStamp,randTicker)
+    bashFile = open(bashFileName,'w')
+    bashFile.write("cd /ark/home/cl512/src/rose/")
+    bashFile.write('\n')
+    parentFolder = '/ark/home/cl512/ressrv19/projects/athero/rose/'
+    mapString = [dataDict[name]['bam'] for name in extraMap]
+    mapString = string.join(mapString,',')
+
+    for name in namesList:
+
+        bamFile = dataDict[name]['bam']
+        backgroundName = dataDict[name]['background']
+        backgroundBamFile = dataDict[backgroundName]['bam']
+        macsFile = "%s%s" % (macsEnrichedFolder,dataDict[name]['enrichedMacs'])
+        outputFolder = "%s%s_ROSE" % (parentFolder,name)
+
+        roseCmd = "python ROSE_main_turbo.py -g HG18 -i %s -r %s -c %s -b %s -o %s -t 2500 -s 12500 &" % (macsFile,bamFile,backgroundBamFile,mapString,outputFolder)
+        bashFile.write(roseCmd)
+        bashFile.write('\n')
+
+
+
+    bashFile.close()
+
+    print ('Wrote rose commands to %s' % (bashFileName))
 
 
 

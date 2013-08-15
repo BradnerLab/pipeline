@@ -21,7 +21,7 @@ print "Using python version %s" % sys.version()
 
 
 #importing utils package
-sys.path.append('/home/cl512/pipeline/')
+sys.path.append('/home/cl512/src/pipeline/')
 import utils
 
 

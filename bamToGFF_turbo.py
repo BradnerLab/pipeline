@@ -97,7 +97,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
             bamSense = '.'
         #using the bamLiquidator to get the readstring            
         #print('using nBin of %s' % nBin)
-        bamliquidatorString = '/mnt/d0-0/share/bradnerlab/src/cl512/pipeline/bamliquidator'
+        bamliquidatorString = '/usr/bin/bamliquidator'
         bamCommand = "%s %s %s %s %s %s %s %s" % (bamliquidatorString,bamFile,line[0],gffLocus.start(),gffLocus.end(),bamSense,nBin,extension)
         #print(bamCommand)
         getReads = subprocess.Popen(bamCommand,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
