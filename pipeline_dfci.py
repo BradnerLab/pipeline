@@ -106,7 +106,6 @@ def formatDataTable(dataFile):
     unParseTable(newDataTable,dataFile,'\t')
     return newDataTable
 
-                
 
 
 
@@ -204,8 +203,70 @@ def summary(dataFile,outputFile=''):
 
     if outputFile:
         unParseTable(output,outputFile,'')
-        
 
+
+def makeBamTable(dataFile,output):
+
+    '''
+    converts a data table into a bam table for jenkins
+    schema = [['SOURCE','CELL_TYPE','GENOME','BAMFILE']]
+    '''
+    
+    #sources are manually curated here in this sourceDict
+
+    sourceDict = {'MM1S':'Multiple Myeloma',
+                  'KMS11':'Multiple Myeloma',
+                  'LY1': 'Diffuse large B-cell lymphoma',
+                  'LY3': 'Diffuse large B-cell lymphoma',
+                  'LY4': 'Diffuse large B-cell lymphoma',
+                  'LY18': 'Diffuse large B-cell lymphoma',
+                  'K422': 'Diffuse large B-cell lymphoma',
+                  'PFEIFFER':'Diffuse large B-cell lymphoma',
+                  'DHL6':'Diffuse large B-cell lymphoma',
+                  'HBL1':'Diffuse large B-cell lymphoma',
+                  'TOLEDO':'Diffuse large B-cell lymphoma',
+                  'P397':'Diffuse large B-cell lymphoma',
+                  'P286':'Diffuse large B-cell lymphoma',
+                  'P14A':'Lymph node',
+                  'P107A':'Tonsil',
+                  'P448': 'Diffuse large B-cell lymphoma',
+                  'P265': 'Diffuse large B-cell lymphoma',
+                  'CD19': 'B-cell',
+                  'PROB': 'Pro B-cell',
+                  'SKNAS': 'Neuroblastoma',
+                  'BE2C': 'Neuroblastoma',
+                  'HSC': 'Hematopoeitic stem cell',
+                  'EC': 'Human umbilical cord endothelial cell',
+                  '3T3L1': 'Fibroblast',
+                  }
+    dataDict= loadDataTable(dataFile)
+    
+    namesList = dataDict.keys()
+    namesList.sort()
+
+    #bamTable = [['SOURCE','CELL_TYPE','GENOME','BAMFILE']]
+    bamTable =[]
+    for name in namesList:
+
+        cellType = name.split('_')[0]
+        if sourceDict.has_key(cellType):
+            source = sourceDict[cellType]
+        else:
+            source = 'Unknown'
+
+
+        genome = dataDict[name]['genome']
+        bamFile = dataDict[name]['bam']
+
+        bamTable.append([genome,source,cellType,name,bamFile])
+
+
+    #sort by source
+    sourceOrder = order([x[1] for x in bamTable])
+    sortedTable = [['GENOME','SOURCE','CELL_TYPE','NAME','BAMFILE']] + [bamTable[i] for i in sourceOrder]
+
+    unParseTable(sortedTable,output,'\t')
+    
 
 #mapping the data
 

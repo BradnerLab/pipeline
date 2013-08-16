@@ -446,6 +446,7 @@ class Locus:
     def __str__(self): return self.chr()+'('+self.sense()+'):'+'-'.join(map(str,self.coords()))
     def checkRep(self):
         pass
+    def gffLine(self): return [self.chr(),self.ID(),'',self.start(),self.end(),'',self.sense(),'',self.ID()]
 
 
 class LocusCollection:
