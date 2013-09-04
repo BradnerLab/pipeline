@@ -444,6 +444,7 @@ class Locus:
         return True
     def __ne__(self,other): return not(self.__eq__(other))
     def __str__(self): return self.chr()+'('+self.sense()+'):'+'-'.join(map(str,self.coords()))
+    def plotStr(self): return self.chr() + ':' + self.sense() + ':' + '-'.join(map(str,self.coords()))
     def checkRep(self):
         pass
     def gffLine(self): return [self.chr(),self.ID(),'',self.start(),self.end(),'',self.sense(),'',self.ID()]
