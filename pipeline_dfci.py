@@ -19,6 +19,7 @@ import subprocess
 import time
 import re
 import random
+import string
 #the master data table
 #everything starts with this
 #format is as follows
@@ -106,6 +107,45 @@ def formatDataTable(dataFile):
     unParseTable(newDataTable,dataFile,'\t')
     return newDataTable
 
+
+#========================================================================
+#================================FUNCTIONS===============================
+#========================================================================
+
+
+def makePipelineTable(sampleTableFile,dirPath,bamPath,outputFile):
+
+    '''
+    makes a standard pipeline table in the same directory as the sample Table File
+    which should be the project directory file
+    uses a standard WI annotation xls
+    '''
+
+    sampleTable = parseTable(sampleTableFile,'\t',excel=True)
+
+    pipelineTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGIONS','ENRICHED_MACS','COLOR','FASTQ_FILE']]    
+
+    for line in sampleTable[1:]:
+        uniqueID = "%s_%s" % (line[8],line[4])
+        genome = line[14]
+        name = line[4]
+        cellLine = string.lower(line[4].split('_')[0])
+        filePath = "%s%s/%s/" % (bamPath,genome,cellLine)
+        barcode = line[5].split('-')[1]
+        fastqFile = "%s%s-s_%s_1_sequence.txt.tar.gz" % (dirPath,barcode,line[0])
+
+        if name.count('WCE') == 0:
+            newLine = [filePath,uniqueID,genome,name,'NONE','NONE','','0,0,0',fastqFile]
+
+        background = line[3]
+        if len(background) == 0:
+            newLine = [filePath,uniqueID,genome,name,'','','','0,0,0',fastqFile]
+        else:
+            newLine = [filePath,uniqueID,genome,name,line[3],'','','0,0,0',fastqFile]
+            
+        pipelineTable.append(newLine)
+
+    unParseTable(pipelineTable,outputFile,'\t')
 
 
 
@@ -274,6 +314,46 @@ def makeBamTable(dataFile,output):
 #==========================================================================
 #===================CALLING BOWTIE TO MAP DATA=============================
 #==========================================================================
+
+def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True):
+
+    '''
+    makes a mapping bash script and launches 
+    '''
+
+    #hardCoded seed lengths and index locations
+
+
+    seedLength = 50
+    
+
+    dataDict = loadDataTable(pipelineFile)
+
+    #print(dataDict)
+    if len(namesList) == 0:
+        namesList = dataDict.keys()
+    namesList.sort()
+    
+    
+    for name in namesList:
+    
+        fastqFile = dataDict[name]['fastq']
+        genome = dataDict[name]['genome']
+        outputFolder = dataDict[name]['folder']
+        uniqueID = dataDict[name]['uniqueID']
+        formatFolder(outputFolder,create=True)
+
+
+        cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
+        #print (cmd)
+        os.system(cmd)
+
+        if launch:
+            time.sleep(1)
+            cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
+            print(cmd)
+            os.system(cmd)
+
 
 
 def callBowtie(dataFile,dataList = [],overwrite = False):
@@ -603,7 +683,7 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
 #===================FORMAT MACS OUTPUT=====================================
 #==========================================================================
 
-def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink=False):
+def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink=''):
 
     dataDict = loadDataTable(dataFile)
 
@@ -625,10 +705,12 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
     namesList.sort()
     dataTable = parseTable(dataFile,'\t')
 
-    if wigLink:
+    if len(wigLink) > 0:
+        if wigLink[-1] != '/':
+            wigLink+='/'
         genome = lower(dataDict[namesList[0]]['genome'])
         cellType = lower(namesList[0].split('_')[0])
-        wigLinkFolder = '/mnt/d0-0/share/bradnerlab/genomebrowser/wiggles/%s/%s' % (genome,cellType)
+        wigLinkFolder = '%s%s/%s' % (wigLink,genome,cellType)
         formatFolder(wigLinkFolder,True)
 
 
@@ -637,11 +719,14 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
     dataTableRows = [line[3] for line in dataTable]
     for name in namesList:
 
-        if wigLink:
-            genome = lower(dataDict[name]['genome'])
-            cellType = lower(name.split('_')[0])
-            wigLinkFolder = '/mnt/d0-0/share/bradnerlab/genomebrowser/wiggles/%s/%s' % (genome,cellType)
+        if len(wigLink) > 0:
+            if wigLink[-1] != '/':
+                wigLink+='/'
+            genome = lower(dataDict[namesList[0]]['genome'])
+            cellType = lower(namesList[0].split('_')[0])
+            wigLinkFolder = '%s%s/%s' % (wigLink,genome,cellType)
             formatFolder(wigLinkFolder,True)
+
 
         outwiggleFileName = '%s%s_treat_afterfiting_all.wig.gz' % (wiggleFolder,name)
         #find the row in the old dataTable
@@ -688,7 +773,7 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
                     print('WARNING: NO MACS WIGGLE FOR %s' %(name)) 
 
         
-        if wigLink:
+        if len(wigLink) > 0:
             #time.sleep(10)
             print('Creating symlink for dataset %s in %s' % (name,wigLinkFolder))
             os.system('cd %s' % (wigLinkFolder))
@@ -1509,7 +1594,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
 
     #cmd = "python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g hg18 -p multiple -y uniform -b %s -i %s -o %s" % (nameString,titleString,colorString,bamString,locusString,outputFolder)
     print(cmd)
-    #os.system('mkdir test')
+    
     os.system(cmd)
 
 #==========================================================================
@@ -1770,13 +1855,13 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
 
 
-def callRose(dataFile,macsEnrichedFolder,namesList=[],extraMap = []):
+def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []):
 
     '''
     calls rose w/ standard parameters
     '''
 
-    dataDict = pipeline_dfci.loadDataTable(dataFile)
+    dataDict = loadDataTable(dataFile)
     
 
     #a timestamp to name this pipeline batch of files
@@ -1789,7 +1874,7 @@ def callRose(dataFile,macsEnrichedFolder,namesList=[],extraMap = []):
     bashFile = open(bashFileName,'w')
     bashFile.write("cd /ark/home/cl512/src/rose/")
     bashFile.write('\n')
-    parentFolder = '/ark/home/cl512/ressrv19/projects/athero/rose/'
+
     mapString = [dataDict[name]['bam'] for name in extraMap]
     mapString = string.join(mapString,',')
 
