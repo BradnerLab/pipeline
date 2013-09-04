@@ -16,9 +16,9 @@ import random
 #===================================================================
 
 #command arguments
-bowtieString = '/usr/local/bowtie-0.12.8/bowtie'
+bowtieString = 'bowtie'
 samtoolsString = 'samtools'
-tempParentFolder = '/ifs/labs/bradner/BOWTIE_TEMP/'
+tempParentFolder = '/raider/BOWTIE_TEMP/'
 
 #tempParentFolder = '/mnt/d0-0/share/bradnerlab/projects/anna/BOWTIE_TEMP/'
 
@@ -252,14 +252,16 @@ def main():
     #retrive the arguments
     fastqFile = options.fastq
     seedLength = options.seedLength
-    genome = options.genome
+    genome = string.lower(options.genome)
     uniqueID = options.unique
     outputFolder = options.output
 
     #get the bowtie index
     bowtieDict = {
-
-        'hg18':'/mnt/d0-0/share/bradnerlab/genomes/human_gp_mar_06_no_random/bowtie/hg18'
+        'hg18':'/mnt/d0-0/share/bradnerlab/genomes/human_gp_mar_06_no_random/bowtie/hg18',
+        'mm9':'/mnt/d0-0/share/bradnerlab/genomes/mouse_gp_jul_07_no_random/bowtie/mm9',
+        'HG18':'/mnt/d0-0/share/bradnerlab/genomes/human_gp_mar_06_no_random/bowtie/hg18',
+        'MM9':'/mnt/d0-0/share/bradnerlab/genomes/mouse_gp_jul_07_no_random/bowtie/mm9'
         }
 
     bowtieIndex = bowtieDict[string.lower(genome)]
@@ -287,8 +289,8 @@ def main():
     bashFile.write(cmd+'\n')
 
     #remove temp fastq
-    cmd = removeTempFastqCmd(fileNameDict)
-    bashFile.write(cmd+'\n')
+    #cmd = removeTempFastqCmd(fileNameDict)
+    #bashFile.write(cmd+'\n')
 
     #generate a bam
     cmd = generateTempBamCmd(samtoolsString,fileNameDict)
@@ -320,7 +322,8 @@ def main():
 
 
     bashFile.close()
-    
+
+    print "Wrote mapping command to %s" % (bashFileName)
 if __name__ == "__main__":
     main()
 
