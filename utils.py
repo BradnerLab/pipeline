@@ -65,6 +65,12 @@ from collections import defaultdict
 #def order(x, NoneIsLast = True, decreasing = False): <- returns the ascending or descending order of a list
 
 
+#8 Sequence functions
+#def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True): <- grabs sequence from a region
+#def gffToFasta(species,directory,gff,UCSC = True): <- converts a gff to a fasta
+
+
+
 #==================================================================
 #==========================I/O FUNCTIONS===========================
 #==================================================================
@@ -1026,3 +1032,74 @@ def order(x, NoneIsLast = True, decreasing = False):
                 n -= 1
         return ix[:n]
     return ix
+
+
+
+#==================================================================
+#=======================SEQUENCE FUNCTIONS=========================
+#==================================================================
+
+
+
+#10/22/08
+#fetchSeq
+#function that fetches a sequence from a genome directory
+#directory that contains individual chrom fasta files
+
+def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True):
+    fn = directory + chrom + '.fa'
+    fh = open(fn,'r')
+    headerOffset = 0
+    nStart = 0
+    nEnd = 0
+    if header:
+        fh.seek(0)
+        headerOffset = len(fh.readline())
+    if lineBreaks:
+
+        nStart = (start-1)/50
+        nEnd = (end-1)/50
+    if UCSC:
+        fh.seek((start+nStart+headerOffset))
+    else:
+        fh.seek((start-1+nStart+headerOffset))
+    span = ((end+nEnd-1)-(start+nStart-1))
+    # if UCSC:
+    #     span+=1
+    
+    read = fh.read(span)
+    if lineBreaks:
+        read = read.replace('\n','')
+    #print(headerOffset,nStart,nEnd)
+    return read
+    fh.close()
+
+
+
+#10/22/08
+#gffToFasta
+#function that writes a fasta file from a gff file
+#directory is the genome directory with the chromosome folders
+def gffToFasta(genome,directory,gff,UCSC = True):
+    fastaList = []
+
+    ticker = 0
+    if type(gff) == str:
+        gff = parseTable(gff,'\t')
+    for line in gff:
+        try:
+            sequence = fetchSeq(directory,line[0],int(line[3]),int(line[4]),UCSC)
+        except:
+            continue
+        if ticker%1000 == 0: print(ticker)
+        
+        name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
+        fastaList.append(name)
+        if line[6] == '-':
+            #print(line[3])
+            #print(line[4])
+            fastaList.append(revComp(sequence))
+        else:
+            fastaList.append(sequence)
+        ticker += 1
+    return fastaList

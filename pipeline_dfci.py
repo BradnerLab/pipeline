@@ -123,9 +123,17 @@ def makePipelineTable(sampleTableFile,dirPath,bamPath,outputFile):
 
     sampleTable = parseTable(sampleTableFile,'\t',excel=True)
 
-    pipelineTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGIONS','ENRICHED_MACS','COLOR','FASTQ_FILE']]    
+    #check if the outputfile exists
+    #if it does, append
+    try:
+        pipelineTable = parseTable(outputFile,'\t')
+    except IOError:
+        pipelineTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGIONS','ENRICHED_MACS','COLOR','FASTQ_FILE']]    
 
     for line in sampleTable[1:]:
+
+        if line[0] == '':
+            break
         uniqueID = "%s_%s" % (line[8],line[4])
         genome = line[14]
         name = line[4]
@@ -315,7 +323,7 @@ def makeBamTable(dataFile,output):
 #===================CALLING BOWTIE TO MAP DATA=============================
 #==========================================================================
 
-def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True):
+def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True,overwrite=False):
 
     '''
     makes a mapping bash script and launches 
@@ -344,15 +352,29 @@ def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True):
         formatFolder(outputFolder,create=True)
 
 
-        cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
-        #print (cmd)
-        os.system(cmd)
-
-        if launch:
-            time.sleep(1)
-            cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
+        if overwrite:
+            cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
             print(cmd)
             os.system(cmd)
+            if launch:
+                time.sleep(1)
+                cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
+                os.system(cmd)
+        else:
+            try:
+                foo = open(dataDict[name]['bam'],'r')
+                print('BAM file already exists for %s. OVERWRITE = FALSE' % (name))
+            except IOError:
+                print('no bam file found for %s, making mapping bash script' % (name))
+                cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
+                print(cmd)
+                os.system(cmd)
+                if launch:
+                    time.sleep(1)
+                    cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
+                    os.system(cmd)
+
+
 
 
 
@@ -658,6 +680,7 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
                 continue
             
         except OSError:
+            
             os.system('mkdir %s' % (outdir))
             
         os.chdir(outdir)
@@ -1214,6 +1237,76 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
     dataDict = loadDataTable(dataFile)
     if mappedFolder[-1] != '/':
         mappedFolder+='/'
+    ticker = 0
+    for gffFile in gffList:
+        
+        #check to make sure gff exists
+        try:
+            foo = open(gffFile,'r')
+        except IOError:
+            print('ERROR: GFF FILE %s DOES NOT EXIST' % (gffFile))
+
+        gffName = gffFile.split('/')[-1].split('.')[0]
+
+        #see if the parent directory exists, if not make it
+        try:
+            foo = os.listdir(mappedFolder)
+        except OSError:
+            print('%s directory not found for mapped bams. making it' % (mappedFolder))
+            os.system('mkdir %s' % (mappedFolder))
+
+
+        
+        #make this directory specifically for the gff
+        try:
+            foo = os.listdir(mappedFolder+gffName)
+        except OSError:
+            print('%s directory not found for this gff: %s. making it' % (mappedFolder+gffName,gffName))
+            os.system('mkdir %s%s' % (mappedFolder,gffName))
+
+        outdir = mappedFolder+gffName+'/'
+
+        if len(nameList) == 0:
+            nameList = dataDict.keys()
+        
+        
+
+        for name in nameList:
+            print ('mapping %s to %s' % (name,gffFile))
+            #filter based on celltype
+            cellName = name.split('_')[0]
+            if cellTypeList.count(cellName) != 1:
+                continue
+            fullBamFile = dataDict[name]['bam']
+            outFile = outdir+gffName+'_'+name+'.gff'
+
+
+
+            if overWrite:
+                cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                os.system(cmd1)
+
+            else:
+                try:
+                    Foo = open(outFile,'r')
+                    print('File %s Already Exists, not mapping' % (outFile))
+                except IOError:
+                    cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                    os.system(cmd1)
+
+
+
+
+def mapBamsQsub(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
+    
+    '''
+    for each gff maps all of the data and writes to a specific folder named after the gff
+    can map either by cell type or by a specific name list
+    '''
+
+    dataDict = loadDataTable(dataFile)
+    if mappedFolder[-1] != '/':
+        mappedFolder+='/'
     #a timestamp to name this pipeline batch of files
     timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     #a random integer ticker to help name files
@@ -1291,7 +1384,7 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
 #===================MAKING GFF LISTS=======================================
 #==========================================================================
 
-def makeGFFListFile(mappedEnrichedFile,setList,output):
+def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
 
     '''
     #setList defines the dataset names to be used
@@ -1300,6 +1393,9 @@ def makeGFFListFile(mappedEnrichedFile,setList,output):
     [[A],[B],[C],[D]] = A OR B OR C OR D for this row
 
     '''
+    if len(annotFile) > 0:
+        startDict = makeStartDict(annotFile)
+
     geneListFile = []
     boundGFFTable = parseTable(mappedEnrichedFile,'\t')
     header = boundGFFTable[0]
@@ -1331,8 +1427,10 @@ def makeGFFListFile(mappedEnrichedFile,setList,output):
                 print bindingVector
             #print(bindingVector)
             if bindingVector.count(1) == len(bindingVector):
-                
-                geneListFile.append([i,boundGFFTable[i][1]])
+                if len(annotFile) >0 :
+                    geneListFile.append([i,boundGFFTable[i][1],startDict[boundGFFTable[i][1]]['name']])
+                else:
+                    geneListFile.append([i,boundGFFTable[i][1]])
                 break
     print(len(geneListFile))
     unParseTable(geneListFile,output,'\t')
@@ -1823,7 +1921,8 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
     if outputFolder[-1] != '/':
         outputFolder+='/'
-
+        
+    formatFolder(outputFolder,True)
 
     gffName = gffFile.split('/')[-1].split('.')[0]
     #get all of the mappedGFFs
@@ -1837,11 +1936,11 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
         color = dataDict[name]['color']
         output = outputFolder + '%s_%s_%s_order.png' % (gffName,name,orderByName)
         if relative:
-            cmd = " ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
+            cmd = "R --no-save %s %s %s %s %s %s < /ark/home/cl512/pipeline/heatMapOrdered.R &" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
             #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
             
         else:
-            cmd = " ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
+            cmd = "R --no-save %s %s %s %s %s %s < /ark/home/cl512/pipeline/heatMapOrdered.R &" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
             #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
             
         #cmd = 'R --no-save %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R' % (referenceMappedGFF,mappedGFF,color,output,geneListFile)
