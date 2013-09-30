@@ -218,13 +218,13 @@ def summary(dataFile,outputFile=''):
     output= []
     for name in dataList:
         uniqueID = dataDict[name]['uniqueID']
-        cmd = 'perl /nfs/young_ata/scripts/getTONY_info.pl -i %s -f 2' % (uniqueID)
-        tonyQuery = os.popen(cmd)
+        #cmd = 'perl /nfs/young_ata/scripts/getTONY_info.pl -i %s -f 2' % (uniqueID)
+        #tonyQuery = os.popen(cmd)
 
-        tonyName = tonyQuery.read().rstrip()
+        #tonyName = tonyQuery.read().rstrip()
         
-        print('dataset name\t%s\tcorresponds to tony name\t%s' % (name,tonyName))
-        output.append('dataset name\t%s\tcorresponds to tony name\t%s' % (name,tonyName))
+        #print('dataset name\t%s\tcorresponds to tony name\t%s' % (name,tonyName))
+        #output.append('dataset name\t%s\tcorresponds to tony name\t%s' % (name,tonyName))
 
     #for each dataset
     for name in dataList:
@@ -286,6 +286,9 @@ def makeBamTable(dataFile,output):
                   'HSC': 'Hematopoeitic stem cell',
                   'EC': 'Human umbilical cord endothelial cell',
                   '3T3L1': 'Fibroblast',
+                  'KBM7': 'Haploid Chronic Lymphoid Leukemia',
+                  'P493-6': 'Burkitt Lymphoma',
+                  
                   }
     dataDict= loadDataTable(dataFile)
     
