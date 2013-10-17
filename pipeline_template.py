@@ -28,7 +28,7 @@ annotFile = '/ark/home/cl512/src/pipeline/annotation/hg18_refseq.ucsc'
 projectFolder = '/ark/home/USERNAME/ressrv19/projects/MYPROJECT/' #PATH TO YOUR PROJECT FOLDER
 
 #standard folder names
-gffFolder ='%sgff/'
+gffFolder ='%sgff/' % (projectFolder)
 macsFolder = '%smacsFolder/' % (projectFolder)
 macsEnrichedFolder = '%smacsEnriched/' % (projectFolder)
 mappedEnrichedFolder = '%smappedEnriched/' % (projectFolder)
@@ -36,6 +36,11 @@ mappedFolder = '%smappedFolder/' % (projectFolder)
 wiggleFolder = '%swiggles/' % (projectFolder)
 metaFolder = '%smeta/' % (projectFolder)
 
+#making folders
+folderList = [gffFolder,macsFolder,macsEnrichedFolder,mappedEnrichedFolder,mappedFolder,wiggleFolder,metaFolder]
+
+for folder in folderList:
+    pipeline_dfci.formatFolder(folder,True)
 
 
 

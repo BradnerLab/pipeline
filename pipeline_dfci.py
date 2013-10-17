@@ -113,22 +113,28 @@ def formatDataTable(dataFile):
 #========================================================================
 
 
-def makePipelineTable(sampleTableFile,dirPath,bamPath,outputFile):
+def makePipelineTable(sampleTableFile,dirPath,bamPath,outputFile,overwrite=False):
 
     '''
     makes a standard pipeline table in the same directory as the sample Table File
     which should be the project directory file
     uses a standard WI annotation xls
     '''
-
-    sampleTable = parseTable(sampleTableFile,'\t',excel=True)
+    if sampleTableFile.split('.')[-1] == 'xls':
+        sampleTable = parseTable(sampleTableFile,'\t',excel=True)
+    else:
+        sampleTable = parseTable(sampleTableFile,'\t',excel=False)
 
     #check if the outputfile exists
     #if it does, append
-    try:
-        pipelineTable = parseTable(outputFile,'\t')
-    except IOError:
+    if overwrite:
         pipelineTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGIONS','ENRICHED_MACS','COLOR','FASTQ_FILE']]    
+    else:
+        try:
+            pipelineTable = parseTable(outputFile,'\t')
+        
+        except IOError:
+            pipelineTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGIONS','ENRICHED_MACS','COLOR','FASTQ_FILE']]    
 
     for line in sampleTable[1:]:
 
@@ -1957,7 +1963,7 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
 
 
-def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []):
+def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile=''):
 
     '''
     calls rose w/ standard parameters
@@ -1971,8 +1977,9 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
     #a random integer ticker to help name files
     randTicker = random.randint(0,10000)
 
+    formatFolder(parentFolder,True)
 
-    bashFileName = '/ark/home/cl512/ressrv19/src/cl512/temp/rose_%s_%s.sh' % (timeStamp,randTicker)
+    bashFileName = '%srose_%s_%s.sh' % (parentFolder,timeStamp,randTicker)
     bashFile = open(bashFileName,'w')
     bashFile.write("cd /ark/home/cl512/src/rose/")
     bashFile.write('\n')
@@ -1981,11 +1988,15 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
     mapString = string.join(mapString,',')
 
     for name in namesList:
-
+        #print name
         bamFile = dataDict[name]['bam']
         backgroundName = dataDict[name]['background']
         backgroundBamFile = dataDict[backgroundName]['bam']
-        macsFile = "%s%s" % (macsEnrichedFolder,dataDict[name]['enrichedMacs'])
+
+        if len(inputFile) == 0:
+            macsFile = "%s%s" % (macsEnrichedFolder,dataDict[name]['enrichedMacs'])
+        else:
+            macsFile = inputFile
         outputFolder = "%s%s_ROSE" % (parentFolder,name)
 
         roseCmd = "python ROSE_main_turbo.py -g HG18 -i %s -r %s -c %s -b %s -o %s -t 2500 -s 12500 &" % (macsFile,bamFile,backgroundBamFile,mapString,outputFolder)
