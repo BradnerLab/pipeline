@@ -1,4 +1,29 @@
+#!/usr/bin/python
 #pipeline.py
+
+'''
+The MIT License (MIT)
+
+Copyright (c) 2013 Charles Lin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+'''
 
 #module of functions/code/structures from the myc project that has now been
 #addapted for general use
@@ -1838,7 +1863,7 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
     timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     #a random integer ticker to help name files
     randTicker = random.randint(0,10000)
-    bashFileName = '/mnt/d0-0/share/bradnerlab/src/cl512/temp/mapMetaCall_%s_%s.sh' % (timeStamp,randTicker)
+    bashFileName = '%smapMetaCall_%s_%s.sh' % (metaFolder,timeStamp,randTicker)
     bashFile = open(bashFileName,'w')
 
 
@@ -1858,7 +1883,7 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
                     
             bamFile = dataDict[name]['bam']
 
-            cmd = '/usr/local/bin/python2.7 /mnt/d0-0/share/bradnerlab/src/cl512/pipeline/makeBamMeta.py -c -n %s -g %s -b %s -o %s' % (name,gffString,bamFile,outdir)
+            cmd = 'python /ark/home/cl512/pipeline/makeBamMeta.py -c -n %s -g %s -b %s -o %s &' % (name,gffString,bamFile,outdir)
             if overwrite == False:
                 try:
                     foo = open('%s%s_metaSettings.txt' % (outdir,name),'r')
@@ -1963,7 +1988,7 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
 
 
-def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile=''):
+def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500):
 
     '''
     calls rose w/ standard parameters
@@ -1989,6 +2014,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
     for name in namesList:
         #print name
+        genome = dataDict[name]['genome']
         bamFile = dataDict[name]['bam']
         backgroundName = dataDict[name]['background']
         backgroundBamFile = dataDict[backgroundName]['bam']
@@ -1999,7 +2025,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
             macsFile = inputFile
         outputFolder = "%s%s_ROSE" % (parentFolder,name)
 
-        roseCmd = "python ROSE_main_turbo.py -g HG18 -i %s -r %s -c %s -b %s -o %s -t 2500 -s 12500 &" % (macsFile,bamFile,backgroundBamFile,mapString,outputFolder)
+        roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,mapString,outputFolder,tss,stitch)
         bashFile.write(roseCmd)
         bashFile.write('\n')
 
