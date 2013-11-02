@@ -3,6 +3,29 @@ library(makecdfenv)
 library(graphics)
 
 
+# The MIT License (MIT)
+
+# Copyright (c) 2013 Charles Lin
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+
 
 #========================================================================
 #===========================JOB PARAMETERS===============================
@@ -152,12 +175,15 @@ dev.off()
 expressedProbesRaw = which(apply(all_mas5_exprs,1,max)>100)
 expressedProbesNorm = which(apply(all_mas5_exprs_norm,1,max)>100)
 
+#provide a size scaling factor for the pngs
+png_size = 200 * ncol(all_mas5_exprs)
 
 #now do a pairwise scatter plot either raw or norm
 axisMinRaw = min(log2(all_mas5_exprs[expressedProbesRaw,]))
 axisMaxRaw = max(log2(all_mas5_exprs[expressedProbesRaw,]))
 filename_raw = paste(cel_file_directory,'output/',name,'_all_mas5_probe_exprs_raw_scatter.png',sep='')
-png(filename=filename_raw,width =1200,height =1200,pointsize=24)
+
+png(filename=filename_raw,width =png_size,height =png_size,pointsize=24)
 pairs(log2(all_mas5_exprs[expressedProbesRaw[1:1000],]),lower.panel=panel.awesome,upper.panel=panel.cor,cex.labels=0.8,xlim =c(axisMinRaw,axisMaxRaw),ylim = c(axisMinRaw,axisMaxRaw),pch=19,col=rgb(0.5,0.5,0.5,0.4),cex=1,main='Unnormalized log2 expression (a.u.)')
 dev.off()
 
@@ -165,7 +191,7 @@ dev.off()
 axisMinNorm = min(log2(all_mas5_exprs_norm[expressedProbesNorm,]))
 axisMaxNorm = max(log2(all_mas5_exprs_norm[expressedProbesNorm,]))
 filename_norm = paste(cel_file_directory,'output/',name,'_all_mas5_probe_exprs_norm_scatter.png',sep='')
-png(filename=filename_norm,width =1200,height =1200,pointsize=24)
+png(filename=filename_norm,width =png_size,height =png_size,pointsize=24)
 pairs(log2(all_mas5_exprs_norm[expressedProbesNorm[1:1000],]),lower.panel=panel.awesome,upper.panel=panel.cor,cex.labels=0.8,xlim =c(axisMinNorm,axisMaxNorm),ylim = c(axisMinRaw,axisMaxRaw),pch=19,col=rgb(0.5,0.5,0.5,0.4),cex=1,main='Spike-in normalized log2 expression (a.u.)')
 dev.off()
 

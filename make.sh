@@ -1,2 +1,0 @@
-gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -Wall -Wformat -Wimplicit -Wreturn-type -I/home/bradneradmin/samtools -o bamliquidator.o -c bamliquidator.c
-gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -o bamliquidator bamliquidator.o -pthread -L/home/bradneradmin/samtools -lbam -lz -lpthread -ldl 

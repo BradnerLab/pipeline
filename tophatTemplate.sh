@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+
 # The MIT License (MIT)
 
 # Copyright (c) 2013 Charles Lin
@@ -22,39 +23,19 @@
 # THE SOFTWARE.
 
 
-#first make temp directory
+PROJECT_DIR='/ark/home/cl512/projects/ezhi/'
+NAME='K422_cmpd5_rep1'
+FASTQ='/ark/home/cl512/ressrv19/raw/130410Bra/D13-1625/130410Bra_D13-1625_2_sequence.fastq'
+GENOME='hg18'
 
-#get the zip of the cel files and the name of the zip
-CEL_ZIP=$1
-NAME=$2
+mkdir $PROJECT_DIR$NAME
+tophat -p 4 -o $PROJECT_DIR$NAME/ --transcriptome-index=/ark/home/cl512/ressrv19/genomes/transcriptome_data/hg18_genes /ark/home/cl512/ressrv19/genomes/hg18_withERCC/hg18_ercc_noRand $FASTQ
 
-#CEL_ZIP=/ark/home/cl512/ressrv19/raw/expression/JB20130926st.zip
-#NAME=AFFY
-ID=$RANDOM
-#ID=1234
-TEMP_DIR_ROOT=/ark/temp/
-TEMP_DIR=$TEMP_DIR_ROOT$NAME\_tmp\_$ID
+samtools sort $PROJECT_DIR$NAME/accepted_hits.bam $PROJECT_DIR$NAME/$NAME.$GENOME.tophat.sorted 
+samtools index $PROJECT_DIR$NAME/$NAME.$GENOME.tophat.sorted.bam
 
-#making the temp directory
-mkdir $TEMP_DIR
 
-#copy and unzip stuff
-cp $CEL_ZIP $TEMP_DIR/$NAME\_tmp_$ID.zip
-cd $TEMP_DIR
-unzip $TEMP_DIR/$NAME\_tmp_$ID.zip
 
-#make an analysis output directory
-mkdir $TEMP_DIR/output
+python /usr/local/bin/RPKM_count.py -r '/ark/home/cl512/ressrv19/genomes/ERCC_Technical_Data/ERCC92.bed' -i $PROJECT_DIR$NAME/$NAME.$GENOME.tophat.sorted.bam -e -o $PROJECT_DIR$NAME/$NAME\_ERCC
 
-#run the spikey normy
-R --no-save $TEMP_DIR/ $NAME < /ark/home/cl512/pipeline/GPL16043.r
-
-#run the GPL gene level script
-python /ark/home/cl512/pipeline/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_raw.txt
-python /ark/home/cl512/pipeline/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_norm.txt
-
-#zip up the output
-cd $TEMP_DIR
-zip -r $NAME\_output.zip output
-
-echo "WROTE OUTPUT TO: " $TEMP_DIR/$NAME\_output.zip
+cufflinks -p 4 -G /ark/home/cl512/ressrv19/annotations/hg18_genes.gtf -o $PROJECT_DIR$NAME $PROJECT_DIR$NAME/$NAME.$GENOME.tophat.sorted.bam
