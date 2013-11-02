@@ -333,5 +333,5 @@ for(i=0; i<spnum; i++)
 	printf("%d\n", (int)(data[i]));
 	}
 
-return 1;
+return 0;
 }
