@@ -25,7 +25,8 @@
 ##################################################################################
 
 # todo: re-write this as a C++ program, and break out the relevant bamliquidator call to a function in
-#       a separate .c file
+#       a separate .c file.  use poor man's profiler to understand why this takes so long (I think it is 
+#       disk I/O bound) and maybe speed it up
 
 # I intend for major version to go up in increments of 100, and minor versions to go up in increments of 1.  So for 
 # example if the version is 205, and a minor change is made (e.g. to speed up performance), then the version can be
@@ -38,7 +39,7 @@ version=100
 
 # todo: set from arguments
 force=false
-file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
+file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
 
 # todo: set by parsing file_path
 file_name="04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
@@ -54,7 +55,6 @@ database_name=bradnerlab
 # we probably want the run table to be transactional, so that we can figure out the next file and
 # insert a record for it, without worrying about anyone else stealing our file
 
-# todo: for each chromosome in bins
 
 gff="HG18_100KB_UNIQUENESS.gff"
 both_strands="."
@@ -85,6 +85,7 @@ do
       echo ^^^^^ skipping the rest of this chromosome
       echo 
       # todo: record some sort of error somewhere... maybe there should be an error log table?
+      # todo: Ask Charles: should I record 0 for the bins where there is no chromosome?
       break 
     fi
     #echo status=$count_status
