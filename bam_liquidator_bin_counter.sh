@@ -42,7 +42,7 @@ force=false
 file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
 
 # todo: set by parsing file_path
-file_name="04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
+file_name="05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
 parent_directory="copied_from_tod"
 
 # todo: rename this
