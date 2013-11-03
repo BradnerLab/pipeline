@@ -35,7 +35,14 @@ version=100
 
 # todo: set from arguments
 force=false
-filename=/Users/jdimatteo/DanaFarber/copied_from_tod/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam
+file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
+
+# todo: set by parsing file_path
+file_name="04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
+parent_directory="copied_from_tod"
+
+# todo: rename this
+database_name=bradnerlab
 
 # todo: select/lock the given file (or the next file in some directory if no file specified) 
 # 
@@ -58,7 +65,15 @@ filename=/Users/jdimatteo/DanaFarber/copied_from_tod/04032013_D1L57ACXX_4.TTAGGC
     one_summary=1
     zero_extension=0
 
-    count=`./bamliquidator $filename $chromosome $start $end $both_strands $one_summary $zero_extension`
+    count=`./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension`
     count_status=$?
     echo status=$count_status
     echo count=$count
+
+    insert_count_sql="INSERT INTO COUNTS (parent_directory,file_name,chromosome,bin,count,counter_version)
+                      VALUES ('$parent_directory','$file_name', '$chromosome', $bin, $count,$version);"
+
+    # todo: don't use root mysql user
+    mysql --host=localhost --user=root $database_name -e "$insert_count_sql"
+
+    echo mysql status: $?
