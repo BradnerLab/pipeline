@@ -175,7 +175,12 @@ struct readitem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, c
 {
 // will not fill chromidx
 int ref,beg,end;
-bam_parse_region(fp->header,coord,&ref,&beg,&end);
+int rc = bam_parse_region(fp->header,coord,&ref,&beg,&end);
+if (rc != 0)
+{
+  printf("bam_parse_region failed with return code %d, exiting\n", rc);
+  exit(rc);
+}
 if(ref<0)
 	return NULL;
 struct userData *d=malloc(sizeof(struct userData));
