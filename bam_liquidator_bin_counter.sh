@@ -35,7 +35,7 @@
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=101
+version=200
 baseline_version=100 # used to verify counts haven't changed if baseline checking is enabled
 
 # todo: set from arguments
@@ -63,8 +63,10 @@ both_strands="."
 one_summary=1
 zero_extension=0
 
-select_chromosomes_sql="SELECT DISTINCT chromosome FROM bins WHERE gff_name = '$gff'
-                        ORDER BY LENGTH(chromosome), chromosome";
+select_chromosomes_sql="SELECT DISTINCT chromosome FROM bins
+                         WHERE gff_name = '$gff'
+                           AND skip = false 
+                         ORDER BY LENGTH(chromosome), chromosome";
 
 return_code=0
 
@@ -74,13 +76,11 @@ do
   echo counting chromosome $chromosome - `date`
   echo
 
-  select_bins_sql="SELECT start, end, bin_number FROM bins
+  select_bins_sql="SELECT start, end - 1, bin_number FROM bins
                    WHERE chromosome = '$chromosome' AND gff_name = '$gff' ORDER BY bin_number;"
 
   while read start end bin
   do
-    # todo: Ask Charles: should I subtract one from the end so that I don't count the boundaries twice?
-
     count=`./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension`
     count_status=$?
     if [ $count_status -ne 0 ]; then
@@ -91,7 +91,6 @@ do
       echo "   skipping the rest of this chromosome"
       echo 
       # todo: record some sort of error somewhere... maybe there should be an error log table?
-      # todo: Ask Charles: should I record 0 for the bins where there is no chromosome?
       break 
     fi
     #echo status=$count_status
@@ -127,8 +126,6 @@ do
       fi
     fi
 
-    break
-
   done < <(mysql -uroot $database_name -ss -e "$select_bins_sql")
 
   echo counting successful 
@@ -150,6 +147,7 @@ if [ $baseline_check -ne 0 ]; then
       echo "   current number of counts:  $current_number_of_counts"
       echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
       echo
+      ((return_code++))
   fi
 fi
 
