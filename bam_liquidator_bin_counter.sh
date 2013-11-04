@@ -39,8 +39,8 @@ version=101
 baseline_version=100 # used to verify counts haven't changed if baseline checking is enabled
 
 # todo: set from arguments
-force=false
-baseline_check=true
+force=0
+baseline_check=0
 file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
 
 file_name=`basename $file_path`
@@ -56,6 +56,7 @@ database_name=bradnerlab
 # we probably want the run table to be transactional, so that we can figure out the next file and
 # insert a record for it, without worrying about anyone else stealing our file
 
+# todo: create a function for the mysql to remove duplication
 
 gff="HG18_100KB_UNIQUENESS.gff"
 both_strands="."
@@ -109,7 +110,7 @@ do
         exit $insert_status
     fi
 
-    if [ $baseline_check ]; then
+    if [ $baseline_check -ne 0 ]; then
       select_baseline_count_sql="SELECT count FROM counts
                                   WHERE counter_version=$baseline_version
                                     AND bin=$bin AND chromosome='$chromosome'
@@ -118,15 +119,15 @@ do
       baseline_count=`mysql -uroot $database_name -ss -e "$select_baseline_count_sql"`
       if [ $count -ne $baseline_count ]; then
         echo baseline check: current count does not match baseline
-        echo "   current count:  $count"
         echo "   baseline count: $baseline_count"
-        echo "   current version:  $version"
-        echo "   baseline version: $baseline_version" 
+        echo "   current count:  $count"
         echo "   baseline select sql: " $select_baseline_count_sql
         echo
         ((return_code++))
       fi
     fi
+
+    break
 
   done < <(mysql -uroot $database_name -ss -e "$select_bins_sql")
 
@@ -134,5 +135,22 @@ do
   echo ---------------------------------------
   echo
 done < <(mysql -uroot $database_name -ss -e "$select_chromosomes_sql") 
+
+
+if [ $baseline_check -ne 0 ]; then
+  select_baseline_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$baseline_version;"
+  select_current_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$version;"
+  
+  baseline_number_of_counts=`mysql -uroot $database_name -ss -e "$select_baseline_number_of_counts_sql"`
+  current_number_of_counts=`mysql -uroot $database_name -ss -e "$select_current_number_of_counts_sql"`
+
+  if [ $baseline_number_of_counts -ne $current_number_of_counts ]; then
+      echo baseline check: current count does not match baseline
+      echo "   baseline number of counts: $baseline_number_of_counts"
+      echo "   current number of counts:  $current_number_of_counts"
+      echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
+      echo
+  fi
+fi
 
 exit $return_code
