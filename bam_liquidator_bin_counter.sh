@@ -35,22 +35,23 @@
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=100
+version=101
+baseline_version=100 # used to verify counts haven't changed if baseline checking is enabled
 
 # todo: set from arguments
 force=false
+baseline_check=true
 file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
 
-# todo: set by parsing file_path
-file_name="05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
-parent_directory="copied_from_tod"
+file_name=`basename $file_path`
+parent_directory=$(basename $(dirname $file_path))
 
 # todo: rename this
 database_name=bradnerlab
 
 # todo: don't use root mysql user
 
-# todo: select/lock the given file (or the next file in some directory if no file specified) 
+# todo: select/lock the given file (or the next file in some directory if no file specified)
 # 
 # we probably want the run table to be transactional, so that we can figure out the next file and
 # insert a record for it, without worrying about anyone else stealing our file
@@ -63,10 +64,14 @@ zero_extension=0
 
 select_chromosomes_sql="SELECT DISTINCT chromosome FROM bins WHERE gff_name = '$gff'
                         ORDER BY LENGTH(chromosome), chromosome";
+
+return_code=0
+
 while read chromosome
 do
   echo ---------------------------------------
   echo counting chromosome $chromosome - `date`
+  echo
 
   select_bins_sql="SELECT start, end, bin_number FROM bins
                    WHERE chromosome = '$chromosome' AND gff_name = '$gff' ORDER BY bin_number;"
@@ -78,11 +83,11 @@ do
     count=`./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension`
     count_status=$?
     if [ $count_status -ne 0 ]; then
-      echo ^^^^^ error detected in bamliquidator run ^^^^
-      echo ^^^^^ count failed with return code $count_status:
-      echo ^^^^^ stdout: $count
-      echo ^^^^^ chromosome=$chromosome, start=$start, end=$end, bin=$bin
-      echo ^^^^^ skipping the rest of this chromosome
+      echo error detected in bamliquidator run
+      echo "   count failed with return code $count_status:"
+      echo "   stdout: $count"
+      echo "   chromosome=$chromosome, start=$start, end=$end, bin=$bin"
+      echo "   skipping the rest of this chromosome"
       echo 
       # todo: record some sort of error somewhere... maybe there should be an error log table?
       # todo: Ask Charles: should I record 0 for the bins where there is no chromosome?
@@ -92,7 +97,7 @@ do
     #echo count=$count
 
     insert_count_sql="INSERT DELAYED INTO COUNTS (parent_directory,file_name,chromosome,bin,count,counter_version)
-                      VALUES ('$parent_directory','$file_name', '$chromosome', $bin, $count,$version);"
+                      VALUES ('$parent_directory','$file_name', '$chromosome', $bin, $count, $version);"
 
     # todo: don't use root mysql user
     mysql -uroot $database_name -e "$insert_count_sql"
@@ -103,6 +108,26 @@ do
         echo sql: $insert_count_sql
         exit $insert_status
     fi
+
+    if [ $baseline_check ]; then
+      select_baseline_count_sql="SELECT count FROM counts
+                                  WHERE counter_version=$baseline_version
+                                    AND bin=$bin AND chromosome='$chromosome'
+                                    AND file_name='$file_name'"
+
+      baseline_count=`mysql -uroot $database_name -ss -e "$select_baseline_count_sql"`
+      if [ $count -ne $baseline_count ]; then
+        echo baseline check: current count does not match baseline
+        echo "   current count:  $count"
+        echo "   baseline count: $baseline_count"
+        echo "   current version:  $version"
+        echo "   baseline version: $baseline_version" 
+        echo "   baseline select sql: " $select_baseline_count_sql
+        echo
+        ((return_code++))
+      fi
+    fi
+
   done < <(mysql -uroot $database_name -ss -e "$select_bins_sql")
 
   echo counting successful 
@@ -110,3 +135,4 @@ do
   echo
 done < <(mysql -uroot $database_name -ss -e "$select_chromosomes_sql") 
 
+exit $return_code
