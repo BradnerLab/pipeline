@@ -52,7 +52,7 @@ usage()
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=202
+version=203
 baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 database_name=meta_analysis
@@ -156,18 +156,18 @@ do
 
   while read start end bin
   do
-    count=`./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension`
+    output=$(./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension 2>&1)
     count_status=$?
     if [ $count_status -ne 0 ]; then
       echo error detected in bamliquidator run
       echo "   count failed with return code $count_status:"
-      echo "   stdout: $count"
+      echo "   output: $output"
       echo "   chromosome=$chromosome, start=$start, end=$end, bin=$bin"
       echo "   skipping the rest of this chromosome"
       echo 
 
-      insert_error_sql="INSERT INTO errors (file_name,chromosome,bin,error,counter_version)
-                      VALUES ('$file_name', '$chromosome', $bin, '$count', $version);"
+      insert_error_sql="INSERT INTO errors (file_name,chromosome,bin,status_code,output,counter_version)
+                      VALUES ('$file_name', '$chromosome', $bin, $count_status, '$output', $version);"
       
       mysql -u$mysql_user $database_name -e "$insert_error_sql"
       insert_status=$?
@@ -180,6 +180,9 @@ do
 
       break 
     fi
+
+    count=$output
+
     #echo status=$count_status
     #echo count=$count
 
