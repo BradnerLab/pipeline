@@ -34,6 +34,7 @@ ID=$RANDOM
 #ID=1234
 TEMP_DIR_ROOT=/ark/temp/
 TEMP_DIR=$TEMP_DIR_ROOT$NAME\_tmp\_$ID
+INITIAL_DIR=`pwd`
 
 #making the temp directory
 mkdir $TEMP_DIR
@@ -47,11 +48,11 @@ unzip $TEMP_DIR/$NAME\_tmp_$ID.zip
 mkdir $TEMP_DIR/output
 
 #run the spikey normy
-R --no-save $TEMP_DIR/ $NAME < /ark/home/cl512/pipeline/GPL16043.r
+R --no-save $TEMP_DIR/ $NAME < $INITIAL_DIR/GPL16043.r
 
 #run the GPL gene level script
-python /ark/home/cl512/pipeline/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_raw.txt
-python /ark/home/cl512/pipeline/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_norm.txt
+python $INITIAL_DIR/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_raw.txt
+python $INITIAL_DIR/GPL16043.py -i $TEMP_DIR/output/$NAME\_all_mas5_probe_exprs_norm.txt
 
 #zip up the output
 cd $TEMP_DIR
