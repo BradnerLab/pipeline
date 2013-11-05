@@ -52,7 +52,7 @@ usage()
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=201
+version=202
 baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 database_name=meta_analysis
@@ -65,7 +65,7 @@ zero_extension=0
 
 baseline_check=0
 
-while getopts “:c” OPTION
+while getopts ":c" OPTION
 do
   case $OPTION in
     c)
@@ -236,7 +236,7 @@ if [ $baseline_check -ne 0 ]; then
     echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
     echo
     ((return_code++))
-  if [ $baseline_number_of_counts -ne $current_number_of_counts ]; then
+  elif [ $baseline_number_of_counts -ne $current_number_of_counts ]; then
     echo baseline check: current count does not match baseline
     echo "   baseline number of counts: $baseline_number_of_counts"
     echo "   current number of counts:  $current_number_of_counts"
