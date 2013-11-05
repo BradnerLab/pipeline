@@ -36,8 +36,8 @@
 #
 # on a Mac, you can also install samtools via homebrew, e.g. homebrew install samtools
 
-#SAM_DIR:=/home/bradneradmin/samtools
-SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
+SAM_DIR:=/home/bradneradmin/samtools
+#SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
 
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
