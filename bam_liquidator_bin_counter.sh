@@ -90,8 +90,8 @@ echo "  file_path: $file_path"
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=200
-baseline_version=100 # used to verify counts haven't changed if baseline checking is enabled
+version=201
+baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 file_name=`basename $file_path`
 parent_directory=$(basename $(dirname $file_path))
@@ -136,7 +136,11 @@ do
       echo "   chromosome=$chromosome, start=$start, end=$end, bin=$bin"
       echo "   skipping the rest of this chromosome"
       echo 
-      # todo: record some sort of error somewhere... maybe there should be an error log table?
+
+      insert_error_sql="INSERT INTO errors (file_name,chromosome,bin,error,counter_version)
+                      VALUES ('$file_name', '$chromosome', $bin, '$count', $version);"
+      
+      mysql -u$mysql_user $database_name -e "$insert_error_sql"
       break 
     fi
     #echo status=$count_status
