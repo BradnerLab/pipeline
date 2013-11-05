@@ -45,6 +45,24 @@ usage()
   echo "$usage_string" 
 }
 
+# I intend for major version to go up in increments of 100, and minor versions to go up in increments of 1.  So for 
+# example if the version is 205, and a minor change is made (e.g. to speed up performance), then the version can be
+# changed to 206.  However if a major change is made (e.g. to fix a bug that had resulted in prior counts being 
+# incorrect), then the version should be changed to 300.  Note that a change that fixes a bug that had previously 
+# prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
+# be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
+# of different versions.
+version=201
+baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
+
+database_name=meta_analysis
+mysql_user=counter
+
+gff="HG18_100KB_UNIQUENESS.gff"
+both_strands="."
+one_summary=1
+zero_extension=0
+
 baseline_check=0
 
 while getopts “:c” OPTION
@@ -69,9 +87,42 @@ fi
 path="$@"
 
 if [ -d "$path" ]; then
-  echo "todo: support directory as argument"
-  exit 1
+  echo searching for next unprocessed .bam in $path
+  
+  while read candidate_file_path
+  do
+    echo "  trying $candidate_file_path"
+    insert_run_sql="INSERT INTO run (file_name, start_time, counter_version)
+                    VALUES ('$(basename $candidate_file_path)', NOW(), $version);"
+
+    mysql -u$mysql_user $database_name -e "$insert_run_sql" 2> /dev/null
+    insert_status=$?
+
+    if [ $insert_status -eq 0 ]; then
+      file_path=$candidate_file_path
+      break
+    fi
+  done < <(find $path -type f -name \*.bam)
+
+  if [ -z "$file_path" ]; then
+    echo "No un-processed/un-started bam files found under $path"
+    exit 1
+  fi 
+
 elif [ -f "$path" ]; then
+  insert_run_sql="INSERT INTO run (file_name, start_time, counter_version)
+                  VALUES ('$(basename $path)', NOW(), $version);"
+
+  mysql -u$mysql_user $database_name -e "$insert_run_sql" 2> /dev/null
+  insert_status=$?
+
+  if [ $insert_status -ne 0 ]; then
+    echo "$path has already been processed (or at least started)"
+    # todo: add a force option to increment resume_count and finish the .bam file, 
+    #       starting at the last processed chromosome/bin 
+    exit 1
+  fi
+
   file_path="$path"
 else
   echo "$path is not a valid path"
@@ -83,31 +134,9 @@ echo  starting with parameters:
 echo "  baseline_check: $baseline_check"
 echo "  file_path: $file_path"
 
-# I intend for major version to go up in increments of 100, and minor versions to go up in increments of 1.  So for 
-# example if the version is 205, and a minor change is made (e.g. to speed up performance), then the version can be
-# changed to 206.  However if a major change is made (e.g. to fix a bug that had resulted in prior counts being 
-# incorrect), then the version should be changed to 300.  Note that a change that fixes a bug that had previously 
-# prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
-# be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
-# of different versions.
-version=201
-baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
-
 file_name=`basename $file_path`
 parent_directory=$(basename $(dirname $file_path))
 
-database_name=meta_analysis
-mysql_user=counter
-
-# todo: select/lock the given file (or the next file in some directory if no file specified)
-# 
-# we probably want the run table to be transactional, so that we can figure out the next file and
-# insert a record for it, without worrying about anyone else stealing our file
-
-gff="HG18_100KB_UNIQUENESS.gff"
-both_strands="."
-one_summary=1
-zero_extension=0
 
 select_chromosomes_sql="SELECT DISTINCT chromosome FROM bins
                          WHERE gff_name = '$gff'
@@ -141,6 +170,14 @@ do
                       VALUES ('$file_name', '$chromosome', $bin, '$count', $version);"
       
       mysql -u$mysql_user $database_name -e "$insert_error_sql"
+      insert_status=$?
+
+      if [ $insert_status -ne 0 ]; then
+          echo "insert failed: $1"
+          echo sql: $insert_error_sql
+          exit $insert_status
+      fi
+
       break 
     fi
     #echo status=$count_status
@@ -165,7 +202,14 @@ do
                                     AND file_name='$file_name'"
 
       baseline_count=`mysql -u$mysql_user $database_name -ss -e "$select_baseline_count_sql"`
-      if [ $count -ne $baseline_count ]; then
+
+      if [ -z "$baseline_count" ]; then
+        echo baseline check: baseline count missing 
+        echo "   current count:  $count"
+        echo "   baseline select sql: " $select_baseline_count_sql
+        echo
+        ((return_code++))
+      elif [ $count -ne $baseline_count ]; then
         echo baseline check: current count does not match baseline
         echo "   baseline count: $baseline_count"
         echo "   current count:  $count"
@@ -179,7 +223,6 @@ do
 
 done < <(mysql -u$mysql_user $database_name -ss -e "$select_chromosomes_sql") 
 
-
 if [ $baseline_check -ne 0 ]; then
   select_baseline_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$baseline_version;"
   select_current_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$version;"
@@ -187,14 +230,32 @@ if [ $baseline_check -ne 0 ]; then
   baseline_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_baseline_number_of_counts_sql"`
   current_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_current_number_of_counts_sql"`
 
+  if [ -z "$baseline_number_of_counts" ]; then
+    echo baseline check: baseline completely missing
+    echo "   current number of counts:  $current_number_of_counts"
+    echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
+    echo
+    ((return_code++))
   if [ $baseline_number_of_counts -ne $current_number_of_counts ]; then
-      echo baseline check: current count does not match baseline
-      echo "   baseline number of counts: $baseline_number_of_counts"
-      echo "   current number of counts:  $current_number_of_counts"
-      echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
-      echo
-      ((return_code++))
+    echo baseline check: current count does not match baseline
+    echo "   baseline number of counts: $baseline_number_of_counts"
+    echo "   current number of counts:  $current_number_of_counts"
+    echo "   baseline select number of counts sql: " $select_baseline_number_of_counts_sql
+    echo
+    ((return_code++))
   fi
+fi
+
+update_run_end_time_sql="UPDATE run SET end_time=NOW()
+                          WHERE file_name = '$file_name' AND counter_version = $version;"
+
+mysql -u$mysql_user $database_name -e "$update_run_end_time_sql"
+update_status=$?
+
+if [ $update_status -ne 0 ]; then
+  echo Failed to execute sql: $update_run_end_time_sql 
+  date
+  exit 1
 fi
 
 exit $return_code
