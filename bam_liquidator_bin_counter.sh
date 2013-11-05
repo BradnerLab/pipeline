@@ -28,6 +28,61 @@
 #       a separate .c file.  use poor man's profiler to understand why this takes so long (I think it is 
 #       disk I/O bound) and maybe speed it up
 
+usage_string="usage: $0 [options] path 
+
+Records bamliquidator count on each bin in the given bam file.  If the path is
+a directory instead of a bam file, then counts the next uncounted file in the
+provided directory (can be recursive).
+
+The counts are stored in a mysql database.
+
+OPTIONS:
+   -c      Check results against baseline version (non-zero rcode if any checks fail)
+"
+
+usage()
+{
+  echo "$usage_string" 
+}
+
+baseline_check=0
+
+while getopts “:c” OPTION
+do
+  case $OPTION in
+    c)
+      baseline_check=1 
+    ;;
+    ?)
+      usage
+      exit 1
+    ;;
+  esac
+done
+
+shift $((OPTIND-1))
+if [ -z "$@" ]; then
+  usage
+  exit 1
+fi
+
+path="$@"
+
+if [ -d "$path" ]; then
+  echo "todo: support directory as argument"
+  exit 1
+elif [ -f "$path" ]; then
+  file_path="$path"
+else
+  echo "$path is not a valid path"
+  usage
+  exit 1
+fi
+
+echo  starting with parameters:
+echo "  baseline_check: $baseline_check"
+echo "  file_path: $file_path"
+
 # I intend for major version to go up in increments of 100, and minor versions to go up in increments of 1.  So for 
 # example if the version is 205, and a minor change is made (e.g. to speed up performance), then the version can be
 # changed to 206.  However if a major change is made (e.g. to fix a bug that had resulted in prior counts being 
@@ -38,25 +93,16 @@
 version=200
 baseline_version=100 # used to verify counts haven't changed if baseline checking is enabled
 
-# todo: set from arguments
-force=0
-baseline_check=0
-file_path="/Users/jdimatteo/DanaFarber/copied_from_tod/05012013_C22WBACXX_3.AGTTCC.hg18.bwt.sorted.bam"
-
 file_name=`basename $file_path`
 parent_directory=$(basename $(dirname $file_path))
 
-# todo: rename this
-database_name=bradnerlab
-
-# todo: don't use root mysql user
+database_name=meta_analysis
+mysql_user=counter
 
 # todo: select/lock the given file (or the next file in some directory if no file specified)
 # 
 # we probably want the run table to be transactional, so that we can figure out the next file and
 # insert a record for it, without worrying about anyone else stealing our file
-
-# todo: create a function for the mysql to remove duplication
 
 gff="HG18_100KB_UNIQUENESS.gff"
 both_strands="."
@@ -72,7 +118,7 @@ return_code=0
 
 while read chromosome
 do
-  echo ---------------------------------------
+  echo --------------------------------------------------------------------------------
   echo counting chromosome $chromosome - `date`
   echo
 
@@ -99,8 +145,7 @@ do
     insert_count_sql="INSERT DELAYED INTO COUNTS (parent_directory,file_name,chromosome,bin,count,counter_version)
                       VALUES ('$parent_directory','$file_name', '$chromosome', $bin, $count, $version);"
 
-    # todo: don't use root mysql user
-    mysql -uroot $database_name -e "$insert_count_sql"
+    mysql -u$mysql_user $database_name -e "$insert_count_sql"
     insert_status=$?
     if [ $insert_status -ne 0 ]; then
         # note that this may not error in most conditions since insert delayed doesn't wait for return code
@@ -115,7 +160,7 @@ do
                                     AND bin=$bin AND chromosome='$chromosome'
                                     AND file_name='$file_name'"
 
-      baseline_count=`mysql -uroot $database_name -ss -e "$select_baseline_count_sql"`
+      baseline_count=`mysql -u$mysql_user $database_name -ss -e "$select_baseline_count_sql"`
       if [ $count -ne $baseline_count ]; then
         echo baseline check: current count does not match baseline
         echo "   baseline count: $baseline_count"
@@ -126,20 +171,17 @@ do
       fi
     fi
 
-  done < <(mysql -uroot $database_name -ss -e "$select_bins_sql")
+  done < <(mysql -u$mysql_user $database_name -ss -e "$select_bins_sql")
 
-  echo counting successful 
-  echo ---------------------------------------
-  echo
-done < <(mysql -uroot $database_name -ss -e "$select_chromosomes_sql") 
+done < <(mysql -u$mysql_user $database_name -ss -e "$select_chromosomes_sql") 
 
 
 if [ $baseline_check -ne 0 ]; then
   select_baseline_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$baseline_version;"
   select_current_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$version;"
   
-  baseline_number_of_counts=`mysql -uroot $database_name -ss -e "$select_baseline_number_of_counts_sql"`
-  current_number_of_counts=`mysql -uroot $database_name -ss -e "$select_current_number_of_counts_sql"`
+  baseline_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_baseline_number_of_counts_sql"`
+  current_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_current_number_of_counts_sql"`
 
   if [ $baseline_number_of_counts -ne $current_number_of_counts ]; then
       echo baseline check: current count does not match baseline
