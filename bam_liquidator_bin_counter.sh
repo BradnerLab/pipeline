@@ -142,7 +142,7 @@ do
     #echo status=$count_status
     #echo count=$count
 
-    insert_count_sql="INSERT DELAYED INTO COUNTS (parent_directory,file_name,chromosome,bin,count,counter_version)
+    insert_count_sql="INSERT DELAYED INTO counts (parent_directory,file_name,chromosome,bin,count,counter_version)
                       VALUES ('$parent_directory','$file_name', '$chromosome', $bin, $count, $version);"
 
     mysql -u$mysql_user $database_name -e "$insert_count_sql"
