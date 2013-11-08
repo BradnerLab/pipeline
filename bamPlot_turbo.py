@@ -226,7 +226,7 @@ def callRPlot(summaryFile,outFile,yScale,plotStyle):
 
     cmd = 'R --no-save %s %s %s %s < ./bamPlot_turbo.R' % (summaryFile,outFile,yScale,plotStyle)
     print('calling command %s' % (cmd))
-    os.system(cmd)
+    return cmd
 
     
 
@@ -453,7 +453,19 @@ def main():
 
 
         outFile = "%s%s_plots.pdf" % (rootFolder,title)
-        callRPlot(summaryTableFileName,outFile,yScale,plotStyle)
+        rCmd = callRPlot(summaryTableFileName,outFile,yScale,plotStyle)
+
+        #open a bash file to get shit done
+        bashFileName = "%s%s_Rcmd.sh" % (tempFolder,title)
+        bashFile = open(bashFileName,'w')
+        bashFile.write(rCmd)
+        bashFile.close()
+        print("Wrote R command to %s" % (bashFileName))
+        os.system("bash %s" % (bashFileName))
+
+
+
+        
     else:
         parser.print_help()
         exit()
