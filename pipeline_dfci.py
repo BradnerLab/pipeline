@@ -317,8 +317,12 @@ def makeBamTable(dataFile,output):
                   'HSC': 'Hematopoeitic stem cell',
                   'EC': 'Human umbilical cord endothelial cell',
                   '3T3L1': 'Fibroblast',
-                  'KBM7': 'Haploid Chronic Lymphoid Leukemia',
+                  'KBM7': 'Haploid Chronic Myeloid Leukemia',
                   'P493-6': 'Burkitt Lymphoma',
+                  'NUT797':'Nut midline carcinoma',
+                  'MAC': 'Macrophage',
+                  'MMP1': 'Primary multiple myeloma',
+                  'MEF': 'Mouse embryonic fibroblast',
                   
                   }
     dataDict= loadDataTable(dataFile)
