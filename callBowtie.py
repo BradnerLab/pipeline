@@ -58,7 +58,7 @@ def stripExtension(fileName):
     tries to strip the extension of a filename
     can strip .tar.gz, .txt, .fastq,.gz,.zip
     '''
-    extensionList = ['.tar.gz','.txt','.fastq','.fasta','.gz','.zip']
+    extensionList = ['.tar.gz','.tar', '.txt','.fastq','.fasta','.gz','.zip']
 
     for extension in extensionList:
         fileName = fileName.replace(extension,'')
@@ -124,10 +124,11 @@ def extractFastqCmd(fileNameDict):
     tempFastqFile = fileNameDict['tempFastqFile']
 
     #there are 3 possibilities, a gzipped, tarballed, or naked fastq
-    if string.lower(fastqFile).count('tar') == 1:
+    if string.lower(fastqFile).count('tar.gz') == 1:
         cmd = "tar --strip-components 5 --to-stdout -xzvf %s > %s" % (fastqFile,tempFastqFile)
+    elif string.lower(fastqFile).count('tar') == 1:
+        cmd = "tar -xzvf %s > %s" % (fastqFile,tempFastqFile)
     elif string.lower(fastqFile.split('.')[-1]) == 'gz':
-        print('ay')
         cmd = 'cp %s %s.gz\n' % (fastqFile,tempFastqFile)
         cmd+= 'gunzip %s.gz' % (tempFastqFile)
     else:
