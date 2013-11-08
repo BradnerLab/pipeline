@@ -16,11 +16,30 @@ def main():
     bin_number = [] 
     count = [] 
     
-    for row in cursor.fetchall() :
+    for row in cursor.fetchall():
         bin_number.append(int(row[0]))
         count.append(int(row[1]))
 
-    bp.scatter(bin_number, count)
+    overall = bp.scatter(bin_number, count)
+    overall.title = "counts per bin accross all bam files (chr1)"
+
+    cursor.execute("SELECT distinct parent FROM chr1_bin_counts_by_parent");
+    for row in cursor.fetchall():
+        parent = row[0]
+
+        bin_number = [] 
+        count = [] 
+        
+        parent_cursor = db.cursor()
+        parent_cursor.execute("SELECT bin, count FROM chr1_bin_counts_by_parent where parent = '%s'" % parent)
+        for parent_row in parent_cursor.fetchall():
+            bin_number.append(int(parent_row[0]))
+            count.append(int(parent_row[1]))
+
+        parent_plot = bp.scatter(bin_number, count)
+        parent_plot.title = "%s counts per bin (chr1)" % parent
+
+    bp.save()
     bp.show()
 
 if __name__ == "__main__":
