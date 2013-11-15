@@ -52,7 +52,7 @@ usage()
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=203
+version=204
 baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 database_name=meta_analysis
@@ -118,9 +118,20 @@ elif [ -f "$path" ]; then
 
   if [ $insert_status -ne 0 ]; then
     echo "$path has already been processed (or at least started)"
-    # todo: add a force option to increment resume_count and finish the .bam file, 
-    #       starting at the last processed chromosome/bin 
-    exit 1
+    echo "Incrementing resume_count"
+
+    increment_resume_count_sql="UPDATE run SET resume_count=resume_count+1 
+                                 WHERE file_name = '$(basename $path)' AND counter_version = $version;"
+
+    mysql -u$mysql_user $database_name -e "$increment_resume_count_sql "
+    update_count_status=$?
+
+    if [ $update_count_status -ne 0 ]; then
+      echo "Failed to update the resume status, error code: $update_count_status"
+      exit -1
+    fi
+
+    # todo: start at the last processed chromosome/bin 
   fi
 
   file_path="$path"
