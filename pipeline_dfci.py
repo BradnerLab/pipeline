@@ -2038,7 +2038,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
     bashFile.close()
 
     print ('Wrote rose commands to %s' % (bashFileName))
-
+    return bashFileName
 
 
 
