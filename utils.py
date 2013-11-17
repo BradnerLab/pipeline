@@ -2,6 +2,9 @@
 #SET OF GENERAL UTILITY FUNCTIONS FOR SEQ DATA
 #last modified 131031
 
+#please edit this to the location of the samtools program
+samtoolsString ='samtools'
+
 '''
 The MIT License (MIT)
 
@@ -845,7 +848,7 @@ class Bam:
         self._bam = bamFile
 
     def getTotalReads(self,readType = 'mapped'):
-        command = 'samtools flagstat %s' % (self._bam)
+        command = '%s flagstat %s' % (samtoolsString,self._bam)
         stats = subprocess.Popen(command,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
         statLines = stats.stdout.readlines()
         stats.stdout.close()
@@ -870,7 +873,7 @@ class Bam:
         '''
         locusLine = locus.chr()+':'+str(locus.start())+'-'+str(locus.end())
         
-        command = 'samtools view %s %s' % (self._bam,locusLine)
+        command = '%s view %s %s' % (samtoolsString,self._bam,locusLine)
         if printCommand:
             print(command)
         getReads = subprocess.Popen(command,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)

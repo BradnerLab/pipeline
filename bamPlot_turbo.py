@@ -312,7 +312,7 @@ def main():
 
     from optparse import OptionParser
 
-    usage = "usage: %prog [options] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
+    usage = "usage: %prog [options] -g [GENOME] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
     parser = OptionParser(usage = usage)
     #required flags
     parser.add_option("-b","--bam", dest="bam",nargs = 1, default=None,

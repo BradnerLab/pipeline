@@ -1,5 +1,9 @@
-#/home/bradneradmin/samtools points to the directory where the samtools program has been built
-#please change this to the appropriate directory
+#please change these paths to the appropriate directory where samtools has been installed
+#bamliquidator needs some of the source files in the samtools directory
+#note, this is not the location of the samtools program
+
+SAMTOOLSPATH='./samtools/'
+
 #samtools can be downloaded from here http://sourceforge.net/projects/samtools/files/latest/download?source=files
 #samtools has two dependencies: ncurses http://www.gnu.org/software/ncurses/ 
 #and zlib http://zlib.net/
@@ -27,5 +31,5 @@
 # THE SOFTWARE.
 
 
-gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -Wall -Wformat -Wimplicit -Wreturn-type -I/home/bradneradmin/samtools -o bamliquidator.o -c bamliquidator.c
-gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -o bamliquidator bamliquidator.o -pthread -L/home/bradneradmin/samtools -lbam -lz -lpthread -ldl 
+gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -Wall -Wformat -Wimplicit -Wreturn-type -I$SAMTOOLSPATH -o bamliquidator.o -c bamliquidator.c
+gcc -O -g  -Wall -Wformat -Wimplicit -Wreturn-type -Wuninitialized -o bamliquidator bamliquidator.o -pthread -L$SAMTOOLSPATH -lbam -lz -lpthread -ldl 
