@@ -1106,7 +1106,7 @@ def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True)
 #gffToFasta
 #function that writes a fasta file from a gff file
 #directory is the genome directory with the chromosome folders
-def gffToFasta(genome,directory,gff,UCSC = True):
+def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
     fastaList = []
 
     ticker = 0
@@ -1119,7 +1119,10 @@ def gffToFasta(genome,directory,gff,UCSC = True):
             continue
         if ticker%1000 == 0: print(ticker)
         
-        name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
+        if useID:
+               name = '>' + line[1]
+        else:
+               name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])
