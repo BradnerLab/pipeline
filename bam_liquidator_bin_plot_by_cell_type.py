@@ -22,6 +22,7 @@ def main():
 
     overall = bp.scatter(bin_number, count)
     overall.title = "counts per bin accross all bam files (chr1)"
+    overall.canvas_width = 1300
 
     cursor.execute("SELECT distinct parent FROM chr1_bin_counts_by_parent");
     for row in cursor.fetchall():
