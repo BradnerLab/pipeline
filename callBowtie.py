@@ -42,7 +42,7 @@ import random
 #command arguments
 bowtieString = 'bowtie'
 samtoolsString = 'samtools'
-tempParentFolder = '/ark/home/cl512/ressrv19/temp/BOWTIE_TEMP/'
+tempParentFolder = '/raider/BOWTIE_TEMP/'
 fastqcString = '/usr/local/FastQC/fastqc'
 
 #tempParentFolder = '/mnt/d0-0/share/bradnerlab/projects/anna/BOWTIE_TEMP/'
