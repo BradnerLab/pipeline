@@ -52,7 +52,7 @@ usage()
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=204
+version=205
 baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 database_name=meta_analysis
@@ -238,8 +238,12 @@ do
 done < <(mysql -u$mysql_user $database_name -ss -e "$select_chromosomes_sql") 
 
 if [ $baseline_check -ne 0 ]; then
-  select_baseline_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$baseline_version;"
-  select_current_number_of_counts_sql="SELECT count(*) FROM counts WHERE counter_version=$version;"
+  select_baseline_number_of_counts_sql="SELECT count(*) FROM counts 
+                                         WHERE counter_version=$baseline_version
+                                           AND file_name='$file_name';"
+  select_current_number_of_counts_sql="SELECT count(*) FROM counts
+                                        WHERE counter_version=$version
+                                          AND file_name='$file_name';"
   
   baseline_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_baseline_number_of_counts_sql"`
   current_number_of_counts=`mysql -u$mysql_user $database_name -ss -e "$select_current_number_of_counts_sql"`
