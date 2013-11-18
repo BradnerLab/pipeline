@@ -138,9 +138,10 @@ def populate_count_fractions():
 
         files = file_names(cell_type)
 
+        processed_a_single_file_for_this_cell_type = False
 
         for file_name in files: 
-            print "Getting total count for " + file_name 
+            print "Processing " + file_name 
             file_total_count = total_count_for_file(file_name)
 
             bin_cursor = db.cursor()
@@ -150,21 +151,31 @@ def populate_count_fractions():
             divisor = float(file_total_count * len(files))
 
             for bin_row in bin_cursor.fetchall():
-                bin_number = bin_row[0]
+                bin_number = int(bin_row[0])
                 bin_count = float(bin_row[1])
 
                 count_fraction = bin_count / divisor 
                 
                 update_cursor = db.cursor()
-                update_cursor.execute("INSERT INTO normalized_bins (cell_type, chromosome, bin, "
-                                                                    "count_fraction, counter_version) "
-                                           "VALUES (%s, '" + chromosome + "', %s, %s, " + version + ") "
-                                              " ON DUPLICATE KEY UPDATE count_fraction = count_fraction + %s",
-                                      (cell_type, bin_number, count_fraction, count_fraction) )
-                db.commit()
+
+                # todo: let mysql bind the variables instead of me building up custom sql strings
+                if not processed_a_single_file_for_this_cell_type:
+                    update_cursor.execute("INSERT INTO normalized_bins "
+                                          "(cell_type, chromosome, bin, count_fraction, counter_version) "
+                                          "VALUES ('%s', '%s', %d, %d, %s)" % (cell_type, chromosome, bin_number, 0, version) )
+
+                update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %d "
+                                       "WHERE counter_version = %s AND chromosome = '%s' AND cell_type = '%s' AND bin = %d "
+                                       % (count_fraction, version, chromosome, cell_type, bin_number))
+
+            processed_a_single_file_for_this_cell_type = True
+
+#def populate_count_percentiles():
+    
                 
 
 if __name__ == "__main__":
     populate_count_fractions()
+    #populate_count_percentiles()
     #plot(normalized=True)
 
