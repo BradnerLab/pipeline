@@ -164,7 +164,7 @@ def populate_count_fractions():
                                           "(cell_type, chromosome, bin, count_fraction, counter_version) "
                                           "VALUES ('%s', '%s', %d, %d, %s)" % (cell_type, chromosome, bin_number, 0, version) )
 
-                update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %d "
+                update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %f "
                                        "WHERE counter_version = %s AND chromosome = '%s' AND cell_type = '%s' AND bin = %d "
                                        % (count_fraction, version, chromosome, cell_type, bin_number))
 
