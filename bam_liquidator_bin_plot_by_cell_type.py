@@ -25,6 +25,7 @@
 ##################################################################################
 
 import bokeh.plotting as bp
+import numpy as np
 import MySQLdb
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
@@ -170,12 +171,52 @@ def populate_count_fractions():
 
             processed_a_single_file_for_this_cell_type = True
 
-#def populate_count_percentiles():
-    
-                
+def populate_count_percentiles():
+    for cell_type in cell_types():
+        print "Processing cell_type " + cell_type
+        
+        query_cursor = db.cursor()
+        query_cursor.execute("SELECT bin, count_fraction FROM normalized_bins "
+                              "WHERE " + common_clause + " AND cell_type = '" + cell_type + "' ORDER BY bin")
+
+        array = np.zeros(query_cursor.rowcount)
+
+        i=0
+        for count_row in query_cursor.fetchall():
+            bin_number = count_row[0]
+            count_fraction = count_row[1]
+            if i != bin_number:
+                print "Error: unexpected missing bin: %d" % bin_number
+                return
+
+            array[i] = count_fraction
+            i += 1
+
+        percentiles = np.percentile(array, range(100)) 
+
+        bin_number = 0
+        for count_fraction in array:
+            # find the highest percentile value < count_fraction
+            percentile = 0
+            for percentile_value in percentiles:
+                if percentile_value >= count_fraction:
+                    break
+
+                percentile += 1
+             
+            update_cursor = db.cursor()
+
+            # todo: this results in hottest bins being in the 100th percentile -- is that OK?
+            update_cursor.execute("UPDATE normalized_bins SET percentile_in_cell_type = " + str(percentile) + " "
+                                   "WHERE " + common_clause + " AND cell_type = '%s' AND bin = %d "
+                                   % (cell_type, bin_number))
+
+            bin_number += 1
+
+
 
 if __name__ == "__main__":
-    populate_count_fractions()
-    #populate_count_percentiles()
+    #populate_count_fractions()
+    populate_count_percentiles()
     #plot(normalized=True)
 
