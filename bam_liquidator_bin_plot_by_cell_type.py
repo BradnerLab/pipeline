@@ -68,10 +68,17 @@ def file_names(cell_type, common_clause):
         
     return file_names 
 
-def plot(chromosome, common_clause):
-    bp.output_file(chromosome + ".html")
+def plot_summaries(chromosomes):
+    bp.output_file("summary.html")
+    
+    for chromosome in chromosomes:
+        common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
+        plot_summary(chromosome, common_clause)
 
-    print "Plotting summary"
+    bp.save()
+
+def plot_summary(chromosome, common_clause):
+    print "Plotting " + chromosome + " summary"
 
     cursor = db.cursor()
 
@@ -90,7 +97,12 @@ def plot(chromosome, common_clause):
         count.append(float(row[1]))
 
     overall = bp.scatter(bin_number, count)
-    overall.title = "counts per bin across all bam files"
+    overall.title = chromosome + " counts per bin across all bam files"
+
+def plot(chromosome, common_clause):
+    bp.output_file(chromosome + ".html")
+
+    plot_summary(chromosome, common_clause)
 
     for cell_type in cell_types():
         print "Plotting " + cell_type
@@ -221,3 +233,4 @@ if __name__ == "__main__":
         populate_count_percentiles(chromosome, common_clause)
         plot(chromosome, common_clause)
 
+    plot_summaries(chromosomes)
