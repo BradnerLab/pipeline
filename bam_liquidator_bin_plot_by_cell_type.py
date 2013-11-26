@@ -29,9 +29,7 @@ import numpy as np
 import MySQLdb
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
-chromosome = 'chr1'
 version = "203"
-common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
 
 def cell_types():
     # todo: memoize 
@@ -50,13 +48,13 @@ def cell_types():
         
     return types 
 
-def file_names(cell_type):
+def file_names(cell_type, common_clause):
     # todo: memoize 
     file_names = []
    
     if cell_type == 'be2c':
         file_names = ['01102013_D1L0CACXX_5.ACAGTG.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.ACTTGA.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.CAGATC.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.GCCAAT.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.AGTTCC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.CCGTCC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.GTCCGC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.GTGAAA.hg18.bwt.sorted.bam', 'L228_100_BE2C_CECR2.hg18.bwt.sorted.bam', 'L228_101_BE2C_H3K27ME3.hg18.bwt.sorted.bam'] 
-        print "Using saved value from Mon Nov 18 14:53:28 EST 2013"
+        print "Using saved file names from Mon Nov 18 14:53:28 EST 2013"
     else:
         print "Getting file names for cell type " + cell_type
         cursor = db.cursor()
@@ -70,17 +68,14 @@ def file_names(cell_type):
         
     return file_names 
 
-def plot(normalized):
-    bp.output_file("normalized.html" if normalized else "unnormalized.html")
+def plot(chromosome, common_clause):
+    bp.output_file(chromosome + ".html")
 
-    print "Plotting summary (normalized = " + str(normalized) + ")"
+    print "Plotting summary"
 
     cursor = db.cursor()
 
-    if normalized:
-        overall_sql = "SELECT bin, count FROM chr1_normalized_bin_counts" 
-    else:
-        overall_sql = "SELECT bin, count FROM chr1_bin_counts"
+    overall_sql = "SELECT bin, SUM(count_fraction) AS count FROM normalized_bins WHERE " + common_clause + " GROUP BY bin"
 
     cursor.execute(overall_sql)
 
@@ -92,10 +87,10 @@ def plot(normalized):
     
     for row in cursor.fetchall():
         bin_number.append(int(row[0]))
-        count.append(float(row[1]) if normalized else int(row[1]))
+        count.append(float(row[1]))
 
     overall = bp.scatter(bin_number, count)
-    overall.title = "counts per bin accross all bam files (chr1)"
+    overall.title = "counts per bin across all bam files"
 
     for cell_type in cell_types():
         print "Plotting " + cell_type
@@ -103,24 +98,21 @@ def plot(normalized):
         bin_number = [] 
         count = [] 
         
-        if normalized:
-            cell_type_bin_sql = "SELECT bin, count_fraction FROM normalized_bins WHERE " + common_clause + "AND cell_type = '%s'" % cell_type  
-        else:
-            cell_type_bin_sql = "SELECT bin, count FROM chr1_bin_counts_by_cell_type WHERE cell_type = '%s'" % cell_type
+        cell_type_bin_sql = "SELECT bin, count_fraction FROM normalized_bins WHERE " + common_clause + "AND cell_type = '%s'" % cell_type  
 
         cell_type_cursor = db.cursor()
         cell_type_cursor.execute(cell_type_bin_sql)
         for cell_type_row in cell_type_cursor.fetchall():
             bin_number.append(int(cell_type_row[0]))
-            count.append(float(cell_type_row[1] if normalized else int(cell_type_row[1])))
+            count.append(float(cell_type_row[1]))
 
         cell_type_plot = bp.scatter(bin_number, count)
-        cell_type_plot.title = "%s counts per bin (chr1)" % cell_type 
+        cell_type_plot.title = "%s counts per bin" % cell_type 
 
     bp.save()
-    bp.show()
+    #bp.show()
 
-def total_count_for_file(file_name):
+def total_count_for_file(file_name, common_clause):
     cursor = db.cursor()
     cursor.execute("SELECT SUM(count) FROM counts "
                     "WHERE " + common_clause + " AND file_name = '" + file_name + "' ")
@@ -133,17 +125,17 @@ def total_count_for_file(file_name):
     return count
     
 
-def populate_count_fractions():
+def populate_count_fractions(chromosome, common_clause):
     for cell_type in cell_types():
         print "Processing cell_type " + cell_type
 
-        files = file_names(cell_type)
+        files = file_names(cell_type, common_clause)
 
         processed_a_single_file_for_this_cell_type = False
 
         for file_name in files: 
             print "Processing " + file_name 
-            file_total_count = total_count_for_file(file_name)
+            file_total_count = total_count_for_file(file_name, common_clause)
 
             bin_cursor = db.cursor()
             bin_cursor.execute("SELECT bin, count FROM counts WHERE " + common_clause
@@ -155,7 +147,10 @@ def populate_count_fractions():
                 bin_number = int(bin_row[0])
                 bin_count = float(bin_row[1])
 
-                count_fraction = bin_count / divisor 
+                if divisor != 0:
+                    count_fraction = bin_count / divisor 
+                else:
+                    count_fraction = 0
                 
                 update_cursor = db.cursor()
 
@@ -171,7 +166,7 @@ def populate_count_fractions():
 
             processed_a_single_file_for_this_cell_type = True
 
-def populate_count_percentiles():
+def populate_count_percentiles(chromosome, common_clause):
     for cell_type in cell_types():
         print "Processing cell_type " + cell_type
         
@@ -216,7 +211,13 @@ def populate_count_percentiles():
 
 
 if __name__ == "__main__":
-    #populate_count_fractions()
-    populate_count_percentiles()
-    #plot(normalized=True)
+    chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
+
+    for chromosome in chromosomes:
+        print "Processing " + chromosome
+        common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
+
+        populate_count_fractions(chromosome, common_clause)
+        populate_count_percentiles(chromosome, common_clause)
+        plot(chromosome, common_clause)
 
