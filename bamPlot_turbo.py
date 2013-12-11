@@ -70,6 +70,8 @@ def loadAnnotFile(genome):
         'MM9': './annotation/mm9_refseq.ucsc',
         'hg18':'./annotation/hg18_refseq.ucsc',
         'mm9': './annotation/mm9_refseq.ucsc',
+        'HG19':'./annotation/hg19_refseq.ucsc',
+        'hg19':'./annotation/hg19_refseq.ucsc'
         }
 
     annotFile = genomeDict[genome]
@@ -377,7 +379,7 @@ def main():
 
         #bring in the genome
         genome = upper(options.genome)
-        if ['HG18','MM9','RN5'].count(genome) == 0:
+        if ['HG18','HG19','MM9','RN5'].count(genome) == 0:
             print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, RN5, OR MM9' % (genome))
             parser.print_help()
             exit()
