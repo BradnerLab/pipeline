@@ -212,11 +212,12 @@ def populate_count_percentiles(chromosome, common_clause, cell_types):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
-        'Normalized counts and percentiles are stored in the table normalized_bins. Note that this is  '
-        'designed to be run once per cell type for a single version -- corresponding rows from '
-        'normalized_bins should be deleted if new files are added or the same cell type needs to be '
-        're-processed for any reason (an error will occur and nothing will be changed in normalized_bins '
-        'if there are already entries in this table for the given cell type and version)')
+        'Normalized counts and percentiles are stored in the table normalized_bins. Plots are stored in '
+        '.html files in the current directory.  Note that this is designed to be run once per cell type '
+        'for a single version -- corresponding rows from normalized_bins should be deleted if new files '
+        'are added or the same cell type needs to be re-processed for any reason (an error will occur '
+        'and nothing will be changed in normalized_bins if there are already entries in this table for '
+        'the given cell type and version)')
     parser.add_argument('cell_types', metavar='cell_type', nargs='+',
                         help='a cell type to calculate -- specify "all" to process all cell types')
     args = parser.parse_args()
