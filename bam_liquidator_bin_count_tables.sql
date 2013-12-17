@@ -43,3 +43,4 @@ GRANT SELECT,INSERT ON meta_analysis.counts TO 'counter'@'localhost';
 GRANT SELECT,INSERT ON meta_analysis.errors TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.run TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.normalized_bins TO 'counter'@'localhost';
+GRANT FILE ON *.* to 'counter'@'localhost';
