@@ -2,6 +2,9 @@
 #SET OF GENERAL UTILITY FUNCTIONS FOR SEQ DATA
 #last modified 131031
 
+#please edit this to the location of the samtools program
+samtoolsString ='samtools'
+
 '''
 The MIT License (MIT)
 
@@ -845,7 +848,7 @@ class Bam:
         self._bam = bamFile
 
     def getTotalReads(self,readType = 'mapped'):
-        command = 'samtools flagstat %s' % (self._bam)
+        command = '%s flagstat %s' % (samtoolsString,self._bam)
         stats = subprocess.Popen(command,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
         statLines = stats.stdout.readlines()
         stats.stdout.close()
@@ -870,7 +873,7 @@ class Bam:
         '''
         locusLine = locus.chr()+':'+str(locus.start())+'-'+str(locus.end())
         
-        command = 'samtools view %s %s' % (self._bam,locusLine)
+        command = '%s view %s %s' % (samtoolsString,self._bam,locusLine)
         if printCommand:
             print(command)
         getReads = subprocess.Popen(command,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
@@ -1106,7 +1109,7 @@ def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True)
 #gffToFasta
 #function that writes a fasta file from a gff file
 #directory is the genome directory with the chromosome folders
-def gffToFasta(genome,directory,gff,UCSC = True):
+def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
     fastaList = []
 
     ticker = 0
@@ -1119,7 +1122,10 @@ def gffToFasta(genome,directory,gff,UCSC = True):
             continue
         if ticker%1000 == 0: print(ticker)
         
-        name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
+        if useID:
+               name = '>' + line[1]
+        else:
+               name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])

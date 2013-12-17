@@ -45,12 +45,12 @@ import string
 #============================PARAMETERS====================================
 #==========================================================================
 
-dataFile = '/ark/home/USERNAME/ressrv19/projects/MYPROJECT/DATA_TABLE.txt' #PATH TO YOUR DATA TABLE
+dataFile = '/grail/projects/MYPROJECT/DATA_TABLE.txt' #PATH TO YOUR DATA TABLE
 genome ='hg18'
-annotFile = '/ark/home/cl512/src/pipeline/annotation/hg18_refseq.ucsc'
+annotFile = '/ark/home/cl512/src/pipeline/annotation/hg19_refseq.ucsc'
 
 #project folders
-projectFolder = '/ark/home/USERNAME/ressrv19/projects/MYPROJECT/' #PATH TO YOUR PROJECT FOLDER
+projectFolder = '/grail/projects/MYPROJECT/' #PATH TO YOUR PROJECT FOLDER
 
 #standard folder names
 gffFolder ='%sgff/' % (projectFolder)
