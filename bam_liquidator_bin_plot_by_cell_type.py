@@ -30,7 +30,7 @@ import MySQLdb
 import numpy as np
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
-version = "203" # this should match the version in bam_liquidator_bin_counter.sh
+version = "205" # this should match the version in bam_liquidator_bin_counter.sh
 
 def all_cell_types():
     print "Getting cell types"
