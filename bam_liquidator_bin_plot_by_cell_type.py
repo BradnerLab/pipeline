@@ -24,47 +24,38 @@
 #
 ##################################################################################
 
+import argparse
 import bokeh.plotting as bp
-import numpy as np
 import MySQLdb
+import numpy as np
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
-version = "203"
+version = "203" # this should match the version in bam_liquidator_bin_counter.sh
 
-def cell_types():
-    # todo: memoize 
-    types = ['be2c', 'dhl6', 'ec', 'hbl1', 'hsc', 'k422', 'kbm7', 'kms11', 'ly1', 'ly18', 'ly3', 'ly4', 'mm1s', 'mmp1', 'nut797', 'p107a', 'p14a', 'p265', 'p286', 'p397', 'p448', 'p493-6', 'sknas', 'toledo']
-    if len(types) == 0:
-        print "Getting cell types"
-        cursor = db.cursor()
-        cursor.execute("SELECT distinct cell_type FROM chr1_bin_counts_by_cell_type")
+def all_cell_types():
+    print "Getting cell types"
 
-        for row in cursor.fetchall():
-            types.append(row[0]) 
+    types = []
+    cursor = db.cursor()
+    cursor.execute("SELECT distinct cell_type FROM chr1_bin_counts_by_cell_type")
 
-        print types        
-    else:
-        print "Using saved cell types from Mon Nov 18 08:38:40 EST 2013"
-        
+    for row in cursor.fetchall():
+        types.append(row[0]) 
+
     return types 
 
 def file_names(cell_type, common_clause):
-    # todo: memoize 
     file_names = []
    
-    if cell_type == 'be2c':
-        file_names = ['01102013_D1L0CACXX_5.ACAGTG.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.ACTTGA.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.CAGATC.hg18.bwt.sorted.bam', '01102013_D1L0CACXX_5.GCCAAT.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.AGTTCC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.CCGTCC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.GTCCGC.hg18.bwt.sorted.bam', '04052013_C21THACXX_3.GTGAAA.hg18.bwt.sorted.bam', 'L228_100_BE2C_CECR2.hg18.bwt.sorted.bam', 'L228_101_BE2C_H3K27ME3.hg18.bwt.sorted.bam'] 
-        print "Using saved file names from Mon Nov 18 14:53:28 EST 2013"
-    else:
-        print "Getting file names for cell type " + cell_type
-        cursor = db.cursor()
-        cursor.execute("SELECT distinct file_name FROM counts where " + common_clause 
-                       + " AND parent_directory = '" + cell_type + "' ")
+    print "Getting file names for cell type " + cell_type
+    cursor = db.cursor()
+    cursor.execute("SELECT distinct file_name FROM counts where " + common_clause 
+                   + " AND parent_directory = '" + cell_type + "' ")
 
-        for row in cursor.fetchall():
-            file_names.append(row[0]) 
+    for row in cursor.fetchall():
+        file_names.append(row[0]) 
 
-        print cell_type + ": " + str(file_names) 
+    print cell_type + ": " + str(file_names) 
         
     return file_names 
 
@@ -99,12 +90,12 @@ def plot_summary(chromosome, common_clause):
     overall = bp.scatter(bin_number, count)
     overall.title = chromosome + " counts per bin across all bam files"
 
-def plot(chromosome, common_clause):
+def plot(chromosome, common_clause, cell_types):
     bp.output_file(chromosome + ".html")
 
     plot_summary(chromosome, common_clause)
 
-    for cell_type in cell_types():
+    for cell_type in cell_types:
         print "Plotting " + cell_type
 
         bin_number = [] 
@@ -122,7 +113,6 @@ def plot(chromosome, common_clause):
         cell_type_plot.title = "%s counts per bin" % cell_type 
 
     bp.save()
-    #bp.show()
 
 def total_count_for_file(file_name, common_clause):
     cursor = db.cursor()
@@ -137,8 +127,8 @@ def total_count_for_file(file_name, common_clause):
     return count
     
 
-def populate_count_fractions(chromosome, common_clause):
-    for cell_type in cell_types():
+def populate_count_fractions(chromosome, common_clause, cell_types):
+    for cell_type in cell_types:
         print "Processing cell_type " + cell_type
 
         files = file_names(cell_type, common_clause)
@@ -178,8 +168,8 @@ def populate_count_fractions(chromosome, common_clause):
 
             processed_a_single_file_for_this_cell_type = True
 
-def populate_count_percentiles(chromosome, common_clause):
-    for cell_type in cell_types():
+def populate_count_percentiles(chromosome, common_clause, cell_types):
+    for cell_type in cell_types:
         print "Processing cell_type " + cell_type
         
         query_cursor = db.cursor()
@@ -220,17 +210,37 @@ def populate_count_percentiles(chromosome, common_clause):
 
             bin_number += 1
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
+        'Normalized counts and percentiles are stored in the table normalized_bins. Note that this is  '
+        'designed to be run once per cell type for a single version -- corresponding rows from '
+        'normalized_bins should be deleted if new files are added or the same cell type needs to be '
+        're-processed for any reason (an error will occur and nothing will be changed in normalized_bins '
+        'if there are already entries in this table for the given cell type and version)')
+    parser.add_argument('cell_types', metavar='cell_type', nargs='+',
+                        help='a cell type to calculate -- specify "all" to process all cell types')
+    args = parser.parse_args()
+    if len(args.cell_types) == 1 and args.cell_types[0] == 'all':
+        return all_cell_types()
+    else:
+        return args.cell_types 
 
+def main():
+    cell_types = parse_args()
 
-if __name__ == "__main__":
+    print "cell_types = %s" % cell_types
+
     chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
         common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
 
-        populate_count_fractions(chromosome, common_clause)
-        populate_count_percentiles(chromosome, common_clause)
-        plot(chromosome, common_clause)
+        populate_count_fractions(chromosome, common_clause, cell_types)
+        populate_count_percentiles(chromosome, common_clause, cell_types)
+        plot(chromosome, common_clause, cell_types)
 
     plot_summaries(chromosomes)
+
+if __name__ == "__main__":
+    main()
