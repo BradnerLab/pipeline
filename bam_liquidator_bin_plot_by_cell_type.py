@@ -25,6 +25,7 @@
 ##################################################################################
 
 import sys
+import os
 import argparse
 import bokeh.plotting as bp
 import MySQLdb
@@ -196,9 +197,15 @@ def populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_ty
             print "Processing " + file_name  
             populate_count_percentiles(chromosome, common_clause, cell_type, file_name)
 
+def normalized_table(by_file):
+    return "normalized_bins_by_file" if by_file else "normalized_bins"
+
+def percentile_column(by_file):
+    return "percentile_in_file" if by_file else "percentile_in_cell_type" 
+
 def populate_count_percentiles(chromosome, common_clause, cell_type, file_name=None):
-    table = "normalized_bins" if file_name is None else "normalized_bins_by_file" 
-    percentile_column = "percentile_in_cell_type" if file_name is None else "percentile_in_file"
+    table = normalized_table(file_name is not None)
+    column = percentile_column(file_name is not None)
 
     cell_type_and_file_clause = " AND cell_type = '" + cell_type + "' " + (
         "" if file_name is None else (" AND file_name = '" + file_name + "' "))
@@ -235,11 +242,42 @@ def populate_count_percentiles(chromosome, common_clause, cell_type, file_name=N
         update_cursor = db.cursor()
 
         # todo: this results in hottest bins being in the 100th percentile -- is that OK?
-        update_cursor.execute("UPDATE " + table + " SET " + percentile_column + " = " + str(percentile) + " "
+        update_cursor.execute("UPDATE " + table + " SET " + column + " = " + str(percentile) + " "
                                "WHERE " + common_clause + cell_type_and_file_clause + " AND bin = %d "
                                % bin_number)
 
         bin_number += 1
+
+def create_csv_file(chromosome, common_clause, cell_types):
+    csv_file = os.getcwd() + "/" + chromosome + ".csv"
+    
+    def subqueries(percentile, by_file):
+        label = "lines" if by_file else "cell_types"
+        template = ("       (SELECT COUNT(*) FROM " + normalized_table(by_file) + " AS n2\n"
+                    "         WHERE n2.bin = n1.bin "
+                               "AND " + percentile_column(by_file) + " %s "
+                               "AND" + common_clause + "\n"
+                    "       ) AS " + label + "_with_%s_percentile")
+        higher = template % (">= %d" % percentile, "bin_in_%dth_or_higher" % percentile) 
+        lower  = template % ("< %d"  % percentile, "bin_lower_than_%dth"   % percentile)
+        return higher + ",\n" + lower 
+
+    sql = ("SELECT n1.bin, AVG(n1.percentile_in_cell_type) AS average_cell_type_percentile,\n"
+           + subqueries(95, by_file=False) + ",\n"
+           + subqueries(95, by_file=True)  + ",\n"
+           + subqueries(5,  by_file=False) + ",\n"
+           + subqueries(5,  by_file=True)  + "\n"
+           "  FROM normalized_bins AS n1\n"
+           " WHERE n1.chromosome = '" + chromosome + "' AND n1.counter_version = " + version + "\n"
+           " GROUP BY n1.bin\n"
+           " ORDER BY average_cell_type_percentile DESC, n1.bin ASC\n"
+           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n'") 
+
+    print sql
+
+    cursor = db.cursor()
+    cursor.execute(sql)
+    exit(-1)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
@@ -270,9 +308,9 @@ def main():
         print "Processing " + chromosome
         common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
 
-        populate_count_fractions(chromosome, common_clause, cell_types)
-        populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
-        #create_csv_files(chromosome, common_clause, cell_types)
+        #populate_count_fractions(chromosome, common_clause, cell_types)
+        #populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
+        create_csv_file(chromosome, common_clause, cell_types)
         #plot(chromosome, common_clause, cell_types)
 
     #plot_summaries(chromosomes)
