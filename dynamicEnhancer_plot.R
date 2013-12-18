@@ -63,7 +63,7 @@ factor1[factor1 <= 1] <- 1
 factor2[factor2 <= 1] <- 1 
 
 deltaFactor = log2(factor2/factor1)
-deltaFactor[is.infinite(deltaFactor)] <- -6
+
 deltaFactor[deltaFactor < -8] <- -8
 deltaFactor[deltaFactor > 8] <- 8
 
