@@ -38,9 +38,24 @@ CREATE TABLE normalized_bins (
   KEY overall_view (counter_version, chromosome, bin)
 ) ENGINE=MyISAM;
 
+CREATE TABLE normalized_bins_by_file (
+  id int NOT NULL AUTO_INCREMENT,
+  cell_type varchar(15) NOT NULL,
+  file_name varchar(63) NOT NULL,
+  chromosome varchar(15) NOT NULL,
+  bin int NOT NULL,
+  count_fraction double NOT NULL,
+  percentile_in_file DOUBLE,
+  counter_version int NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY plotter (counter_version, chromosome, cell_type, file_name, bin),
+  KEY overall_view (counter_version, chromosome, bin)
+) ENGINE=MyISAM;
+
 GRANT SELECT ON meta_analysis.* TO 'counter'@'localhost';
 GRANT SELECT,INSERT ON meta_analysis.counts TO 'counter'@'localhost';
 GRANT SELECT,INSERT ON meta_analysis.errors TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.run TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.normalized_bins TO 'counter'@'localhost';
+GRANT SELECT,INSERT,UPDATE ON meta_analysis.normalized_bins_by_file TO 'counter'@'localhost';
 GRANT FILE ON *.* to 'counter'@'localhost';

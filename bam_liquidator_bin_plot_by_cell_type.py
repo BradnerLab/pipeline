@@ -24,13 +24,16 @@
 #
 ##################################################################################
 
+import sys
 import argparse
 import bokeh.plotting as bp
 import MySQLdb
 import numpy as np
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
-version = "205" # this should match the version in bam_liquidator_bin_counter.sh
+version = "203" # this should match the version in bam_liquidator_bin_counter.sh
+
+skip_populating_normalized_bins_by_cell_type = True
 
 def all_cell_types():
     print "Getting cell types"
@@ -44,20 +47,25 @@ def all_cell_types():
 
     return types 
 
+file_names_memo = {}
 def file_names(cell_type, common_clause):
-    file_names = []
-   
-    print "Getting file names for cell type " + cell_type
-    cursor = db.cursor()
-    cursor.execute("SELECT distinct file_name FROM counts where " + common_clause 
-                   + " AND parent_directory = '" + cell_type + "' ")
+    if not cell_type in file_names_memo:
 
-    for row in cursor.fetchall():
-        file_names.append(row[0]) 
+        file_names = []
+       
+        print "Getting file names for cell type " + cell_type
+        cursor = db.cursor()
+        cursor.execute("SELECT distinct file_name FROM counts where " + common_clause 
+                       + " AND parent_directory = '" + cell_type + "' ")
 
-    print cell_type + ": " + str(file_names) 
+        for row in cursor.fetchall():
+            file_names.append(row[0]) 
+
+        file_names_memo[cell_type] = file_names
+
+        print "memoizing files for " + cell_type + ": " + str(file_names_memo[cell_type]) 
         
-    return file_names 
+    return file_names_memo[cell_type] 
 
 def plot_summaries(chromosomes):
     bp.output_file("summary.html")
@@ -73,7 +81,8 @@ def plot_summary(chromosome, common_clause):
 
     cursor = db.cursor()
 
-    overall_sql = "SELECT bin, SUM(count_fraction) AS count FROM normalized_bins WHERE " + common_clause + " GROUP BY bin"
+    overall_sql = ("SELECT bin, SUM(count_fraction) AS count FROM normalized_bins WHERE " + 
+        common_clause + " GROUP BY bin")
 
     cursor.execute(overall_sql)
 
@@ -101,7 +110,8 @@ def plot(chromosome, common_clause, cell_types):
         bin_number = [] 
         count = [] 
         
-        cell_type_bin_sql = "SELECT bin, count_fraction FROM normalized_bins WHERE " + common_clause + "AND cell_type = '%s'" % cell_type  
+        cell_type_bin_sql = ("SELECT bin, count_fraction FROM normalized_bins WHERE " +
+            common_clause + "AND cell_type = '%s'" % cell_type) 
 
         cell_type_cursor = db.cursor()
         cell_type_cursor.execute(cell_type_bin_sql)
@@ -143,72 +153,93 @@ def populate_count_fractions(chromosome, common_clause, cell_types):
             bin_cursor.execute("SELECT bin, count FROM counts WHERE " + common_clause
                                + " AND file_name = '" + file_name + "' ")
 
-            divisor = float(file_total_count * len(files))
+            file_divisor = float(file_total_count)
+            cell_type_divisor = float(file_total_count * len(files))
 
             for bin_row in bin_cursor.fetchall():
                 bin_number = int(bin_row[0])
                 bin_count = float(bin_row[1])
 
-                if divisor != 0:
-                    count_fraction = bin_count / divisor 
-                else:
-                    count_fraction = 0
+                file_count_fraction = bin_count / file_divisor
+                cell_type_count_fraction = bin_count / cell_type_divisor 
                 
                 update_cursor = db.cursor()
 
-                # todo: let mysql bind the variables instead of me building up custom sql strings
-                if not processed_a_single_file_for_this_cell_type:
-                    update_cursor.execute("INSERT INTO normalized_bins "
-                                          "(cell_type, chromosome, bin, count_fraction, counter_version) "
-                                          "VALUES ('%s', '%s', %d, %d, %s)" % (cell_type, chromosome, bin_number, 0, version) )
+                update_cursor.execute("INSERT INTO normalized_bins_by_file "
+                                      "(cell_type, file_name, chromosome, bin, count_fraction, counter_version) "
+                                      "VALUES ('%s', '%s', '%s', %d, %d, %s)" % (
+                                      cell_type, file_name, chromosome, bin_number, file_count_fraction, version) )
 
-                update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %f "
-                                       "WHERE counter_version = %s AND chromosome = '%s' AND cell_type = '%s' AND bin = %d "
-                                       % (count_fraction, version, chromosome, cell_type, bin_number))
+                if not skip_populating_normalized_bins_by_cell_type:
+                    if not processed_a_single_file_for_this_cell_type:
+                        update_cursor.execute("INSERT INTO normalized_bins "
+                                              "(cell_type, chromosome, bin, count_fraction, counter_version) "
+                                              "VALUES ('%s', '%s', %d, %d, %s)" % (
+                                              cell_type, chromosome, bin_number, 0, version) )
+
+                    update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %f "
+                                           "WHERE counter_version = %s AND chromosome = '%s' "
+                                           "AND cell_type = '%s' AND bin = %d " % (
+                                           cell_type_count_fraction, version, chromosome, cell_type, bin_number))
 
             processed_a_single_file_for_this_cell_type = True
 
-def populate_count_percentiles(chromosome, common_clause, cell_types):
+def populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types):
     for cell_type in cell_types:
         print "Processing cell_type " + cell_type
-        
-        query_cursor = db.cursor()
-        query_cursor.execute("SELECT bin, count_fraction FROM normalized_bins "
-                              "WHERE " + common_clause + " AND cell_type = '" + cell_type + "' ORDER BY bin")
 
-        array = np.zeros(query_cursor.rowcount)
+        if not skip_populating_normalized_bins_by_cell_type:
+            populate_count_percentiles(chromosome, common_clause, cell_type)
 
-        i=0
-        for count_row in query_cursor.fetchall():
-            bin_number = count_row[0]
-            count_fraction = count_row[1]
-            if i != bin_number:
-                print "Error: unexpected missing bin: %d" % bin_number
-                return
+        files = file_names(cell_type, common_clause)
+        for file_name in files: 
+            print "Processing " + file_name  
+            populate_count_percentiles(chromosome, common_clause, cell_type, file_name)
 
-            array[i] = count_fraction
-            i += 1
+def populate_count_percentiles(chromosome, common_clause, cell_type, file_name=None):
+    table = "normalized_bins" if file_name is None else "normalized_bins_by_file" 
+    percentile_column = "percentile_in_cell_type" if file_name is None else "percentile_in_file"
 
-        percentiles = np.percentile(array, range(100)) 
+    cell_type_and_file_clause = " AND cell_type = '" + cell_type + "' " + (
+        "" if file_name is None else (" AND file_name = '" + file_name + "' "))
+    
+    query_cursor = db.cursor()
+    query_cursor.execute("SELECT bin, count_fraction FROM " + table + " " +
+                          "WHERE " + common_clause + cell_type_and_file_clause + " ORDER BY bin")
 
-        bin_number = 0
-        for count_fraction in array:
-            # find the highest percentile value < count_fraction
-            percentile = 0
-            for percentile_value in percentiles:
-                if percentile_value >= count_fraction:
-                    break
+    array = np.zeros(query_cursor.rowcount)
 
-                percentile += 1
-             
-            update_cursor = db.cursor()
+    i=0
+    for count_row in query_cursor.fetchall():
+        bin_number = count_row[0]
+        count_fraction = count_row[1]
+        if i != bin_number:
+            print "Error: unexpected missing bin: %d" % bin_number
+            sys.exit(-1)
 
-            # todo: this results in hottest bins being in the 100th percentile -- is that OK?
-            update_cursor.execute("UPDATE normalized_bins SET percentile_in_cell_type = " + str(percentile) + " "
-                                   "WHERE " + common_clause + " AND cell_type = '%s' AND bin = %d "
-                                   % (cell_type, bin_number))
+        array[i] = count_fraction
+        i += 1
 
-            bin_number += 1
+    percentiles = np.percentile(array, range(100)) 
+
+    bin_number = 0
+    for count_fraction in array:
+        # find the highest percentile value < count_fraction
+        percentile = 0
+        for percentile_value in percentiles:
+            if percentile_value >= count_fraction:
+                break
+
+            percentile += 1
+         
+        update_cursor = db.cursor()
+
+        # todo: this results in hottest bins being in the 100th percentile -- is that OK?
+        update_cursor.execute("UPDATE " + table + " SET " + percentile_column + " = " + str(percentile) + " "
+                               "WHERE " + common_clause + cell_type_and_file_clause + " AND bin = %d "
+                               % bin_number)
+
+        bin_number += 1
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
@@ -231,17 +262,20 @@ def main():
 
     print "cell_types = %s" % cell_types
 
-    chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
+    chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX',
+                    'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
+                    'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
         common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
 
         populate_count_fractions(chromosome, common_clause, cell_types)
-        populate_count_percentiles(chromosome, common_clause, cell_types)
-        plot(chromosome, common_clause, cell_types)
+        populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
+        create_csv_files(chromosome, common_clause, cell_types)
+        #plot(chromosome, common_clause, cell_types)
 
-    plot_summaries(chromosomes)
+    #plot_summaries(chromosomes)
 
 if __name__ == "__main__":
     main()
