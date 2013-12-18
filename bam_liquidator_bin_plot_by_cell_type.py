@@ -249,7 +249,8 @@ def populate_count_percentiles(chromosome, common_clause, cell_type, file_name=N
         bin_number += 1
 
 def create_csv_file(chromosome, common_clause, cell_types):
-    csv_file = os.getcwd() + "/" + chromosome + ".csv"
+    #csv_file = os.getcwd() + "/" + chromosome + ".csv"
+    csv_file = "/tmp/" + chromosome + ".csv"
     
     def subqueries(percentile, by_file):
         label = "lines" if by_file else "cell_types"
@@ -264,14 +265,13 @@ def create_csv_file(chromosome, common_clause, cell_types):
 
     sql = ("SELECT n1.bin, AVG(n1.percentile_in_cell_type) AS average_cell_type_percentile,\n"
            + subqueries(95, by_file=False) + ",\n"
-           + subqueries(95, by_file=True)  + ",\n"
-           + subqueries(5,  by_file=False) + ",\n"
-           + subqueries(5,  by_file=True)  + "\n"
+           + subqueries(95, by_file=True)  + "\n"
            "  FROM normalized_bins AS n1\n"
            " WHERE n1.chromosome = '" + chromosome + "' AND n1.counter_version = " + version + "\n"
            " GROUP BY n1.bin\n"
            " ORDER BY average_cell_type_percentile DESC, n1.bin ASC\n"
-           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n'") 
+           " LIMIT 10\n"
+           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'") 
 
     print sql
 
