@@ -34,7 +34,7 @@ import numpy as np
 db = MySQLdb.connect(user="counter", db="meta_analysis")
 version = "205" # this should match the version in bam_liquidator_bin_counter.sh
 
-skip_populating_normalized_bins_by_cell_type = True
+skip_populating_normalized_bins_by_cell_type = False
 
 def all_cell_types():
     print "Getting cell types"
@@ -263,21 +263,29 @@ def create_csv_file(chromosome, common_clause, cell_types):
         lower  = template % ("< %d"  % percentile, "bin_lower_than_%dth"   % percentile)
         return higher + ",\n" + lower 
 
-    sql = ("SELECT n1.bin, AVG(n1.percentile_in_cell_type) AS average_cell_type_percentile,\n"
-           + subqueries(95, by_file=False) + ",\n"
-           + subqueries(95, by_file=True)  + "\n"
-           "  FROM normalized_bins AS n1\n"
-           " WHERE n1.chromosome = '" + chromosome + "' AND n1.counter_version = " + version + "\n"
-           " GROUP BY n1.bin\n"
-           " ORDER BY average_cell_type_percentile DESC, n1.bin ASC\n"
-           " LIMIT 10\n"
-           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'") 
+    sql = ("SELECT 'bin', 'average cell type percentile',\n"
+                  "'cell types >= 95th percentile', 'cell types < 95th percentile',\n"
+	          "'lines >= 95th percentile', 'lines < 95th percentile',\n" 
+                  "'cell types >= 5th percentile', 'cell types < 5th percentile',\n"
+	          "'lines >= 5th percentile', 'lines < 5th percentile'\n" 
+           " UNION\n"
+           "SELECT * FROM\n"
+           "(SELECT n1.bin, AVG(n1.percentile_in_cell_type) AS average_cell_type_percentile,\n"
+            + subqueries(95, by_file=False) + ",\n"
+            + subqueries(95, by_file=True)  + ",\n"
+            + subqueries(5,  by_file=False) + ",\n"
+            + subqueries(5,  by_file=True)  + "\n"
+           "   FROM normalized_bins AS n1\n"
+           "  WHERE n1.chromosome = '" + chromosome + "' AND n1.counter_version = " + version + "\n"
+           "  GROUP BY n1.bin\n"
+           "  ORDER BY average_cell_type_percentile DESC, n1.bin ASC\n"
+           "  ) AN_ALIAS \n"
+           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'")
 
     print sql
 
     cursor = db.cursor()
     cursor.execute(sql)
-    exit(-1)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
@@ -310,10 +318,10 @@ def main():
 
         populate_count_fractions(chromosome, common_clause, cell_types)
         populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
-        #create_csv_file(chromosome, common_clause, cell_types)
-        #plot(chromosome, common_clause, cell_types)
+        create_csv_file(chromosome, common_clause, cell_types)
+        plot(chromosome, common_clause, cell_types)
 
-    #plot_summaries(chromosomes)
+    plot_summaries(chromosomes)
 
 if __name__ == "__main__":
     main()
