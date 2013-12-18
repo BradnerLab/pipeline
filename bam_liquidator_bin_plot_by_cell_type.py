@@ -31,7 +31,7 @@ import MySQLdb
 import numpy as np
 
 db = MySQLdb.connect(user="counter", db="meta_analysis")
-version = "203" # this should match the version in bam_liquidator_bin_counter.sh
+version = "205" # this should match the version in bam_liquidator_bin_counter.sh
 
 skip_populating_normalized_bins_by_cell_type = True
 
@@ -40,7 +40,7 @@ def all_cell_types():
 
     types = []
     cursor = db.cursor()
-    cursor.execute("SELECT distinct cell_type FROM chr1_bin_counts_by_cell_type")
+    cursor.execute("SELECT distinct parent_directory FROM counts where counter_version = %s" % version)
 
     for row in cursor.fetchall():
         types.append(row[0]) 
@@ -272,7 +272,7 @@ def main():
 
         populate_count_fractions(chromosome, common_clause, cell_types)
         populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
-        create_csv_files(chromosome, common_clause, cell_types)
+        #create_csv_files(chromosome, common_clause, cell_types)
         #plot(chromosome, common_clause, cell_types)
 
     #plot_summaries(chromosomes)
