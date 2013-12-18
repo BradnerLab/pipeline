@@ -42,7 +42,7 @@ THE SOFTWARE.
 
 import os
 import gzip
-
+import time
 import re
 
 from string import *
@@ -197,6 +197,40 @@ def formatFolder(folderName,create=False):
             return False 
 
 
+def checkOutput(fileName,waitTime = 1,timeOut = 30):
+
+       '''
+       checks for the presence of a file every N minutes
+       if it exists, returns True
+       default is 1 minute with a max timeOut of 30 minutes
+       '''       
+       waitTime = int(waitTime) * 60
+
+       timeOut = int(timeOut) * 60
+
+       maxTicker = timeOut/waitTime
+       ticker = 0
+
+       fileExists = False
+       while not fileExists:
+
+              try:
+                     foo = open(fileName,'r')
+                     foo.close()
+                     fileExists = True
+              except IOError:
+                     time.sleep(waitTime)
+                     ticker+=1
+              if ticker == maxTicker:
+                     break
+
+              
+       time.sleep(20)
+       if fileExists:
+              return True
+       else:
+              print('ERROR: OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
+              return False
 
 #==================================================================
 #===================ANNOTATION FUNCTIONS===========================

@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #pipeline.py
 
+samtoolsString = 'samtools'
+
 '''
 The MIT License (MIT)
 
@@ -30,7 +32,7 @@ THE SOFTWARE.
 
 
 import sys
-sys.path.append('/mnt/d0-0/share/bradnerlab/src/cl512/pipeline/')
+#sys.path.append('/mnt/d0-0/share/bradnerlab/src/cl512/pipeline/')
 
 print('\nUsing following version of python:\n')
 print(sys.version)
@@ -220,7 +222,7 @@ def loadDataTable(dataFile):
         dataDict[line[3]]['uniqueID'] = line[1]
         dataDict[line[3]]['genome']=upper(line[2])
         genome = line[2]
-        dataDict[line[3]]['bam'] = line[0]+line[1]+'.'+genome+'.bwt.sorted.bam'
+
         dataDict[line[3]]['sam'] = line[0]+line[1]+'.'+genome+'.bwt.sam'
         dataDict[line[3]]['ylf'] = line[0]+line[1]+'.'+genome+'.bwt.ylf'
         dataDict[line[3]]['enriched'] = line[5]
@@ -228,7 +230,29 @@ def loadDataTable(dataFile):
         dataDict[line[3]]['enrichedMacs'] = line[6]
         dataDict[line[3]]['color'] = line[7]
         dataDict[line[3]]['fastq']=line[8]
-            
+
+
+        #figure out which bam convention we are using
+        #default will be new convention
+        bam1 = line[0]+line[1]+'_'+genome+'.sorted.bam'
+        bam2 = line[0]+line[1]+'.'+genome+'.bwt.sorted.bam'
+
+        hasBam =False
+        try:
+            bam = open(bam1,'r')
+            hasBam = True
+            dataDict[line[3]]['bam'] = bam1
+            bam.close()
+        except IOError:
+            try:
+                bam = open(bam2,'r')
+                hasBam = True
+                dataDict[line[3]]['bam'] = bam2
+                bam.close()
+            except IOError:
+                pass
+        if hasBam == False:
+            dataDict[line[3]]['bam'] = bam1            
 
     return dataDict
 
@@ -543,7 +567,7 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
 
     mergeShFile.write('cd %s\n' % (bamFolder))
 
-    cmd1 = 'samtools merge %s ' % mergedFullPath
+    cmd1 = '%s merge %s ' % (samtoolsString,mergedFullPath)
 
     for name in namesList:
 
@@ -551,10 +575,10 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
 
     mergeShFile.write(cmd1+'\n')
 
-    cmd2 = 'samtools sort %s %s' % (mergedFullPath,bamFolder+mergedName+'.'+genome+'.bwt.sorted')
+    cmd2 = '%s sort %s %s' % (samtoolsString,mergedFullPath,bamFolder+mergedName+'.'+genome+'.bwt.sorted')
     mergeShFile.write(cmd2+'\n')
 
-    cmd3 = 'samtools index %s' % (mergedFullPath)
+    cmd3 = '%s index %s' % (samtoolsString,mergedFullPath)
     mergeShFile.write(cmd3+'\n')
 
     mergeShFile.close()
@@ -734,6 +758,106 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
             cmd = "macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
         elif upper(genome[0:2]) == 'RN':
             cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+        print(cmd)
+        os.system(cmd)
+
+
+
+
+
+
+
+def callMacs2(dataFile,macsFolder,namesList = [],broad=True,noBackground = False,pairedEnd = False,overwrite=False,pvalue='1e-9'):
+
+    '''
+    calls the macs error model
+    '''
+    dataDict = loadDataTable(dataFile)
+
+    if macsFolder[-1] != '/':
+        macsFolder+='/'
+    formatFolder(macsFolder,True)
+
+    #if no names are given, process all the data
+    if len(namesList) == 0:
+
+        namesList = dataDict.keys()
+
+
+    for name in namesList:
+        
+        #skip if a background set
+        if upper(dataDict[name]['background']) == 'NONE' and noBackground == False:
+            continue
+
+        #check for the bam
+        try:
+            bam = open(dataDict[name]['bam'],'r')
+            hasBam = True
+        except IOError:
+            hasBam = False
+
+        #check for background
+
+        if noBackground == False:
+            try:
+                backgroundName = dataDict[name]['background']
+                backbroundBam = open(dataDict[backgroundName]['bam'],'r')
+                hasBackground = True
+            except IOError:
+                hasBackground = False
+        else:
+            hasBackground = False
+
+        if not hasBam:
+            print('no bam found for %s. macs not called' % (name))
+            continue
+
+        if not hasBackground and noBackground == False:
+            print('no background bam %s found for dataset %s. macs not called' % (backgroundName,name))
+            continue
+        #make a new folder for every dataset
+        outdir = macsFolder+name
+        #print(outdir)
+        try:
+            foo = os.listdir(outdir)
+            if not overwrite:
+                print('MACS output already exists for %s. OVERWRITE = FALSE' % (name))
+                continue
+            
+        except OSError:
+            
+            os.system('mkdir %s' % (outdir))
+            
+        os.chdir(outdir)
+
+        bamFile = dataDict[name]['bam']
+
+        genome = dataDict[name]['genome']
+        #print('USING %s FOR THE GENOME' % genome)
+        
+        #setting parameters
+        if upper(genome[0:2]) == 'HG':
+            genomeString = 'hs'
+
+        if pairedEnd == True:
+            fileType = 'BAMPE'
+        else:
+            fileType = 'BAM'
+
+        if broad == True:
+            broadCall = '--broad'
+        else:
+            broadCall = ''
+            
+        if noBackground:
+            cmd = "/usr/local/bin/macs2 callpeak -t %s -f %s -g %s --outdir %s -n %s -p %s %s &" % (bamFile,fileType,genomeString,outdir,name,pvalue,broadCall)
+        else:
+            backgroundName =  dataDict[name]['background']
+            backgroundBamFile = dataDict[backgroundName]['bam']
+            cmd = "/usr/local/bin/macs2 callpeak -t %s -c %s -f %s -g %s --outdir %s -n %s -p %s %s &" % (bamFile,backgroundBamFile,fileType,genomeString,outdir,name,pvalue,broadCall)
+
+
         print(cmd)
         os.system(cmd)
 
@@ -2020,8 +2144,13 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
         #print name
         genome = dataDict[name]['genome']
         bamFile = dataDict[name]['bam']
+        
         backgroundName = dataDict[name]['background']
-        backgroundBamFile = dataDict[backgroundName]['bam']
+        if dataDict.has_key(backgroundName):
+            backgroundBamFile = dataDict[backgroundName]['bam']
+            hasBackground = True
+        else:
+            hasBackground = False
 
         if len(inputFile) == 0:
             macsFile = "%s%s" % (macsEnrichedFolder,dataDict[name]['enrichedMacs'])
@@ -2029,7 +2158,16 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
             macsFile = inputFile
         outputFolder = "%s%s_ROSE" % (parentFolder,name)
 
-        roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,mapString,outputFolder,tss,stitch)
+        if hasBackground:
+            if len(mapString) == 0:
+                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,outputFolder,tss,stitch)
+            else:
+                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,mapString,outputFolder,tss,stitch)
+        else:
+            if len(mapString) == 0:
+                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,outputFolder,tss,stitch)
+            else:
+                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,mapString,outputFolder,tss,stitch)
         bashFile.write(roseCmd)
         bashFile.write('\n')
 

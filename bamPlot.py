@@ -41,10 +41,12 @@ def loadAnnotFile(genome):
     load in the annotation and create a geneDict and transcription collection
     '''
     genomeDict = {
-        'HG18':'./annotation/hg18_refseq.ucsc',
-        'MM9': './annotation/mm9_refseq.ucsc',
-        'hg18':'./annotation/hg18_refseq.ucsc',
-        'mm9': './annotation/mm9_refseq.ucsc',
+        'HG18':'/ark/home/cl512/pipeline/annotation/hg18_refseq.ucsc',
+        'MM9': '/ark/home/cl512/pipeline/annotation/mm9_refseq.ucsc',
+        'hg18':'/ark/home/cl512/pipeline./annotation/hg18_refseq.ucsc',
+        'mm9': '/ark/home/cl512/pipeline/annotation/mm9_refseq.ucsc',
+        'hg19':'/ark/home/cl512/pipeline/annotation/hg19_refseq.ucsc',
+        'HG19':'/ark/home/cl512/pipeline/annotation/hg19_refseq.ucsc',
         }
 
     annotFile = genomeDict[genome]
@@ -239,7 +241,7 @@ def callRPlot(nameTable,diagramTable,plotTable,yScale,plotStyle,fileName):
     calls the R plotting thingy
     '''
 
-    cmd = 'R --no-save %s %s %s %s %s %s < ./bamPlot.R' % (nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
+    cmd = 'R --no-save %s %s %s %s %s %s < /ark/home/cl512/pipeline/bamPlot.R' % (nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
     print('calling command %s' % (cmd))
     os.system(cmd)
 
@@ -370,8 +372,8 @@ def main():
 
         #bring in the genome
         genome = upper(options.genome)
-        if ['HG18','MM9','RN5'].count(genome) == 0:
-            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, RN5, OR MM9' % (genome))
+        if ['HG19','HG18','MM9','RN5'].count(genome) == 0:
+            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, HG19, RN5, OR MM9' % (genome))
             parser.print_help()
             exit()
 
