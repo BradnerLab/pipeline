@@ -168,7 +168,7 @@ def populate_count_fractions(chromosome, common_clause, cell_types):
 
                 update_cursor.execute("INSERT INTO normalized_bins_by_file "
                                       "(cell_type, file_name, chromosome, bin, count_fraction, counter_version) "
-                                      "VALUES ('%s', '%s', '%s', %d, %d, %s)" % (
+                                      "VALUES ('%s', '%s', '%s', %d, %f, %s)" % (
                                       cell_type, file_name, chromosome, bin_number, file_count_fraction, version) )
 
                 if not skip_populating_normalized_bins_by_cell_type:
@@ -308,9 +308,9 @@ def main():
         print "Processing " + chromosome
         common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
 
-        #populate_count_fractions(chromosome, common_clause, cell_types)
-        #populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
-        create_csv_file(chromosome, common_clause, cell_types)
+        populate_count_fractions(chromosome, common_clause, cell_types)
+        populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
+        #create_csv_file(chromosome, common_clause, cell_types)
         #plot(chromosome, common_clause, cell_types)
 
     #plot_summaries(chromosomes)
