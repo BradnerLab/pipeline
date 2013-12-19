@@ -107,12 +107,12 @@ static int bam_fetch_func(const bam1_t *b,void *data)
     if(strand!='-') return 0;
   }
 
-  struct readitem *r=malloc(sizeof(struct readitem));
+  struct readitem *r=(struct readitem*) malloc(sizeof(struct readitem));
   r->strand=strand;
 
   r->cigar_str=NULL; // sam
   r->n_cigar=c->n_cigar;
-  r->cigar=malloc(sizeof(uint32_t)*c->n_cigar);
+  r->cigar=(uint32_t*) malloc(sizeof(uint32_t)*c->n_cigar);
   uint32_t *cigar = bam1_cigar(b);
 
   // get read length
@@ -133,7 +133,7 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   }
 
   uint8_t *seq=bam1_seq(b);
-  r->seq=malloc(sizeof(char)*(c->l_qseq+1));
+  r->seq=(char*) malloc(sizeof(char)*(c->l_qseq+1));
   for(i=0; i<c->l_qseq; i++)
   {
     (r->seq)[i]=bam_nt16_rev_table[bam1_seqi(seq,i)];
@@ -193,7 +193,7 @@ struct readitem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, c
   {
     return NULL;
   }
-  struct userData *d=malloc(sizeof(struct userData));
+  struct userData *d=(struct userData*) malloc(sizeof(struct userData));
   d->sl=NULL;
   d->strand=strand;
   d->extendlen=extendlen;
@@ -207,7 +207,7 @@ char *getDepositePath4url(char *url)
   char *urlcopy=strdup(url);
   char delim[]="/";
   char *tok=strtok(urlcopy,delim);
-  char *deposit_dir="./";
+  char *deposit_dir=strdup("./");
   struct stat sbuf;
   while(1)
   {
@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
 
   char *tail=NULL;
   unsigned int start=strtol(argv[3],&tail,10);
-  if(tail[0]!='\0' || start<0)
+  if(tail[0]!='\0')
   {
     fprintf(stderr, "wrong start (%s)\n", argv[3]);
     return 1;
@@ -268,13 +268,13 @@ int main(int argc, char *argv[])
   }
 
   unsigned int extendlen=(unsigned short)strtol(argv[7],&tail,10);
-  if(tail[0]!='\0' || extendlen<0)
+  if(tail[0]!='\0')
   {
     fprintf(stderr, "wrong extension length (%s)\n", argv[7]);
     return 1;
   }
 
-  double *data=malloc(sizeof(double)*spnum);
+  double *data=(double*) malloc(sizeof(double)*spnum);
   if(data==NULL)
   {
     fputs("out of mem\n", stderr);
