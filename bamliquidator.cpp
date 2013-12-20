@@ -9,6 +9,7 @@
 #include "sam.h"
 
 #include <vector>
+#include <deque>
 
 /* The MIT License (MIT) 
 
@@ -35,7 +36,6 @@
 
 struct ReadItem
 {
-  ReadItem *next;
   unsigned int start;
   /* read stop is start + strlen(seq)
   this *stop* will only be used for computing density
@@ -71,7 +71,7 @@ int intMax(int a, int b)
 
 struct UserData
 {
-  ReadItem sl;
+  std::deque<ReadItem> readItems;
   char strand;
   unsigned int extendlen;
 };
@@ -162,14 +162,13 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   {
     r.mismatch=NULL;
   }
-  r.next=&udata->sl;
-  udata->sl=r;
+  udata->readItems.push_back(r);
   return 0;
 }
 
 
 
-ReadItem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char strand, unsigned int extendlen)
+std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
   int ref,beg,end;
@@ -181,13 +180,13 @@ ReadItem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char str
   }
   if(ref<0)
   {
-    return NULL;
+    return std::deque<ReadItem>();
   }
-  UserData *d=(UserData*) malloc(sizeof(UserData));
-  d->strand=strand;
-  d->extendlen=extendlen;
-  bam_fetch(fp->x.bam,idx,ref,beg,end,d,bam_fetch_func);
-  return &(d->sl);
+  UserData d;
+  d.strand=strand;
+  d.extendlen=extendlen;
+  bam_fetch(fp->x.bam,idx,ref,beg,end,&d,bam_fetch_func);
+  return d.readItems;
 }
 
 /**************** INIT
@@ -260,25 +259,24 @@ int oldmain(int argc, char* argv[])
     stopArr[i] = (int)(start + pieceLength*(i+1));
   }
 
-  ReadItem *itemsl, *item;
   char *tmp;
   if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
   {
     printf("asprintf() out of mem\n");
     return 1;
   }
-  itemsl=bamQuery_region(fp,bamidx,tmp,strand,extendlen);
+  std::deque<ReadItem> items = bamQuery_region(fp,bamidx,tmp,strand,extendlen);
   free(tmp);
 
-  for(item=itemsl; item!=NULL; item=item->next)
+  for(const ReadItem& item : items)
   {
     // collapse this bed item onto the density counter
     for(int i=0; i<spnum; i++)
     {
-      if(item->start > stopArr[i]) continue;
-      if(item->stop < startArr[i]) break;
-      int start=intMax(item->start,startArr[i]);
-      int stop=intMin(item->stop,stopArr[i]);
+      if(item.start > stopArr[i]) continue;
+      if(item.stop < startArr[i]) break;
+      int start=intMax(item.start,startArr[i]);
+      int stop=intMin(item.stop,stopArr[i]);
       if(start<stop)
       {
         // as Charles suggested, add the fraction of the read (overlapping with the bin)
