@@ -160,7 +160,9 @@ std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coor
 /**************** INIT
 */
 
-int oldmain(int argc, char* argv[])
+int parseArgs(unsigned int &start, unsigned int &stop,
+              char &strand, unsigned int &spnum, unsigned int &extendlen,
+              const int argc, char *argv[])
 {
   if(argc!=8)
   {
@@ -169,35 +171,49 @@ int oldmain(int argc, char* argv[])
   }
 
   char *tail=NULL;
-  unsigned int start=strtol(argv[3],&tail,10);
+  start=strtol(argv[3],&tail,10);
   if(tail[0]!='\0')
   {
     fprintf(stderr, "wrong start (%s)\n", argv[3]);
     return 1;
   }
-  unsigned int stop=strtol(argv[4],&tail,10);
+  stop=strtol(argv[4],&tail,10);
   if(tail[0]!='\0' || stop<=start)
   {
     fprintf(stderr, "wrong stop (%s)\n", argv[4]);
     return 1;
   }
-  char strand=argv[5][0];
+  strand=argv[5][0];
   if(strand!='+' && strand!='-' && strand!='.')
   {
     fputs("wrong strand, must be +/-/.\n",stderr);
     return 1;
   }
-  unsigned int spnum=strtol(argv[6],&tail,10);
+  spnum=strtol(argv[6],&tail,10);
   if(tail[0]!='\0' || spnum<=0)
   {
     fprintf(stderr, "wrong spnum (%s)\n", argv[6]);
     return 1;
   }
-
-  unsigned int extendlen=(unsigned short)strtol(argv[7],&tail,10);
+  extendlen=(unsigned short)strtol(argv[7],&tail,10);
   if(tail[0]!='\0')
   {
     fprintf(stderr, "wrong extension length (%s)\n", argv[7]);
+    return 1;
+  }
+
+  return 0;
+}
+
+int main(int argc, char *argv[])
+{
+  unsigned int start = 0;
+  unsigned int stop  = 0;
+  char strand = 0;
+  unsigned int spnum = 0;
+  unsigned int extendlen = 0;
+  if (parseArgs(start, stop, strand, spnum, extendlen, argc, argv) != 0)
+  {
     return 1;
   }
 
@@ -259,15 +275,5 @@ int oldmain(int argc, char* argv[])
     printf("%d\n", (int)(data[i]));
   }
 
-  return 0;
-}
-
-int main(int argc, char *argv[])
-{
-  //while(true)
-  {
-    int rc = oldmain(argc, argv);
-    if (rc != 0) return rc;
-  }
   return 0;
 }
