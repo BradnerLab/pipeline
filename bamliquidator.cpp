@@ -33,21 +33,9 @@
    THE SOFTWARE. 
  */
 
-struct genericItem
+struct ReadItem
 {
-  /* to include beditem and readitem 
-  when only coordinate is concerned
-  and when bed/sam format cannot be sured
-  */
-  struct genericItem *next;
-  unsigned int start;
-  unsigned int stop;
-};
-
-
-struct readitem
-{
-  struct readitem *next;
+  ReadItem *next;
   unsigned int start;
   /* read stop is start + strlen(seq)
   this *stop* will only be used for computing density
@@ -81,9 +69,9 @@ int intMax(int a, int b)
 
 
 
-struct userData
+struct UserData
 {
-  struct readitem *sl;
+  ReadItem sl;
   char strand;
   unsigned int extendlen;
 };
@@ -95,7 +83,7 @@ static int bam_fetch_func(const bam1_t *b,void *data)
 {
   if (b->core.tid < 0) return 0;
 
-  struct userData *udata=(struct userData *)data;
+  UserData *udata=(UserData *)data;
 
   const bam1_core_t *c = &b->core;
 
@@ -109,12 +97,12 @@ static int bam_fetch_func(const bam1_t *b,void *data)
     if(strand!='-') return 0;
   }
 
-  struct readitem *r=(struct readitem*) malloc(sizeof(struct readitem));
-  r->strand=strand;
+  ReadItem r;
+  r.strand=strand;
 
-  r->cigar_str=NULL; // sam
-  r->n_cigar=c->n_cigar;
-  r->cigar=(uint32_t*) malloc(sizeof(uint32_t)*c->n_cigar);
+  r.cigar_str=NULL; // sam
+  r.n_cigar=c->n_cigar;
+  r.cigar=(uint32_t*) malloc(sizeof(uint32_t)*c->n_cigar);
   uint32_t *cigar = bam1_cigar(b);
 
   // get read length
@@ -131,57 +119,57 @@ static int bam_fetch_func(const bam1_t *b,void *data)
 
   for (i=0; i < c->n_cigar; ++i)
   {
-    (r->cigar)[i]=cigar[i]; // copy cigar
+    (r.cigar)[i]=cigar[i]; // copy cigar
   }
 
   uint8_t *seq=bam1_seq(b);
-  r->seq=(char*) malloc(sizeof(char)*(c->l_qseq+1));
+  r.seq=(char*) malloc(sizeof(char)*(c->l_qseq+1));
   for(i=0; i<c->l_qseq; i++)
   {
-    (r->seq)[i]=bam_nt16_rev_table[bam1_seqi(seq,i)];
+    (r.seq)[i]=bam_nt16_rev_table[bam1_seqi(seq,i)];
   }
-  (r->seq)[i]='\0';
+  (r.seq)[i]='\0';
 
-  r->id=strdup(bam1_qname(b));
-  r->start=c->pos;
-  r->stop=c->pos+readlen;
+  r.id=strdup(bam1_qname(b));
+  r.start=c->pos;
+  r.stop=c->pos+readlen;
 
-  //printf("%d\t%d\t%c\t", r->start, r->stop, strand);
+  //printf("%d\t%d\t%c\t", r.start, r.stop, strand);
 
   // extend
   if(udata->extendlen>0)
   {
     if(strand=='+')
     {
-      r->stop+=udata->extendlen;
+      r.stop+=udata->extendlen;
     }
     else
     {
-      r->start=intMax(0,r->start-udata->extendlen);
+      r.start=intMax(0,r.start-udata->extendlen);
     }
   }
 
-  //printf("%d\t%d\n", r->start, r->stop);
+  //printf("%d\t%d\n", r.start, r.stop);
 
-  r->flag=c->flag;
-  r->flag_str=NULL;
+  r.flag=c->flag;
+  r.flag_str=NULL;
   uint8_t *m=bam_aux_get(b,"MD");
   if(m)
   {
-    r->mismatch=strdup((char *)m);
+    r.mismatch=strdup((char *)m);
   }
   else
   {
-    r->mismatch=NULL;
+    r.mismatch=NULL;
   }
-  r->next=udata->sl;
+  r.next=&udata->sl;
   udata->sl=r;
   return 0;
 }
 
 
 
-struct readitem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char strand, unsigned int extendlen)
+ReadItem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
   int ref,beg,end;
@@ -195,18 +183,17 @@ struct readitem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, c
   {
     return NULL;
   }
-  struct userData *d=(struct userData*) malloc(sizeof(struct userData));
-  d->sl=NULL;
+  UserData *d=(UserData*) malloc(sizeof(UserData));
   d->strand=strand;
   d->extendlen=extendlen;
   bam_fetch(fp->x.bam,idx,ref,beg,end,d,bam_fetch_func);
-  return d->sl;
+  return &(d->sl);
 }
 
 /**************** INIT
 */
 
-int main(int argc, char *argv[])
+int oldmain(int argc, char* argv[])
 {
   if(argc!=8)
   {
@@ -273,14 +260,14 @@ int main(int argc, char *argv[])
     stopArr[i] = (int)(start + pieceLength*(i+1));
   }
 
-  struct genericItem *itemsl, *item;
+  ReadItem *itemsl, *item;
   char *tmp;
   if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
   {
     printf("asprintf() out of mem\n");
     return 1;
   }
-  itemsl=(struct genericItem *)bamQuery_region(fp,bamidx,tmp,strand,extendlen);
+  itemsl=bamQuery_region(fp,bamidx,tmp,strand,extendlen);
   free(tmp);
 
   for(item=itemsl; item!=NULL; item=item->next)
@@ -306,5 +293,15 @@ int main(int argc, char *argv[])
     printf("%d\n", (int)(data[i]));
   }
 
+  return 0;
+}
+
+int main(int argc, char *argv[])
+{
+  //while(true)
+  {
+    int rc = oldmain(argc, argv);
+    if (rc != 0) return rc;
+  }
   return 0;
 }
