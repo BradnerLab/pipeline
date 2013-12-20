@@ -47,7 +47,6 @@ struct ReadItem
   uint32_t flag; // flag from bam
   char strand;
   std::vector<uint32_t> cigar;
-  char *mismatch;
 };
 
 
@@ -131,15 +130,6 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   //printf("%d\t%d\n", r.start, r.stop);
 
   r.flag=c->flag;
-  uint8_t *m=bam_aux_get(b,"MD");
-  if(m)
-  {
-    r.mismatch=strdup((char *)m);
-  }
-  else
-  {
-    r.mismatch=NULL;
-  }
   udata->readItems.push_back(r);
   return 0;
 }
