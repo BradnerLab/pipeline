@@ -201,35 +201,6 @@ struct readitem *bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, c
   return d->sl;
 }
 
-
-char *getDepositePath4url(char *url)
-{
-  char *urlcopy=strdup(url);
-  char delim[]="/";
-  char *tok=strtok(urlcopy,delim);
-  char *deposit_dir=strdup("./");
-  struct stat sbuf;
-  while(1)
-  {
-    assert(asprintf(&deposit_dir,"%s/%s",deposit_dir,tok)>0);
-    if(stat(deposit_dir,&sbuf)==-1)
-    {
-      // create new dir
-      if(mkdir(deposit_dir,S_IRWXU)!=0)
-      {
-        fprintf(stderr,"failed to create caching directory\n");
-        return NULL;
-      }
-    }
-    tok=strtok(NULL,delim);
-    if(tok==NULL)
-    {
-      break;
-    }
-  }
-  return deposit_dir;
-}
-
 /**************** INIT
 */
 
@@ -295,15 +266,6 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if(strncasecmp(bamfile,"http",4)==0)
-  {
-    char *deposit_dir=getDepositePath4url(bamfile);
-    if(chdir(deposit_dir)!=0)
-    {
-      printf("failed to change to bam caching dir: %s\n", deposit_dir);
-      return 1;
-    }
-  }
   bamidx=bam_index_load(bamfile);
 
   /* fetch bed items for a region and compute density

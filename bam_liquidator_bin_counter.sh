@@ -52,7 +52,7 @@ usage()
 # prevented a bin on a chromosome from being counted may be incremented by 1 (since the prior successful counts will
 # be unchanged).  This will allow me to run different versions simultaneously and/or compare performance/correctness 
 # of different versions.
-version=205
+version=206
 baseline_version=200 # used to verify counts haven't changed if baseline checking is enabled
 
 database_name=meta_analysis
@@ -167,7 +167,7 @@ do
 
   while read start end bin
   do
-    output=$(./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension 2>&1)
+    output=$(./bamliquidator $file_path $chromosome $start $end $both_strands $one_summary $zero_extension 2>>stderr.txt)
     count_status=$?
     if [ $count_status -ne 0 ]; then
       echo error detected in bamliquidator run
