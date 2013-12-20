@@ -46,7 +46,6 @@ struct ReadItem
   unsigned int stop;
   uint32_t flag; // flag from bam
   char strand;
-  char *flag_str; // flag str from sam
   char *seq; // read sequence
   std::vector<uint32_t> cigar;
   char *cigar_str; // cigar str from sam
@@ -143,7 +142,6 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   //printf("%d\t%d\n", r.start, r.stop);
 
   r.flag=c->flag;
-  r.flag_str=NULL;
   uint8_t *m=bam_aux_get(b,"MD");
   if(m)
   {
