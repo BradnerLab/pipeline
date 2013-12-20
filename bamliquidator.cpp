@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <deque>
+#include <string>
 
 /* The MIT License (MIT) 
 
@@ -43,7 +44,6 @@ struct ReadItem
   the actual stop need to be determined by cigar
   */
   unsigned int stop;
-  char *id;
   uint32_t flag; // flag from bam
   char strand;
   char *flag_str; // flag str from sam
@@ -122,7 +122,6 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   }
   (r.seq)[i]='\0';
 
-  r.id=strdup(bam1_qname(b));
   r.start=c->pos;
   r.stop=c->pos+readlen;
 
