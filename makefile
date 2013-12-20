@@ -47,10 +47,10 @@ SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
 # http://www.cprogramming.com/tutorial/makefiles.html
 
 bamliquidator: bamliquidator.o
-	g++ -std=c++11 -O -g  -Wall -o bamliquidator bamliquidator.o -L$(SAM_DIR) -lbam -lz -ldl 
+	clang++ -std=c++11 -O -g  -Wall -o bamliquidator bamliquidator.o -L$(SAM_DIR) -lbam -lz -ldl 
   
 bamliquidator.o: bamliquidator.cpp
-	g++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -o bamliquidator.o -pthread -c bamliquidator.cpp
+	clang++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -o bamliquidator.o -pthread -c bamliquidator.cpp
 
 clean:
 	rm -f bamliquidator bamliquidator.o
