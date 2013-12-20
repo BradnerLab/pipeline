@@ -48,8 +48,7 @@ struct ReadItem
   char strand;
   char *flag_str; // flag str from sam
   char *seq; // read sequence
-  uint32_t *cigar; // cigar from bam
-  uint32_t n_cigar;
+  std::vector<uint32_t> cigar;
   char *cigar_str; // cigar str from sam
   char *mismatch;
 };
@@ -101,8 +100,6 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   r.strand=strand;
 
   r.cigar_str=NULL; // sam
-  r.n_cigar=c->n_cigar;
-  r.cigar=(uint32_t*) malloc(sizeof(uint32_t)*c->n_cigar);
   uint32_t *cigar = bam1_cigar(b);
 
   // get read length
@@ -115,12 +112,7 @@ static int bam_fetch_func(const bam1_t *b,void *data)
       readlen += cigar[i]>>4;
   }
 
-
-
-  for (i=0; i < c->n_cigar; ++i)
-  {
-    (r.cigar)[i]=cigar[i]; // copy cigar
-  }
+  r.cigar = std::vector<uint32_t>(cigar, cigar+c->n_cigar);
 
   uint8_t *seq=bam1_seq(b);
   r.seq=(char*) malloc(sizeof(char)*(c->l_qseq+1));
