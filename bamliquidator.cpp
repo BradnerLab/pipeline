@@ -8,6 +8,8 @@
 #include <math.h>
 #include "sam.h"
 
+#include <vector>
+
 /* The MIT License (MIT) 
 
    Copyright (c) 2013 Xin Zhong and Charles Lin
@@ -245,15 +247,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  double *data=(double*) malloc(sizeof(double)*spnum);
-  if(data==NULL)
-  {
-    fputs("out of mem\n", stderr);
-    return 1;
-  }
-
-  int i;
-  for(i=0; i<spnum; i++) data[i]=0;
+  std::vector<double> data(spnum, 0);
 
   samfile_t *fp=NULL;
   bam_index_t *bamidx=NULL;
@@ -273,7 +267,7 @@ int main(int argc, char *argv[])
   */
   int startArr[spnum], stopArr[spnum];
   float pieceLength = (float)(stop-start) / spnum;
-  for(i=0; i<spnum; i++)
+  for(int i=0; i<spnum; i++)
   {
     startArr[i] = (int)(start + pieceLength*i);
     stopArr[i] = (int)(start + pieceLength*(i+1));
@@ -292,7 +286,7 @@ int main(int argc, char *argv[])
   for(item=itemsl; item!=NULL; item=item->next)
   {
     // collapse this bed item onto the density counter
-    for(i=0; i<spnum; i++)
+    for(int i=0; i<spnum; i++)
     {
       if(item->start > stopArr[i]) continue;
       if(item->stop < startArr[i]) break;
@@ -307,7 +301,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  for(i=0; i<spnum; i++)
+  for(int i=0; i<spnum; i++)
   {
     printf("%d\n", (int)(data[i]));
   }
