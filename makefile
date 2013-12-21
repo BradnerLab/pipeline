@@ -47,7 +47,7 @@ SAM_DIR:=/home/bradneradmin/samtools
 # http://www.cprogramming.com/tutorial/makefiles.html
 
 bamliquidator: bamliquidator.o
-	clang++ -std=c++11 -O -g  -Wall -o bamliquidator bamliquidator.o -L$(SAM_DIR) -lbam -lz -ldl 
+	clang++ -O -g  -Wall -o bamliquidator bamliquidator.o -L$(SAM_DIR) -lbam -lz -ldl -lpthread
   
 bamliquidator.o: bamliquidator.cpp
 	clang++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -o bamliquidator.o -pthread -c bamliquidator.cpp
