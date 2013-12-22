@@ -11,6 +11,8 @@
 #include <vector>
 #include <deque>
 #include <string>
+#include <stdexcept>
+#include <iostream>
 
 /* The MIT License (MIT) 
 
@@ -136,11 +138,11 @@ static int bam_fetch_func(const bam1_t *b,void *data)
 
 
 
-std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coord, char strand, unsigned int extendlen)
+std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std::string &coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
   int ref,beg,end;
-  int rc = bam_parse_region(fp->header,coord,&ref,&beg,&end);
+  int rc = bam_parse_region(fp->header,coord.c_str(),&ref,&beg,&end);
   if (rc != 0)
   {
     printf("bam_parse_region failed with return code %d, exiting\n", rc);
@@ -160,8 +162,10 @@ std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, char *coor
 /**************** INIT
 */
 
-int parseArgs(unsigned int &start, unsigned int &stop,
-              char &strand, unsigned int &spnum, unsigned int &extendlen,
+int parseArgs(std::string &bamfile, std::string &coord, 
+              unsigned int &start, unsigned int &stop,
+              char &strand, unsigned int &spnum,
+              unsigned int &extendlen,
               const int argc, char *argv[])
 {
   if(argc!=8)
@@ -171,6 +175,8 @@ int parseArgs(unsigned int &start, unsigned int &stop,
   }
 
   char *tail=NULL;
+  bamfile=argv[1];
+
   start=strtol(argv[3],&tail,10);
   if(tail[0]!='\0')
   {
@@ -202,35 +208,34 @@ int parseArgs(unsigned int &start, unsigned int &stop,
     return 1;
   }
 
+  char *tmp;
+  if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
+  {
+    printf("asprintf() out of mem\n");
+    return 1;
+  }
+  coord = tmp;
+  free(tmp);
+
   return 0;
 }
 
-int main(int argc, char *argv[])
+std::vector<double> liquidate(const std::string &bamfile, const std::string &coord,
+                              const unsigned int start, const unsigned int stop,
+                              const char strand, const unsigned int spnum,
+                              const unsigned int extendlen)
 {
-  unsigned int start = 0;
-  unsigned int stop  = 0;
-  char strand = 0;
-  unsigned int spnum = 0;
-  unsigned int extendlen = 0;
-  if (parseArgs(start, stop, strand, spnum, extendlen, argc, argv) != 0)
-  {
-    return 1;
-  }
-
   std::vector<double> data(spnum, 0);
 
   samfile_t *fp=NULL;
   bam_index_t *bamidx=NULL;
 
-  char *bamfile=argv[1];
-
-  if((fp=samopen(bamfile,"rb",0))==0)
+  if((fp=samopen(bamfile.c_str(),"rb",0))==0)
   {
-    printf("samopen() error with %s\n",bamfile);
-    return 1;
+    throw std::runtime_error("samopen() error with " + bamfile);
   }
 
-  bamidx=bam_index_load(bamfile);
+  bamidx=bam_index_load(bamfile.c_str());
 
   /* fetch bed items for a region and compute density
   only deal with coord, so use generic item
@@ -243,14 +248,7 @@ int main(int argc, char *argv[])
     stopArr[i] = (int)(start + pieceLength*(i+1));
   }
 
-  char *tmp;
-  if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
-  {
-    printf("asprintf() out of mem\n");
-    return 1;
-  }
-  std::deque<ReadItem> items = bamQuery_region(fp,bamidx,tmp,strand,extendlen);
-  free(tmp);
+  std::deque<ReadItem> items = bamQuery_region(fp,bamidx,coord,strand,extendlen);
 
   for(const ReadItem& item : items)
   {
@@ -270,9 +268,30 @@ int main(int argc, char *argv[])
     }
   }
 
-  for(int i=0; i<spnum; i++)
+  return data;
+}
+
+int main(int argc, char *argv[])
+{
+  std::string bamfile;
+  std::string coord;
+  unsigned int start = 0;
+  unsigned int stop  = 0;
+  char strand = 0;
+  unsigned int spnum = 0;
+  unsigned int extendlen = 0;
+  if (parseArgs(bamfile, coord, start, stop, strand, spnum, extendlen, argc, argv) != 0)
   {
-    printf("%d\n", (int)(data[i]));
+    return 1;
+  }
+
+  const std::vector<double> counts = liquidate(bamfile, coord, start, stop,
+    strand, spnum, extendlen);
+
+
+  for(double count : counts)
+  {
+    printf("%d\n", (int) count);
   }
 
   return 0;
