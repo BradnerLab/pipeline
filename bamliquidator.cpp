@@ -12,7 +12,6 @@
 #include <deque>
 #include <string>
 #include <stdexcept>
-#include <iostream>
 
 /* The MIT License (MIT) 
 
@@ -267,6 +266,10 @@ std::vector<double> liquidate(const std::string &bamfile, const std::string &coo
       }
     }
   }
+
+  bam_index_destroy(bamidx);
+
+  samclose(fp);
 
   return data;
 }
