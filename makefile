@@ -23,8 +23,8 @@
 ###############################################################################
 
 #SAM_DIR='./samtools/'
-SAM_DIR:=/home/bradneradmin/samtools
-#SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
+#SAM_DIR:=/home/bradneradmin/samtools
+SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
 
 # Please change SAM_DIR to the directory where the samtools program has been
 # built.  bamliquidator needs some of the source files in the samtools
@@ -46,11 +46,18 @@ SAM_DIR:=/home/bradneradmin/samtools
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
 
-bamliquidator: bamliquidator.o
-	clang++ -O -g  -Wall -o bamliquidator bamliquidator.o -L$(SAM_DIR) -lbam -lz -ldl -lpthread
+
+
+all: bamliquidator 
+
+bamliquidator: bamliquidator.m.o bamliquidator.o
+	clang++ -O -g -Wall -o bamliquidator bamliquidator.o bamliquidator.m.o -L$(SAM_DIR) -lbam -lz -ldl -lpthread
+
+bamliquidator.m.o: bamliquidator.m.cpp
+	clang++ -std=c++11 -O -g -Wall -c bamliquidator.m.cpp
   
 bamliquidator.o: bamliquidator.cpp
-	clang++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -o bamliquidator.o -pthread -c bamliquidator.cpp
+	clang++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
-	rm -f bamliquidator bamliquidator.o
+	rm -f bamliquidator bamliquidator.o bamliquidator.m.o

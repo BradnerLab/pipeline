@@ -1,16 +1,9 @@
+#include "bamliquidator.h"
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <limits.h>
-#include <assert.h>
-#include <math.h>
 #include "sam.h"
 
-#include <vector>
 #include <deque>
-#include <string>
 #include <stdexcept>
 
 /* The MIT License (MIT) 
@@ -158,66 +151,6 @@ std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std:
   return d.readItems;
 }
 
-/**************** INIT
-*/
-
-int parseArgs(std::string &bamfile, std::string &coord, 
-              unsigned int &start, unsigned int &stop,
-              char &strand, unsigned int &spnum,
-              unsigned int &extendlen,
-              const int argc, char *argv[])
-{
-  if(argc!=8)
-  {
-    printf("[ bamliquidator ] output to stdout\n1. bam file (.bai file has to be at same location)\n2. chromosome\n3. start\n4. stop\n5. strand +/-, use dot (.) for both strands\n6. number of summary points\n7. extension length\n\n");
-    return 1;
-  }
-
-  char *tail=NULL;
-  bamfile=argv[1];
-
-  start=strtol(argv[3],&tail,10);
-  if(tail[0]!='\0')
-  {
-    fprintf(stderr, "wrong start (%s)\n", argv[3]);
-    return 1;
-  }
-  stop=strtol(argv[4],&tail,10);
-  if(tail[0]!='\0' || stop<=start)
-  {
-    fprintf(stderr, "wrong stop (%s)\n", argv[4]);
-    return 1;
-  }
-  strand=argv[5][0];
-  if(strand!='+' && strand!='-' && strand!='.')
-  {
-    fputs("wrong strand, must be +/-/.\n",stderr);
-    return 1;
-  }
-  spnum=strtol(argv[6],&tail,10);
-  if(tail[0]!='\0' || spnum<=0)
-  {
-    fprintf(stderr, "wrong spnum (%s)\n", argv[6]);
-    return 1;
-  }
-  extendlen=(unsigned short)strtol(argv[7],&tail,10);
-  if(tail[0]!='\0')
-  {
-    fprintf(stderr, "wrong extension length (%s)\n", argv[7]);
-    return 1;
-  }
-
-  char *tmp;
-  if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
-  {
-    printf("asprintf() out of mem\n");
-    return 1;
-  }
-  coord = tmp;
-  free(tmp);
-
-  return 0;
-}
 
 std::vector<double> liquidate(const std::string &bamfile, const std::string &coord,
                               const unsigned int start, const unsigned int stop,
@@ -272,30 +205,4 @@ std::vector<double> liquidate(const std::string &bamfile, const std::string &coo
   samclose(fp);
 
   return data;
-}
-
-int main(int argc, char *argv[])
-{
-  std::string bamfile;
-  std::string coord;
-  unsigned int start = 0;
-  unsigned int stop  = 0;
-  char strand = 0;
-  unsigned int spnum = 0;
-  unsigned int extendlen = 0;
-  if (parseArgs(bamfile, coord, start, stop, strand, spnum, extendlen, argc, argv) != 0)
-  {
-    return 1;
-  }
-
-  const std::vector<double> counts = liquidate(bamfile, coord, start, stop,
-    strand, spnum, extendlen);
-
-
-  for(double count : counts)
-  {
-    printf("%d\n", (int) count);
-  }
-
-  return 0;
 }
