@@ -22,9 +22,11 @@
 
 ###############################################################################
 
+ifndef SAM_DIR
 #SAM_DIR='./samtools/'
 SAM_DIR:=/home/bradneradmin/samtools
 #SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
+endif
 
 # Please change SAM_DIR to the directory where the samtools program has been
 # built.  bamliquidator needs some of the source files in the samtools
