@@ -48,18 +48,26 @@ endif
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
 
+CPPFLAGS:=-std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
+LDFLAGS:=-O -g -Wall -stdlib=libc++
+LDLIBS:=-L$(SAM_DIR) -lbam -lz -ldl -lpthread -lboost_system 
 
-
-all: bamliquidator 
+all: bamliquidator bamliquidate_batch 
 
 bamliquidator: bamliquidator.m.o bamliquidator.o
-	clang++ -O -g -Wall -o bamliquidator bamliquidator.o bamliquidator.m.o -L$(SAM_DIR) -lbam -lz -ldl -lpthread
+	clang++ $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
+
+bamliquidate_batch: bamliquidate_batch.m.o
+	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o $(LDLIBS) 
 
 bamliquidator.m.o: bamliquidator.m.cpp
-	clang++ -std=c++11 -O -g -Wall -c bamliquidator.m.cpp
+	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
+
+bamliquidate_batch.m.o: bamliquidate_batch.m.cpp
+	clang++ $(CPPFLAGS) -c bamliquidate_batch.m.cpp
   
 bamliquidator.o: bamliquidator.cpp
-	clang++ -std=c++11 -O -g  -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 -I$(SAM_DIR) -pthread -c bamliquidator.cpp
+	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
-	rm -f bamliquidator bamliquidator.o bamliquidator.m.o
+	rm -f bamliquidator bamliquidate_batch bamliquidate_batch.m.o bamliquidator.o bamliquidator.m.o
