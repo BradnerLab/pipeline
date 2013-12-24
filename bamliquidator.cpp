@@ -5,6 +5,7 @@
 
 #include <deque>
 #include <stdexcept>
+#include <sstream>
 
 /* The MIT License (MIT) 
 
@@ -152,12 +153,15 @@ std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std:
 }
 
 
-std::vector<double> liquidate(const std::string &bamfile, const std::string &coord,
+std::vector<double> liquidate(const std::string &bamfile, const std::string &chromosome,
                               const unsigned int start, const unsigned int stop,
                               const char strand, const unsigned int spnum,
                               const unsigned int extendlen)
 {
   std::vector<double> data(spnum, 0);
+  
+  const std::string coord = 
+    (std::stringstream() << chromosome << ':' << start << '-' << stop).str();
 
   samfile_t *fp=NULL;
   bam_index_t *bamidx=NULL;

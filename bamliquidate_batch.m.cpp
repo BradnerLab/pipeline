@@ -32,20 +32,16 @@ void batch()
 
   for (auto chr : chromosomes)
   {
-    std::stringstream coord;
     int basePairsInChromosome = 247249719;
     int binsInChromsome = std::ceil(basePairsInChromosome / (double) binSize);
     int maxBasePairForLiquidation = binsInChromsome * binSize;
-    coord << chr << ":0-" << maxBasePairForLiquidation;
     // pickup here: call liquidate with proper args
-    // coordinate is of the form "chr1:0-10000"
     // first just try a single thread counting from file,
     // and a single thread recording counts in hdf5
     // I'm not sure if samtools is thread safe -- try this after I confirm it working
     // I need to write a script to compare hdf5 and mysql results or something
     // maybe I should just write both to txt and diff them
-    std::cout << "counting " << coord.str() << std::endl;
-    std::vector<double> counts = liquidate(bam_file, coord.str(), 0, maxBasePairForLiquidation, '+', 1, 0);
+    std::vector<double> counts = liquidate(bam_file, chr, 0, maxBasePairForLiquidation, '+', 1, 0);
   }
  
 }

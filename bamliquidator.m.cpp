@@ -29,7 +29,7 @@
    THE SOFTWARE. 
  */
 
-int parseArgs(std::string &bamfile, std::string &coord, 
+int parseArgs(std::string &bamfile, std::string &chromosome, 
               unsigned int &start, unsigned int &stop,
               char &strand, unsigned int &spnum,
               unsigned int &extendlen,
@@ -41,9 +41,10 @@ int parseArgs(std::string &bamfile, std::string &coord,
     return 1;
   }
 
-  char *tail=NULL;
   bamfile=argv[1];
+  chromosome=argv[2];
 
+  char *tail=NULL;
   start=strtol(argv[3],&tail,10);
   if(tail[0]!='\0')
   {
@@ -75,33 +76,24 @@ int parseArgs(std::string &bamfile, std::string &coord,
     return 1;
   }
 
-  char *tmp;
-  if(asprintf(&tmp,"%s:%d-%d",argv[2],start,stop)<0)
-  {
-    printf("asprintf() out of mem\n");
-    return 1;
-  }
-  coord = tmp;
-  free(tmp);
-
   return 0;
 }
 
 int main(int argc, char *argv[])
 {
   std::string bamfile;
-  std::string coord;
+  std::string chromosome;
   unsigned int start = 0;
   unsigned int stop  = 0;
   char strand = 0;
   unsigned int spnum = 0;
   unsigned int extendlen = 0;
-  if (parseArgs(bamfile, coord, start, stop, strand, spnum, extendlen, argc, argv) != 0)
+  if (parseArgs(bamfile, chromosome, start, stop, strand, spnum, extendlen, argc, argv) != 0)
   {
     return 1;
   }
 
-  const std::vector<double> counts = liquidate(bamfile, coord, start, stop,
+  const std::vector<double> counts = liquidate(bamfile, chromosome, start, stop,
     strand, spnum, extendlen);
 
   for(double count : counts)
