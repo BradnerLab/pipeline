@@ -4,6 +4,7 @@
 #include <boost/lockfree/queue.hpp>
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 #include <boost/atomic.hpp>
 
@@ -33,7 +34,7 @@ void batch()
   {
     std::stringstream coord;
     int basePairsInChromosome = 247249719;
-    int binsInChromsome = math.ceil(247249719 / (double) binSize);
+    int binsInChromsome = std::ceil(basePairsInChromosome / (double) binSize);
     int maxBasePairForLiquidation = binsInChromsome * binSize;
     coord << chr << ":0-" << maxBasePairForLiquidation;
     // pickup here: call liquidate with proper args
