@@ -25,12 +25,12 @@
 ifndef SAM_DIR
 #SAM_DIR='./samtools/'
 SAM_DIR:=/home/bradneradmin/samtools
-#SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
 endif
 
 # Please change SAM_DIR to the directory where the samtools program has been
-# built.  bamliquidator needs some of the source files in the samtools
-# directory.  note, this is not the location of the samtools program.
+# built (or override it in a condition below).  bamliquidator needs some of the 
+# source files in the samtools directory.  note, this is not the location of the
+# samtools program.
 #
 # please change this to the appropriate directory
 #
@@ -44,13 +44,20 @@ endif
 #
 # on a Mac, you can also install samtools via homebrew, e.g. homebrew install samtools
 
+CPPFLAGS := -std=c++11 -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
+LDFLAGS := -O -g -Wall 
+LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread -lboost_system 
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+	SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
+	CPPFLAGS += -stdlib=libc++ 
+	LDFLAGS += -stdlib=libc++ 
+endif
 
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
 
-CPPFLAGS:=-std=c++11 -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS:=-O -g -Wall 
-LDLIBS:=-L$(SAM_DIR) -lbam -lz -ldl -lpthread -lboost_system 
 
 all: bamliquidator bamliquidate_batch 
 
