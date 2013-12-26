@@ -48,8 +48,8 @@ endif
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
 
-CPPFLAGS:=-std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS:=-O -g -Wall -stdlib=libc++
+CPPFLAGS:=-std=c++11 -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
+LDFLAGS:=-O -g -Wall 
 LDLIBS:=-L$(SAM_DIR) -lbam -lz -ldl -lpthread -lboost_system 
 
 all: bamliquidator bamliquidate_batch 
