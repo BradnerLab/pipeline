@@ -89,7 +89,7 @@ public:
         return data_queue.empty();
     }
 
-    void push(T new_value)
+    void push(T&& new_value)
     {
         std::shared_ptr<T> data(
             std::make_shared<T>(std::move(new_value)));
@@ -98,6 +98,12 @@ public:
         data_cond.notify_one();
     }
 
+    void push(std::shared_ptr<T> new_value)
+    {
+        std::lock_guard<std::mutex> lk(mut);
+        data_queue.push(new_value);
+        data_cond.notify_one();
+    }
 };
 
 #endif

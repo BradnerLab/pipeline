@@ -67,7 +67,7 @@ bamliquidator: bamliquidator.m.o bamliquidator.o
 bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o $(LDLIBS) 
 
-bamliquidator.m.o: bamliquidator.m.cpp
+bamliquidator.m.o: bamliquidator.m.cpp threadsafe_queue.h
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
 
 bamliquidate_batch.m.o: bamliquidate_batch.m.cpp

@@ -129,8 +129,6 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   return 0;
 }
 
-
-
 std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std::string &coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
