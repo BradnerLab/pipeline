@@ -160,12 +160,9 @@ std::vector<double> liquidate(const std::string &bamfile, const std::string &chr
 {
   std::vector<double> data(spnum, 0);
   
-  std::string coord;
-  {
-    std::stringstream ss;
-    ss << chromosome << ':' << start << '-' << stop;
-    coord = ss.str();
-  }
+  const std::string coord =
+    (std::stringstream() << chromosome << ':' << start << '-' << stop).str();
+
   samfile_t *fp=NULL;
   bam_index_t *bamidx=NULL;
 

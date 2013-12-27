@@ -1,12 +1,16 @@
 #include "bamliquidator.h"
 
-#include <boost/thread/thread.hpp>
-#include <boost/lockfree/queue.hpp>
-#include <iostream>
-#include <sstream>
 #include <cmath>
+#include <iostream>
+#include <stdexcept>
+#include <sstream>
+#include <fstream>
 
 #include <boost/atomic.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/lockfree/queue.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 struct ChromosomeCounts
 {
@@ -15,6 +19,57 @@ struct ChromosomeCounts
   const std::string cell_type; // e.g. dhl6
   const unsigned int bin_size = 100000; // 100K base pairs per bin
   const std::vector<double> bin_counts;
+};
+
+class ChromosomeLengths
+{
+public:
+  ChromosomeLengths(const std::string &chrom_size_file)
+  {
+    const size_t chromosome_column = 0; 
+    const size_t type_column = 2;
+    const size_t length_column = 4;
+
+    std::ifstream size_file(chrom_size_file);
+    if (!size_file.is_open())
+    {
+      throw std::runtime_error("failed to open chrom_size_file " + chrom_size_file);
+    }
+
+    for(std::string line; std::getline(size_file, line); )
+    {
+      std::vector<std::string> columns;
+      boost::split(columns, line, boost::is_any_of("\t"));
+      if (columns.size() < length_column + 1)
+      {
+        throw std::runtime_error("error parsing chrom_size_file");
+      }
+      m_type_to_chromosome_to_count[columns[type_column]][columns[chromosome_column]] = 
+        boost::lexical_cast<size_t>(columns[length_column]);
+    }
+  }
+
+  size_t operator()(const std::string &bam_file, const std::string& chromosome) const
+  {
+    for (const auto type : m_type_to_chromosome_to_count)
+    {
+      if (bam_file.find(type.first) != std::string::npos)
+      {
+        const auto count = type.second.find(chromosome);
+        if (count == type.second.end())
+        {
+          throw std::runtime_error("failed to find chromosome " + chromosome
+                                   + " for " + type.first);
+        }
+        return count->second;
+      }
+    }
+    throw std::runtime_error("failed to determine type of " + bam_file);
+  }
+
+private:
+  typedef std::map<std::string, std::map<std::string, size_t>> TypeToChromosomeToCount;
+  TypeToChromosomeToCount m_type_to_chromosome_to_count;
 };
 
 void batch()
@@ -30,9 +85,11 @@ void batch()
 
   const int binSize = 100000; // 100K
 
+  const ChromosomeLengths lengths("../copied_from_tod/ucsc_chromSize.txt");
+
   for (auto chr : chromosomes)
   {
-    int basePairsInChromosome = 247249719;
+    int basePairsInChromosome = lengths(bam_file, chr);
     int binsInChromsome = std::ceil(basePairsInChromosome / (double) binSize);
     int maxBasePairForLiquidation = binsInChromsome * binSize;
     // pickup here: call liquidate with proper args
@@ -41,9 +98,9 @@ void batch()
     // I'm not sure if samtools is thread safe -- try this after I confirm it working
     // I need to write a script to compare hdf5 and mysql results or something
     // maybe I should just write both to txt and diff them
+    std::cout << "liquidate(" << bam_file << ", " << chr << ", 0, " << maxBasePairForLiquidation << ", '+', 1, 0)" << std::endl;
     std::vector<double> counts = liquidate(bam_file, chr, 0, maxBasePairForLiquidation, '+', 1, 0);
   }
- 
 }
 
 int main()
