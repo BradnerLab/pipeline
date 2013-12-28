@@ -76,6 +76,9 @@ ifeq ($(UNAME_S), Darwin)
 	SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
 	CPPFLAGS += -stdlib=libc++ 
 	LDFLAGS += -stdlib=libc++ 
+else
+  # working around bug, http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53841
+  CPPFLAGS += -D_GLIBCXX_USE_CLOCK_REALTIME
 endif
 
 # this is a make file, so to build, just run make
@@ -90,7 +93,9 @@ bamliquidator: bamliquidator.m.o bamliquidator.o
 # note batch additional dependencies separate from LDLIBS
 bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
-					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_cpp 
+					$(LDLIBS) -lboost_system 
+
+#-lhdf5 -lhdf5_cpp 
 
 bamliquidator.m.o: bamliquidator.m.cpp threadsafe_queue.h
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
