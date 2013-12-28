@@ -1,4 +1,5 @@
 #include "bamliquidator.h"
+#include "threadsafe_queue.h"
 
 #include <cmath>
 #include <fstream>
@@ -12,7 +13,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "threadsafe_queue.h"
+#include <H5Cpp.h>
 
 struct ChromosomeCounts
 {
@@ -76,15 +77,15 @@ private:
 
 void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
 {
+  H5::H5File file("test.hdf5", H5F_ACC_TRUNC);
+
   std::cout << "writer...\n";
   while (true)
   {
     std::shared_ptr<ChromosomeCounts> counts = computed_counts.wait_and_pop();
 
-    if (counts == nullptr) return;
-    std::cout << "write...\n";
-
-    // todo: write count to hdf5
+    if (counts == nullptr) return; 
+    
   }
 }
 
@@ -116,7 +117,7 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
       liquidate(bam_file, chr, 0, max_base_pair, '+', 1, 0)});
   }
 
-  computed_counts.push(nullptr);
+  computed_counts.push(nullptr); // insert "poison pill" to signal to writer to stop 
 }
 
 int main()
