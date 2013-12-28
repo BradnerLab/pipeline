@@ -13,7 +13,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-//#include <H5Cpp.h>
+#include <H5Cpp.h>
 
 struct ChromosomeCounts
 {
@@ -77,7 +77,7 @@ private:
 
 void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
 {
-  //H5::H5File file("test.hdf5", H5F_ACC_TRUNC);
+  H5::H5File file("test.hdf5", H5F_ACC_TRUNC);
 
   std::cout << "writer...\n";
   while (true)

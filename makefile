@@ -48,7 +48,7 @@ endif
 
 # boost and hdf5 is required as well for bamliquidate_batch
 #
-# to install hdf5 on Ubuntu, try "sudo apt-get install libhdf5-serial-1.8.4"
+# to install hdf5 on Ubuntu, try "sudo apt-get install libhdf5-serial-dev"
 #
 # to install boost on Ubuntu, try "sudo apt-get install libboost-all-dev" or see the
 # notes at https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506
@@ -93,9 +93,7 @@ bamliquidator: bamliquidator.m.o bamliquidator.o
 # note batch additional dependencies separate from LDLIBS
 bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
-					$(LDLIBS) -lboost_system 
-
-#-lhdf5 -lhdf5_cpp 
+					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_cpp 
 
 bamliquidator.m.o: bamliquidator.m.cpp threadsafe_queue.h
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
