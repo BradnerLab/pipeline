@@ -16,6 +16,17 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
+/* todo:
+  
+   - don't store strings in table records, e.g. have seperate tables for chromosomes, file names,
+     and cell types.  in the count table records, just store integers representing the strings.
+     this should speed up the writing and cut the file sizes
+   - don't use seperate structs for counting and writing.  prepare the structs while counting,
+     then write them in bulk
+   - multithread the counting, and see if that improves performance (probably using a boost
+     thread_group and asio to implement a thread pool)
+ */
+
 struct ChromosomeCounts
 {
   const std::string chromosome; // e.g. chr1
@@ -161,7 +172,7 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
     // I need to write a script to compare hdf5 and mysql results or something
     // maybe I should just write both to txt and diff them
     computed_counts.push(ChromosomeCounts {chr, bam_file_name, "dhl6", bin_size, 
-      liquidate(bam_file, chr, 0, max_base_pair, '+', bins, 0)});
+      liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)});
   }
 
   computed_counts.push(nullptr); // insert "poison pill" to signal to writer to stop 
