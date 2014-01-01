@@ -147,18 +147,23 @@ void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
   H5Fclose(file);
 }
 
-void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
+void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
+           const std::string& cell_type,
+           const std::string& chrom_size_file,
+           const std::string& bam_file)
 {
-  const std::string bam_file_path("../copied_from_tod/");
-  const std::string bam_file_name("04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam");
-  const std::string bam_file = bam_file_path+bam_file_name; 
+  const size_t last_slash_position = bam_file.find_last_of("/");
+  const std::string bam_file_name = last_slash_position == std::string::npos 
+                                  ? bam_file
+                                  : bam_file.substr(last_slash_position);
+
   const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
     "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
     "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"};
 
   const int bin_size = 100000; // 100K
 
-  const ChromosomeLengths lengths("../copied_from_tod/ucsc_chromSize.txt");
+  const ChromosomeLengths lengths(chrom_size_file);
 
   for (auto chr : chromosomes)
   {
@@ -166,25 +171,29 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
     int bins = std::ceil(base_pairs / (double) bin_size);
     int max_base_pair = bins * bin_size;
     std::cout << "counting chromosome " << chr << std::endl;
-    // pickup here: first just try a single thread counting from file,
-    // and a single thread recording counts in hdf5
-    // I'm not sure if samtools is thread safe -- try after I confirm 1 thread working
-    // I need to write a script to compare hdf5 and mysql results or something
-    // maybe I should just write both to txt and diff them
-    computed_counts.push(ChromosomeCounts {chr, bam_file_name, "dhl6", bin_size, 
+    computed_counts.push(ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
       liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)});
   }
 
   computed_counts.push(nullptr); // insert "poison pill" to signal to writer to stop 
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+  if (argc != 4)
+  {
+    std::cout << "usage: " << argv[0] << " cell_type ucsc_chrom_size_path bam_file_path\n"
+      << "\ne.g. " << argv[0] << " mm1s /grail/annotations/ucsc_chromSize.txt"
+      << "\n     /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
+      << std::endl;
+    return -1;
+  }
+
   threadsafe_queue<ChromosomeCounts> computed_counts;
-  std::thread counter_thread(count, std::ref(computed_counts));
   std::thread writer_thread(write_to_hdf5, std::ref(computed_counts));
 
-  counter_thread.join();
+  count(computed_counts, argv[1], argv[2], argv[3]);
+
   writer_thread.join();
 
   return 0;
