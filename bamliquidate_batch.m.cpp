@@ -13,7 +13,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <H5Cpp.h>
+#include <hdf5.h>
+#include <hdf5_hl.h>
 
 struct ChromosomeCounts
 {
@@ -75,9 +76,33 @@ private:
   TypeToChromosomeToCount m_type_to_chromosome_to_count;
 };
 
+struct CountH5Record
+{
+  uint32_t bin_number;
+  char cell_type[16];
+  char chromosome[16];
+  uint64_t count;
+  char file_name[64];
+};
+
 void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
 {
-  H5::H5File file("test.hdf5", H5F_ACC_TRUNC);
+  hid_t file = H5Fopen("bin_counts.h5", H5F_ACC_RDWR, H5P_DEFAULT);
+
+  const size_t record_size = sizeof(CountH5Record);
+
+  size_t record_offset[] = { HOFFSET(CountH5Record, bin_number),
+                             HOFFSET(CountH5Record, cell_type),
+                             HOFFSET(CountH5Record, chromosome),
+                             HOFFSET(CountH5Record, count),
+                             HOFFSET(CountH5Record, file_name) };
+
+  size_t field_sizes[] = { sizeof(CountH5Record::bin_number),
+                           sizeof(CountH5Record::cell_type),
+                           sizeof(CountH5Record::chromosome),
+                           sizeof(CountH5Record::count),
+                           sizeof(CountH5Record::file_name) };
+
 
   std::cout << "writer...\n";
   while (true)
@@ -85,8 +110,30 @@ void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
     std::shared_ptr<ChromosomeCounts> counts = computed_counts.wait_and_pop();
 
     if (counts == nullptr) return; 
-    
+
+    CountH5Record record;
+    record.bin_number = 0;
+    strncpy(record.cell_type,  counts->cell_type.c_str(),     sizeof(CountH5Record::cell_type));
+    strncpy(record.chromosome, counts->chromosome.c_str(),    sizeof(CountH5Record::chromosome));
+    strncpy(record.file_name,  counts->bam_file_name.c_str(), sizeof(CountH5Record::file_name));
+   
+    std::cout << "writing " << counts->bin_counts.size() << " from " 
+              << counts->chromosome << std::endl;
+    for (auto count : counts->bin_counts)
+    {
+      record.count = count;
+      herr_t status = H5TBappend_records(file, "counts", 1, record_size, record_offset,
+                                         field_sizes, &record);
+      if (status != 0)
+      {
+        std::cerr << "Error appending record, status = " << status << std::endl;
+      }
+
+      ++record.bin_number;
+    }
   }
+
+  H5Fclose(file);
 }
 
 void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
@@ -114,7 +161,7 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts)
     // I need to write a script to compare hdf5 and mysql results or something
     // maybe I should just write both to txt and diff them
     computed_counts.push(ChromosomeCounts {chr, bam_file_name, "dhl6", bin_size, 
-      liquidate(bam_file, chr, 0, max_base_pair, '+', 1, 0)});
+      liquidate(bam_file, chr, 0, max_base_pair, '+', bins, 0)});
   }
 
   computed_counts.push(nullptr); // insert "poison pill" to signal to writer to stop 

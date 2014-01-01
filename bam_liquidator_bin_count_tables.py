@@ -1,3 +1,25 @@
+#!/usr/bin/env python
+
+import tables
+
+class BinCount(tables.IsDescription):
+    cell_type  = tables.StringCol(16);
+    file_name  = tables.StringCol(64);
+    chromosome = tables.StringCol(16);
+    bin_number = tables.UInt32Col();
+    count      = tables.UInt64Col();
+
+h5file = tables.open_file("bin_counts.h5", mode = "w",
+                           title = "bam liquidator genome bin read counts")
+
+table = h5file.create_table("/", "counts", BinCount, "bin counts")
+
+table.attrs.bin_size = 100000 # 100K reads per bin
+table.flush()
+
+'''
+Before pytables, we prototyped with mysql:
+
 CREATE DATABASE meta_analysis;
 CREATE USER 'counter'@'localhost';
 
@@ -59,3 +81,28 @@ GRANT SELECT,INSERT,UPDATE ON meta_analysis.run TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.normalized_bins TO 'counter'@'localhost';
 GRANT SELECT,INSERT,UPDATE ON meta_analysis.normalized_bins_by_file TO 'counter'@'localhost';
 GRANT FILE ON *.* to 'counter'@'localhost';
+'''
+
+'''
+   The MIT License (MIT) 
+
+   Copyright (c) 2013 John DiMatteo 
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE. 
+'''

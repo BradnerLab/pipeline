@@ -43,8 +43,9 @@ endif
 #   2. zlib http://zlib.net/
 #
 # on a Mac, you can also install samtools via homebrew, e.g. homebrew install samtools
-# todo: change #include "sam.h" to #include <sam.h> and these compiler flags probably
-#       won't be necessary if sam is installed properly
+# todo: change #include "sam.h" to #include <sam.h> and the usage of SAM_DIR in the compiler flags 
+# probably won't be necessary if sam is installed properly
+
 
 # boost and hdf5 is required as well for bamliquidate_batch
 #
@@ -52,14 +53,11 @@ endif
 #
 # to install boost on Ubuntu, try "sudo apt-get install libboost-all-dev" or see the
 # notes at https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506
-# (which also includes notes to install clang 3.3)
 #
 # to install boost on Mac, try "brew install boost"
 #
-# to install hdf5 with the C++ libraries on Mac, try the following:
-# $ brew tap homebrew/science 
-# $ brew edit hdf5 # add --enable-cxx to end of configure args 
-# $ brew install hdf5 
+# to install hdf5 on Mac, try "brew install hdf5" (you may need to first "brew tap homebrew/science"
+
 
 # clang was chosen instead of gcc because it generally has easier to read error messages 
 # and is the default compiler on John's Mac.  clang should be all setup on a Mac by 
@@ -93,7 +91,7 @@ bamliquidator: bamliquidator.m.o bamliquidator.o
 # note batch additional dependencies separate from LDLIBS
 bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
-					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_cpp 
+					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl
 
 bamliquidator.m.o: bamliquidator.m.cpp threadsafe_queue.h
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
