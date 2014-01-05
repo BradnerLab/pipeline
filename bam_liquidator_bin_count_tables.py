@@ -3,19 +3,26 @@
 import tables
 
 class BinCount(tables.IsDescription):
-    cell_type  = tables.StringCol(16);
-    file_name  = tables.StringCol(64);
-    chromosome = tables.StringCol(16);
-    bin_number = tables.UInt32Col();
-    count      = tables.UInt64Col();
+    bin_number = tables.UInt32Col(    pos=0);
+    cell_type  = tables.StringCol(16, pos=1);
+    chromosome = tables.StringCol(16, pos=2);
+    count      = tables.UInt64Col(    pos=3);
+    file_name  = tables.StringCol(64, pos=4);
 
-h5file = tables.open_file("bin_counts.h5", mode = "w",
-                           title = "bam liquidator genome bin read counts")
+def create_table(file_name):
+    # creates empty files, overwriting any prior existing files
 
-table = h5file.create_table("/", "counts", BinCount, "bin counts")
+    h5file = tables.open_file(file_name, mode = "w",
+                            title = "bam liquidator genome bin read counts")
 
-table.attrs.bin_size = 100000 # 100K reads per bin
-table.flush()
+    table = h5file.create_table("/", "counts", BinCount, "bin counts")
+
+    table.flush()
+
+    return table
+
+if __name__ == "__main__":
+    create_table("bin_counts.h5")
 
 '''
 Before pytables, we prototyped with mysql:

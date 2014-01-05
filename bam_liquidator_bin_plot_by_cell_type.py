@@ -28,43 +28,56 @@ import sys
 import os
 import argparse
 import bokeh.plotting as bp
-import MySQLdb
-import numpy as np
+import tables
+import scipy.stats as stats
+import collections
 
-db = MySQLdb.connect(user="counter", db="meta_analysis")
-version = "205" # this should match the version in bam_liquidator_bin_counter.sh
+# globals
+counts = None
+fractions = None
+skip_population = False # useful if you just want to modify the csv and/or plotting 
 
-skip_populating_normalized_bins_by_cell_type = False
+def create_fractions_table(file_name):
+    class BinCount(tables.IsDescription):
+        bin_number = tables.UInt32Col(    pos=0);
+        cell_type  = tables.StringCol(16, pos=1);
+        chromosome = tables.StringCol(16, pos=2);
+        count      = tables.Float64Col(   pos=3);
+        percentile = tables.Float64Col(   pos=4);
+        file_name  = tables.StringCol(64, pos=5);
+
+    h5file = tables.open_file(file_name, mode = "w",
+                              title = "normalized bam liquidator genome bin read counts")
+
+    table = h5file.create_table("/", "counts", BinCount, "bin counts")
+
+    table.flush()
+
+    return table
+ 
 
 def all_cell_types():
-    print "Getting cell types"
+    #print "Getting cell types"
 
-    types = []
-    cursor = db.cursor()
-    cursor.execute("SELECT distinct parent_directory FROM counts where counter_version = %s" % version)
+    types = set()
 
-    for row in cursor.fetchall():
-        types.append(row[0]) 
+    for row in counts:
+        types.add(row["cell_type"])
 
     return types 
 
 file_names_memo = {}
-def file_names(cell_type, common_clause):
+def file_names(cell_type):
     if not cell_type in file_names_memo:
-
-        file_names = []
+        file_names = set() 
        
-        print "Getting file names for cell type " + cell_type
-        cursor = db.cursor()
-        cursor.execute("SELECT distinct file_name FROM counts where " + common_clause 
-                       + " AND parent_directory = '" + cell_type + "' ")
-
-        for row in cursor.fetchall():
-            file_names.append(row[0]) 
+        #print "Getting file names for cell type " + cell_type
+        for row in counts.where("cell_type == '%s'" % cell_type):
+            file_names.add(row["file_name"])
 
         file_names_memo[cell_type] = file_names
 
-        print "memoizing files for " + cell_type + ": " + str(file_names_memo[cell_type]) 
+        #print "memoizing files for " + cell_type + ": " + str(file_names_memo[cell_type]) 
         
     return file_names_memo[cell_type] 
 
@@ -72,130 +85,113 @@ def plot_summaries(chromosomes):
     bp.output_file("summary.html")
     
     for chromosome in chromosomes:
-        common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
-        plot_summary(chromosome, common_clause)
+        plot_summary(chromosome)
 
     bp.save()
 
-def plot_summary(chromosome, common_clause):
-    print "Plotting " + chromosome + " summary"
+def plot_summary(chromosome):
+    print " - plotting " + chromosome + " summary"
 
-    cursor = db.cursor()
+    condition = "(file_name == '*') & (chromosome == '%s')" % chromosome
 
-    overall_sql = ("SELECT bin, SUM(count_fraction) AS count FROM normalized_bins WHERE " + 
-        common_clause + " GROUP BY bin")
-
-    cursor.execute(overall_sql)
-
-    # todo: I should probably be able to do something like the following without copying: 
-    #       bp.scatter(cursor.fetchall())
-
-    bin_number = [] 
-    count = [] 
+    chromosome_count_by_bin = collections.defaultdict(int) 
+    for row in fractions.where(condition):
+        chromosome_count_by_bin[row["bin_number"]] += row["count"]
     
-    for row in cursor.fetchall():
-        bin_number.append(int(row[0]))
-        count.append(float(row[1]))
-
-    overall = bp.scatter(bin_number, count)
+    overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
     overall.title = chromosome + " counts per bin across all bam files"
 
-def plot(chromosome, common_clause, cell_types):
+def plot(chromosome, cell_types):
     bp.output_file(chromosome + ".html")
 
-    plot_summary(chromosome, common_clause)
+    plot_summary(chromosome)
 
     for cell_type in cell_types:
-        print "Plotting " + cell_type
+        print " - plotting " + cell_type
 
         bin_number = [] 
         count = [] 
         
-        cell_type_bin_sql = ("SELECT bin, count_fraction FROM normalized_bins WHERE " +
-            common_clause + "AND cell_type = '%s'" % cell_type) 
+        condition = "(file_name == '*') & (chromosome == '%s') & (cell_type == '%s')" % (chromosome, cell_type)
 
-        cell_type_cursor = db.cursor()
-        cell_type_cursor.execute(cell_type_bin_sql)
-        for cell_type_row in cell_type_cursor.fetchall():
-            bin_number.append(int(cell_type_row[0]))
-            count.append(float(cell_type_row[1]))
+        for row in fractions.where(condition):
+            bin_number.append(row["bin_number"])
+            count.append(row["count"])
 
         cell_type_plot = bp.scatter(bin_number, count)
         cell_type_plot.title = "%s counts per bin" % cell_type 
 
     bp.save()
 
-def total_count_for_file(file_name, common_clause):
-    cursor = db.cursor()
-    cursor.execute("SELECT SUM(count) FROM counts "
-                    "WHERE " + common_clause + " AND file_name = '" + file_name + "' ")
+def total_count_for_file(file_name, chromosome):
     count = 0
 
-    for row in cursor.fetchall():
-        count = row[0]
-        break
+    condition = "(file_name == '%s') & (chromosome == '%s')" % (file_name, chromosome)
 
-    return count
-    
+    for row in counts.where(condition):
+        count += row["count"]
 
-def populate_count_fractions(chromosome, common_clause, cell_types):
+    return count 
+
+def populate_count_fractions(chromosome, cell_types):
     for cell_type in cell_types:
-        print "Processing cell_type " + cell_type
-
-        files = file_names(cell_type, common_clause)
+        files = file_names(cell_type)
 
         processed_a_single_file_for_this_cell_type = False
+        cell_type_fractions = []
 
-        for file_name in files: 
-            print "Processing " + file_name 
-            file_total_count = total_count_for_file(file_name, common_clause)
+        for file_name in files:
+            print " - populating count fractions for cell_type " + cell_type + " in file " + file_name 
 
-            bin_cursor = db.cursor()
-            bin_cursor.execute("SELECT bin, count FROM counts WHERE " + common_clause
-                               + " AND file_name = '" + file_name + "' ")
+            file_total_count = total_count_for_file(file_name, chromosome)
+
+            #print "There are %d reads in this file for this chromosome" % file_total_count 
 
             file_divisor = float(file_total_count)
             cell_type_divisor = float(file_total_count * len(files))
 
-            for bin_row in bin_cursor.fetchall():
-                bin_number = int(bin_row[0])
-                bin_count = float(bin_row[1])
+            condition = "(file_name == '%s') & (chromosome == '%s')" % (file_name, chromosome)
 
-                file_count_fraction = bin_count / file_divisor
-                cell_type_count_fraction = bin_count / cell_type_divisor 
-                
-                update_cursor = db.cursor()
+            for bin_number, count_row in enumerate(counts.where(condition)):
+                assert bin_number == count_row["bin_number"]
 
-                update_cursor.execute("INSERT INTO normalized_bins_by_file "
-                                      "(cell_type, file_name, chromosome, bin, count_fraction, counter_version) "
-                                      "VALUES ('%s', '%s', '%s', %d, %f, %s)" % (
-                                      cell_type, file_name, chromosome, bin_number, file_count_fraction, version) )
+                file_count_fraction = count_row["count"] / file_divisor
+                cell_type_count_fraction = count_row["count"] / cell_type_divisor 
 
-                if not skip_populating_normalized_bins_by_cell_type:
-                    if not processed_a_single_file_for_this_cell_type:
-                        update_cursor.execute("INSERT INTO normalized_bins "
-                                              "(cell_type, chromosome, bin, count_fraction, counter_version) "
-                                              "VALUES ('%s', '%s', %d, %d, %s)" % (
-                                              cell_type, chromosome, bin_number, 0, version) )
+                fractions.row["bin_number"] = bin_number 
+                fractions.row["cell_type"] = cell_type 
+                fractions.row["chromosome"] = chromosome 
+                fractions.row["file_name"] = file_name
+                fractions.row["count"] = file_count_fraction 
+                fractions.row["percentile"] = -1.0
+                fractions.row.append()
 
-                    update_cursor.execute("UPDATE normalized_bins SET count_fraction = count_fraction + %f "
-                                           "WHERE counter_version = %s AND chromosome = '%s' "
-                                           "AND cell_type = '%s' AND bin = %d " % (
-                                           cell_type_count_fraction, version, chromosome, cell_type, bin_number))
+                if not processed_a_single_file_for_this_cell_type:
+                    cell_type_fractions.append(cell_type_count_fraction)
+                else:
+                    cell_type_fractions[bin_number] += cell_type_count_fraction
 
             processed_a_single_file_for_this_cell_type = True
 
-def populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types):
+        for bin_number, cell_type_fraction in enumerate(cell_type_fractions):
+            fractions.row["bin_number"] = bin_number
+            fractions.row["cell_type"] = cell_type 
+            fractions.row["chromosome"] = chromosome 
+            fractions.row["file_name"] = "*" 
+            # using "*" instead of "" due to pytables empty string query bug
+            # -- https://github.com/PyTables/PyTables/issues/184
+            fractions.row["count"] = cell_type_fraction 
+            fractions.row["percentile"] = -1.0
+            fractions.row.append()
+
+def populate_count_percentiles_for_cell_types(chromosome, cell_types):
     for cell_type in cell_types:
-        print "Processing cell_type " + cell_type
+        print " - populating percentiles for cell_type " + cell_type
+        populate_count_percentiles(chromosome, cell_type, file_name="*")
 
-        if not skip_populating_normalized_bins_by_cell_type:
-            populate_count_percentiles(chromosome, common_clause, cell_type)
-
-        files = file_names(cell_type, common_clause)
-        for file_name in files: 
-            print "Processing " + file_name  
-            populate_count_percentiles(chromosome, common_clause, cell_type, file_name)
+        for file_name in file_names(cell_type):
+            print " - populating percentiles for file " + file_name + " in cell_type " + cell_type
+            populate_count_percentiles(chromosome, cell_type, file_name)
 
 def normalized_table(by_file):
     return "normalized_bins_by_file" if by_file else "normalized_bins"
@@ -203,50 +199,20 @@ def normalized_table(by_file):
 def percentile_column(by_file):
     return "percentile_in_file" if by_file else "percentile_in_cell_type" 
 
-def populate_count_percentiles(chromosome, common_clause, cell_type, file_name=None):
-    table = normalized_table(file_name is not None)
-    column = percentile_column(file_name is not None)
+def populate_count_percentiles(chromosome, cell_type, file_name):
+    condition = "(chromosome == '%s') & (file_name == '%s') & (cell_type == '%s')" % (
+        chromosome, file_name, cell_type)
 
-    cell_type_and_file_clause = " AND cell_type = '" + cell_type + "' " + (
-        "" if file_name is None else (" AND file_name = '" + file_name + "' "))
-    
-    query_cursor = db.cursor()
-    query_cursor.execute("SELECT bin, count_fraction FROM " + table + " " +
-                          "WHERE " + common_clause + cell_type_and_file_clause + " ORDER BY bin")
+    normalized_counts = fractions.read_where(condition, field='count')
 
-    array = np.zeros(query_cursor.rowcount)
+    #print " -- condition = " + condition
+    for row in fractions.where(condition):
+        assert row["percentile"] == -1
 
-    i=0
-    for count_row in query_cursor.fetchall():
-        bin_number = count_row[0]
-        count_fraction = count_row[1]
-        if i != bin_number:
-            print "Error: unexpected missing bin: %d" % bin_number
-            sys.exit(-1)
-
-        array[i] = count_fraction
-        i += 1
-
-    percentiles = np.percentile(array, range(100)) 
-
-    bin_number = 0
-    for count_fraction in array:
-        # find the highest percentile value < count_fraction
-        percentile = 0
-        for percentile_value in percentiles:
-            if percentile_value >= count_fraction:
-                break
-
-            percentile += 1
-         
-        update_cursor = db.cursor()
-
-        # todo: this results in hottest bins being in the 100th percentile -- is that OK?
-        update_cursor.execute("UPDATE " + table + " SET " + column + " = " + str(percentile) + " "
-                               "WHERE " + common_clause + cell_type_and_file_clause + " AND bin = %d "
-                               % bin_number)
-
-        bin_number += 1
+        # todo: don't calculate percentile inside loop, use numpy.percentile with the axis argument 
+        # or try http://grokbase.com/t/python/python-list/092235vj27/faster-scipy-percentileofscore
+        row["percentile"] = stats.percentileofscore(normalized_counts, row["count"])
+        row.update()
 
 def create_csv_file(chromosome, common_clause, cell_types):
     #csv_file = os.getcwd() + "/" + chromosome + ".csv"
@@ -304,6 +270,15 @@ def parse_args():
         return args.cell_types 
 
 def main():
+    global counts
+    global fractions
+
+    counts = tables.open_file("bin_counts.h5", "r").root.counts
+    if skip_population:
+        fractions = tables.open_file("normalized_counts.h5", "r").root.counts
+    else:
+        fractions = create_fractions_table("normalized_counts.h5")
+
     cell_types = parse_args()
 
     print "cell_types = %s" % cell_types
@@ -314,13 +289,13 @@ def main():
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
-        common_clause = " counter_version = %s AND chromosome = '%s' " % (version, chromosome)
+        if not skip_population:
+            populate_count_fractions(chromosome, cell_types)
+            populate_count_percentiles_for_cell_types(chromosome, cell_types)
+        #create_csv_file(chromosome, common_clause, cell_types)
+        plot(chromosome, cell_types)
 
-        populate_count_fractions(chromosome, common_clause, cell_types)
-        populate_count_percentiles_for_cell_types(chromosome, common_clause, cell_types)
-        create_csv_file(chromosome, common_clause, cell_types)
-        plot(chromosome, common_clause, cell_types)
-
+    print "Plotting summaries"
     plot_summaries(chromosomes)
 
 if __name__ == "__main__":

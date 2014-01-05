@@ -155,7 +155,7 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
   const size_t last_slash_position = bam_file.find_last_of("/");
   const std::string bam_file_name = last_slash_position == std::string::npos 
                                   ? bam_file
-                                  : bam_file.substr(last_slash_position);
+                                  : bam_file.substr(last_slash_position + 1);
 
   const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
     "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
