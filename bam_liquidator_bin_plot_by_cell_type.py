@@ -36,9 +36,8 @@ import collections
 counts    = None
 fractions = None
 summary   = None
-# todo: reverse these two booleans, since I always end up if not'ing them
 skip_normalized_count_population = False # useful if you just want to modify the csv and/or plotting 
-skip_plots = True # useful if you are just experimenting with summary tables
+skip_plots = True # useful if you are just experimenting with normalization and/or summary tables
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the fractions table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
@@ -209,16 +208,22 @@ def populate_count_percentiles(chromosome, cell_type, file_name):
     condition = "(chromosome == '%s') & (file_name == '%s') & (cell_type == '%s')" % (
         chromosome, file_name, cell_type)
 
-    normalized_counts = fractions.read_where(condition, field='count')
+    bin_numbers = []
+    normalized_counts = []
 
-    #print " -- condition = " + condition
     for row in fractions.where(condition):
-        assert row["percentile"] == -1
+        bin_numbers.append(row["bin_number"])
+        normalized_counts.append(row["count"])
 
-        # todo: don't calculate percentile inside loop, use numpy.percentile with the axis argument 
-        # or try http://grokbase.com/t/python/python-list/092235vj27/faster-scipy-percentileofscore
-        row["percentile"] = stats.percentileofscore(normalized_counts, row["count"])
+    percentiles = (stats.rankdata(normalized_counts) - 1) / (len(normalized_counts)-1) * 100
+    # percentiles calculated in bulk as suggested at 
+    # http://grokbase.com/t/python/python-list/092235vj27/faster-scipy-percentileofscore
+
+    for i, row in enumerate(fractions.where(condition)):
+        assert bin_numbers[i] == row["bin_number"]
+        row["percentile"] = percentiles[i]
         row.update()
+    fractions.flush()
 
 def create_summary_table(h5file):
     class Summary(tables.IsDescription):
