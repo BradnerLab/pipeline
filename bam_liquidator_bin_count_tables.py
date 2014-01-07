@@ -3,11 +3,11 @@
 import tables
 
 class BinCount(tables.IsDescription):
-    bin_number = tables.UInt32Col(    pos=0);
-    cell_type  = tables.StringCol(16, pos=1);
-    chromosome = tables.StringCol(16, pos=2);
-    count      = tables.UInt64Col(    pos=3);
-    file_name  = tables.StringCol(64, pos=4);
+    bin_number = tables.UInt32Col(    pos=0)
+    cell_type  = tables.StringCol(16, pos=1)
+    chromosome = tables.StringCol(16, pos=2)
+    count      = tables.UInt64Col(    pos=3)
+    file_name  = tables.StringCol(64, pos=4)
 
 def create_table(file_name):
     # creates empty files, overwriting any prior existing files

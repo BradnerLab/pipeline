@@ -33,28 +33,31 @@ import scipy.stats as stats
 import collections
 
 # globals
-counts = None
+counts    = None
 fractions = None
-skip_population = False # useful if you just want to modify the csv and/or plotting 
+summary   = None
+# todo: reverse these two booleans, since I always end up if not'ing them
+skip_normalized_count_population = False # useful if you just want to modify the csv and/or plotting 
+skip_plots = True # useful if you are just experimenting with summary tables
 
-def create_fractions_table(file_name):
+# note that my initial version didn't do any flush calls, which lead to bogus rows being added
+# to the fractions table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
+# -- I should probably look into why flush was necessary and/or file a bug with pytables
+
+def create_fractions_table(h5file):
     class BinCount(tables.IsDescription):
-        bin_number = tables.UInt32Col(    pos=0);
-        cell_type  = tables.StringCol(16, pos=1);
-        chromosome = tables.StringCol(16, pos=2);
-        count      = tables.Float64Col(   pos=3);
-        percentile = tables.Float64Col(   pos=4);
-        file_name  = tables.StringCol(64, pos=5);
-
-    h5file = tables.open_file(file_name, mode = "w",
-                              title = "normalized bam liquidator genome bin read counts")
+        bin_number = tables.UInt32Col(    pos=0)
+        cell_type  = tables.StringCol(16, pos=1)
+        chromosome = tables.StringCol(16, pos=2)
+        count      = tables.Float64Col(   pos=3)
+        percentile = tables.Float64Col(   pos=4)
+        file_name  = tables.StringCol(64, pos=5)
 
     table = h5file.create_table("/", "counts", BinCount, "bin counts")
 
     table.flush()
 
     return table
- 
 
 def all_cell_types():
     #print "Getting cell types"
@@ -171,6 +174,7 @@ def populate_count_fractions(chromosome, cell_types):
                 else:
                     cell_type_fractions[bin_number] += cell_type_count_fraction
 
+            fractions.flush()
             processed_a_single_file_for_this_cell_type = True
 
         for bin_number, cell_type_fraction in enumerate(cell_type_fractions):
@@ -183,6 +187,8 @@ def populate_count_fractions(chromosome, cell_types):
             fractions.row["count"] = cell_type_fraction 
             fractions.row["percentile"] = -1.0
             fractions.row.append()
+
+        fractions.flush()
 
 def populate_count_percentiles_for_cell_types(chromosome, cell_types):
     for cell_type in cell_types:
@@ -214,45 +220,98 @@ def populate_count_percentiles(chromosome, cell_type, file_name):
         row["percentile"] = stats.percentileofscore(normalized_counts, row["count"])
         row.update()
 
-def create_csv_file(chromosome, common_clause, cell_types):
-    #csv_file = os.getcwd() + "/" + chromosome + ".csv"
-    csv_file = "/tmp/" + chromosome + ".csv"
+def create_summary_table(h5file):
+    class Summary(tables.IsDescription):
+        bin_number = tables.UInt32Col(                    pos=0)
+        chromosome = tables.StringCol(16,                 pos=2)
+        avg_cell_type_percentile = tables.Float64Col(     pos=1)
+        cell_types_gte_95th_percentile = tables.UInt32Col(pos=2)
+        cell_types_lt_95th_percentile = tables.UInt32Col( pos=3)
+        lines_gte_95th_percentile = tables.UInt32Col(     pos=4)
+        lines_lt_95th_percentile = tables.UInt32Col(      pos=5)
+        cell_types_gte_5th_percentile = tables.UInt32Col( pos=6)
+        cell_types_lt_5th_percentile = tables.UInt32Col(  pos=7)
+        lines_gte_5th_percentile = tables.UInt32Col(      pos=8)
+        lines_lt_5th_percentile = tables.UInt32Col(       pos=9)
+
+    if skip_normalized_count_population:
+        # file wasn't created new, so already has a prior summary table that should be dropped
+        h5file.remove_node("/", "summary")
+
+    table = h5file.create_table("/", "summary", Summary, "bin count summary")
+
+    table.flush()
+
+    return table
     
-    def subqueries(percentile, by_file):
-        label = "lines" if by_file else "cell_types"
-        template = ("       (SELECT COUNT(*) FROM " + normalized_table(by_file) + " AS n2\n"
-                    "         WHERE n2.bin = n1.bin "
-                               "AND " + percentile_column(by_file) + " %s "
-                               "AND" + common_clause + "\n"
-                    "       ) AS " + label + "_with_%s_percentile")
-        higher = template % (">= %d" % percentile, "bin_in_%dth_or_higher" % percentile) 
-        lower  = template % ("< %d"  % percentile, "bin_lower_than_%dth"   % percentile)
-        return higher + ",\n" + lower 
 
-    sql = ("SELECT 'bin', 'average cell type percentile',\n"
-                  "'cell types >= 95th percentile', 'cell types < 95th percentile',\n"
-	          "'lines >= 95th percentile', 'lines < 95th percentile',\n" 
-                  "'cell types >= 5th percentile', 'cell types < 5th percentile',\n"
-	          "'lines >= 5th percentile', 'lines < 5th percentile'\n" 
-           " UNION\n"
-           "SELECT * FROM\n"
-           "(SELECT n1.bin, AVG(n1.percentile_in_cell_type) AS average_cell_type_percentile,\n"
-            + subqueries(95, by_file=False) + ",\n"
-            + subqueries(95, by_file=True)  + ",\n"
-            + subqueries(5,  by_file=False) + ",\n"
-            + subqueries(5,  by_file=True)  + "\n"
-           "   FROM normalized_bins AS n1\n"
-           "  WHERE n1.chromosome = '" + chromosome + "' AND n1.counter_version = " + version + "\n"
-           "  GROUP BY n1.bin\n"
-           "  ORDER BY average_cell_type_percentile DESC, n1.bin ASC\n"
-           "  ) AN_ALIAS \n"
-           "  INTO OUTFILE '" + csv_file + "' FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'")
+def populate_summary(chromosome, cell_types):
+    #print " - calculating summaries"
 
-    print sql
+    condition = "chromosome == '%s'" % chromosome
 
-    cursor = db.cursor()
-    cursor.execute(sql)
+    high = 95 # 95th percentile
+    low  = 5  # 5th percentile
 
+    summed_cell_type_percentiles_by_bin = collections.defaultdict(float) 
+    cell_types_gte_high_percentile_by_bin = collections.defaultdict(int)
+    cell_types_lt_high_percentile_by_bin = collections.defaultdict(int)
+    lines_gte_high_percentile_by_bin = collections.defaultdict(int)
+    lines_lt_high_percentile_by_bin = collections.defaultdict(int)
+    cell_types_gte_low_percentile_by_bin = collections.defaultdict(int)
+    cell_types_lt_low_percentile_by_bin = collections.defaultdict(int)
+    lines_gte_low_percentile_by_bin = collections.defaultdict(int)
+    lines_lt_low_percentile_by_bin = collections.defaultdict(int)
+    lines = set()
+    max_bin = 0
+
+    # note populating the dictionaries this way is much faster than looping through
+    # each bin and finding the matching fraction rows
+    for row in fractions.where(condition):
+        bin_number = row["bin_number"]
+        max_bin = max(max_bin, bin_number)
+        percentile = row["percentile"]
+
+        if row["file_name"] == "*":
+            summed_cell_type_percentiles_by_bin[bin_number] += percentile
+            if percentile >= high:
+                cell_types_gte_high_percentile_by_bin[bin_number] += 1
+            else:
+                cell_types_lt_high_percentile_by_bin[bin_number] += 1
+
+            if percentile >= low:
+                cell_types_gte_low_percentile_by_bin[bin_number] += 1
+            else:
+                cell_types_lt_low_percentile_by_bin[bin_number] += 1
+        else:
+            lines.add(row["file_name"])
+            if percentile >= high:
+                lines_gte_high_percentile_by_bin[bin_number] += 1
+            else:
+                lines_lt_high_percentile_by_bin[bin_number] += 1
+
+            if percentile >= low:
+                lines_gte_low_percentile_by_bin[bin_number] += 1
+            else:
+                lines_lt_low_percentile_by_bin[bin_number] += 1
+
+    #print " - populating summary table with calculated summaries"
+
+    for bin_number in xrange(max_bin):
+        summary.row["bin_number"] = bin_number
+        summary.row["chromosome"] = chromosome
+        summary.row["avg_cell_type_percentile"] = summed_cell_type_percentiles_by_bin[bin_number] / len(cell_types)
+        summary.row["cell_types_gte_95th_percentile"] = cell_types_gte_high_percentile_by_bin[bin_number]
+        summary.row["cell_types_lt_95th_percentile"] = cell_types_lt_high_percentile_by_bin[bin_number]
+        summary.row["lines_gte_95th_percentile"] = lines_gte_high_percentile_by_bin[bin_number]
+        summary.row["lines_lt_95th_percentile"] = lines_lt_high_percentile_by_bin[bin_number]
+        summary.row["cell_types_gte_5th_percentile"] = cell_types_gte_low_percentile_by_bin[bin_number]
+        summary.row["cell_types_lt_5th_percentile"] = cell_types_lt_low_percentile_by_bin[bin_number]
+        summary.row["lines_gte_5th_percentile"] = lines_gte_low_percentile_by_bin[bin_number]
+        summary.row["lines_lt_5th_percentile"] = lines_lt_low_percentile_by_bin[bin_number]
+        summary.row.append()
+    summary.flush()
+                
 def parse_args():
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
         'Normalized counts and percentiles are stored in the table normalized_bins. Plots are stored in '
@@ -272,12 +331,19 @@ def parse_args():
 def main():
     global counts
     global fractions
+    global summary
 
     counts = tables.open_file("bin_counts.h5", "r").root.counts
-    if skip_population:
-        fractions = tables.open_file("normalized_counts.h5", "r").root.counts
+
+    if skip_normalized_count_population:
+        normalized_counts_file = tables.open_file("normalized_counts.h5", "r+")
+        fractions = normalized_counts_file.root.counts
     else:
-        fractions = create_fractions_table("normalized_counts.h5")
+        normalized_counts_file = tables.open_file("normalized_counts.h5", "w",
+                                                  title = "normalized bam liquidator genome bin read counts")
+        fractions = create_fractions_table(normalized_counts_file)
+
+    summary = create_summary_table(normalized_counts_file)
 
     cell_types = parse_args()
 
@@ -289,14 +355,26 @@ def main():
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
-        if not skip_population:
+        if not skip_normalized_count_population:
             populate_count_fractions(chromosome, cell_types)
             populate_count_percentiles_for_cell_types(chromosome, cell_types)
-        #create_csv_file(chromosome, common_clause, cell_types)
-        plot(chromosome, cell_types)
+        if not skip_plots: plot(chromosome, cell_types)
 
-    print "Plotting summaries"
-    plot_summaries(chromosomes)
+    if not skip_normalized_count_population:
+        print "Indexing normalized counts"
+        fractions.cols.bin_number.create_index()
+        fractions.cols.percentile.create_index()
+        fractions.cols.file_name.create_index()
+        fractions.cols.chromosome.create_index()
+
+    if not skip_plots:
+        print "Plotting summaries"
+        plot_summaries(chromosomes)
+
+    for chromosome in chromosomes:
+        print "Creating table summary for " + chromosome
+        populate_summary(chromosome, cell_types)
+
 
 if __name__ == "__main__":
     main()
