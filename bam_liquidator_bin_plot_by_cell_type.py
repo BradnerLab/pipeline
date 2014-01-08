@@ -37,7 +37,7 @@ counts    = None
 fractions = None
 summary   = None
 skip_normalized_count_population = False # useful if you just want to modify the csv and/or plotting 
-skip_plots = True # useful if you are just experimenting with normalization and/or summary tables
+skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the fractions table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
