@@ -1,17 +1,18 @@
+###############################################################################
 # The MIT License (MIT)
-
+#
 # Copyright (c) 2013 Xin Zhong and Charles Lin
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,7 +20,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
+#
 ###############################################################################
 
 ifndef SAM_DIR
@@ -82,11 +83,10 @@ endif
 # this is a make file, so to build, just run make
 # http://www.cprogramming.com/tutorial/makefiles.html
 
+all: ../bamliquidator bamliquidate_batch 
 
-all: bamliquidator bamliquidate_batch 
-
-bamliquidator: bamliquidator.m.o bamliquidator.o
-	clang++ $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
+../bamliquidator: bamliquidator.m.o bamliquidator.o
+	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
 # note batch additional dependencies separate from LDLIBS
 bamliquidate_batch: bamliquidate_batch.m.o
@@ -103,4 +103,4 @@ bamliquidator.o: bamliquidator.cpp
 	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
-	rm -f bamliquidator bamliquidate_batch bamliquidate_batch.m.o bamliquidator.o bamliquidator.m.o
+	rm -f ../bamliquidator bamliquidator bamliquidate_batch *.o 
