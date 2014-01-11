@@ -33,10 +33,10 @@ import scipy.stats as stats
 import collections
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
-# to the fractions table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
+# to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
 # -- I should probably look into why flush was necessary and/or file a bug with pytables
 
-def create_fractions_table(h5file):
+def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
         bin_number = tables.UInt32Col(    pos=0)
         cell_type  = tables.StringCol(16, pos=1)
@@ -45,7 +45,7 @@ def create_fractions_table(h5file):
         percentile = tables.Float64Col(   pos=4)
         file_name  = tables.StringCol(64, pos=5)
 
-    table = h5file.create_table("/", "counts", BinCount, "bin counts")
+    table = h5file.create_table("/", "normalized_counts", BinCount, "normalized bin counts")
 
     table.flush()
 
@@ -74,30 +74,30 @@ def file_names(counts, cell_type):
         
     return file_names_memo[cell_type] 
 
-def plot_summaries(output_directory, fractions, chromosomes):
+def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.output_file(output_directory + "/summary.html")
     
     for chromosome in chromosomes:
-        plot_summary(fractions, chromosome)
+        plot_summary(normalized_counts, chromosome)
 
     bp.save()
 
-def plot_summary(fractions, chromosome):
+def plot_summary(normalized_counts, chromosome):
     print " - plotting " + chromosome + " summary"
 
     condition = "(file_name == '*') & (chromosome == '%s')" % chromosome
 
     chromosome_count_by_bin = collections.defaultdict(int) 
-    for row in fractions.where(condition):
+    for row in normalized_counts.where(condition):
         chromosome_count_by_bin[row["bin_number"]] += row["count"]
     
     overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
     overall.title = chromosome + " counts per bin across all bam files"
 
-def plot(output_directory, fractions, chromosome, cell_types):
+def plot(output_directory, normalized_counts, chromosome, cell_types):
     bp.output_file(output_directory + "/" + chromosome + ".html")
 
-    plot_summary(fractions, chromosome)
+    plot_summary(normalized_counts, chromosome)
 
     for cell_type in cell_types:
         print " - plotting " + cell_type
@@ -107,7 +107,7 @@ def plot(output_directory, fractions, chromosome, cell_types):
         
         condition = "(file_name == '*') & (chromosome == '%s') & (cell_type == '%s')" % (chromosome, cell_type)
 
-        for row in fractions.where(condition):
+        for row in normalized_counts.where(condition):
             bin_number.append(row["bin_number"])
             count.append(row["count"])
 
@@ -126,15 +126,15 @@ def total_count_for_file(counts, file_name, chromosome):
 
     return count 
 
-def populate_count_fractions(fractions, counts, chromosome, cell_types):
+def populate_count_normalized_counts(normalized_counts, counts, chromosome, cell_types):
     for cell_type in cell_types:
         files = file_names(counts, cell_type)
 
         processed_a_single_file_for_this_cell_type = False
-        cell_type_fractions = []
+        cell_type_normalized_counts = []
 
         for file_name in files:
-            print " - populating count fractions for cell_type " + cell_type + " in file " + file_name 
+            print " - populating count normalized_counts for cell_type " + cell_type + " in file " + file_name 
 
             file_total_count = total_count_for_file(counts, file_name, chromosome)
 
@@ -151,64 +151,64 @@ def populate_count_fractions(fractions, counts, chromosome, cell_types):
                 file_count_fraction = count_row["count"] / file_divisor
                 cell_type_count_fraction = count_row["count"] / cell_type_divisor 
 
-                fractions.row["bin_number"] = bin_number 
-                fractions.row["cell_type"] = cell_type 
-                fractions.row["chromosome"] = chromosome 
-                fractions.row["file_name"] = file_name
-                fractions.row["count"] = file_count_fraction 
-                fractions.row["percentile"] = -1.0
-                fractions.row.append()
+                normalized_counts.row["bin_number"] = bin_number 
+                normalized_counts.row["cell_type"] = cell_type 
+                normalized_counts.row["chromosome"] = chromosome 
+                normalized_counts.row["file_name"] = file_name
+                normalized_counts.row["count"] = file_count_fraction 
+                normalized_counts.row["percentile"] = -1.0
+                normalized_counts.row.append()
 
                 if not processed_a_single_file_for_this_cell_type:
-                    cell_type_fractions.append(cell_type_count_fraction)
+                    cell_type_normalized_counts.append(cell_type_count_fraction)
                 else:
-                    cell_type_fractions[bin_number] += cell_type_count_fraction
+                    cell_type_normalized_counts[bin_number] += cell_type_count_fraction
 
-            fractions.flush()
+            normalized_counts.flush()
             processed_a_single_file_for_this_cell_type = True
 
-        for bin_number, cell_type_fraction in enumerate(cell_type_fractions):
-            fractions.row["bin_number"] = bin_number
-            fractions.row["cell_type"] = cell_type 
-            fractions.row["chromosome"] = chromosome 
-            fractions.row["file_name"] = "*" 
+        for bin_number, cell_type_fraction in enumerate(cell_type_normalized_counts):
+            normalized_counts.row["bin_number"] = bin_number
+            normalized_counts.row["cell_type"] = cell_type 
+            normalized_counts.row["chromosome"] = chromosome 
+            normalized_counts.row["file_name"] = "*" 
             # using "*" instead of "" due to pytables empty string query bug
             # -- https://github.com/PyTables/PyTables/issues/184
-            fractions.row["count"] = cell_type_fraction 
-            fractions.row["percentile"] = -1.0
-            fractions.row.append()
+            normalized_counts.row["count"] = cell_type_fraction 
+            normalized_counts.row["percentile"] = -1.0
+            normalized_counts.row.append()
 
-        fractions.flush()
+        normalized_counts.flush()
 
-def populate_count_percentiles_for_cell_types(fractions, counts, chromosome, cell_types):
+def populate_count_percentiles_for_cell_types(normalized_counts, counts, chromosome, cell_types):
     for cell_type in cell_types:
         print " - populating percentiles for cell_type " + cell_type
-        populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name="*")
+        populate_count_percentiles(normalized_counts, counts, chromosome, cell_type, file_name="*")
 
         for file_name in file_names(counts, cell_type):
             print " - populating percentiles for file " + file_name + " in cell_type " + cell_type
-            populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name)
+            populate_count_percentiles(normalized_counts, counts, chromosome, cell_type, file_name)
 
-def populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name):
+def populate_count_percentiles(normalized_counts, counts, chromosome, cell_type, file_name):
     condition = "(chromosome == '%s') & (file_name == '%s') & (cell_type == '%s')" % (
         chromosome, file_name, cell_type)
 
     bin_numbers = []
-    normalized_counts = []
+    normalized_count_list = []
 
-    for row in fractions.where(condition):
+    for row in normalized_counts.where(condition):
         bin_numbers.append(row["bin_number"])
-        normalized_counts.append(row["count"])
+        normalized_count_list.append(row["count"])
 
-    percentiles = (stats.rankdata(normalized_counts) - 1) / (len(normalized_counts)-1) * 100
+    percentiles = (stats.rankdata(normalized_count_list) - 1) / (len(normalized_count_list)-1) * 100
     # percentiles calculated in bulk as suggested at 
     # http://grokbase.com/t/python/python-list/092235vj27/faster-scipy-percentileofscore
 
-    for i, row in enumerate(fractions.where(condition)):
+    for i, row in enumerate(normalized_counts.where(condition)):
         assert bin_numbers[i] == row["bin_number"]
         row["percentile"] = percentiles[i]
         row.update()
-    fractions.flush()
+    normalized_counts.flush()
 
 def create_summary_table(h5file):
     class Summary(tables.IsDescription):
@@ -231,7 +231,7 @@ def create_summary_table(h5file):
     return table
     
 
-def populate_summary(summary, fractions, chromosome, cell_types):
+def populate_summary(summary, normalized_counts, chromosome, cell_types):
     #print " - calculating summaries"
 
     condition = "chromosome == '%s'" % chromosome
@@ -253,7 +253,7 @@ def populate_summary(summary, fractions, chromosome, cell_types):
 
     # note populating the dictionaries this way is much faster than looping through
     # each bin and finding the matching fraction rows
-    for row in fractions.where(condition):
+    for row in normalized_counts.where(condition):
         bin_number = row["bin_number"]
         max_bin = max(max_bin, bin_number)
         percentile = row["percentile"]
@@ -300,14 +300,12 @@ def populate_summary(summary, fractions, chromosome, cell_types):
 
 
 def normalize_plot_and_summarize(counts, cell_types, output_directory):
-    os.mkdir(output_directory)
-
     skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
     normalized_counts_file = tables.open_file(output_directory + "/normalized_counts.h5", "w",
                                               title = "normalized bam liquidator genome bin read counts")
 
-    fractions = create_fractions_table(normalized_counts_file)
+    normalized_counts = create_normalized_counts_table(normalized_counts_file)
     summary = create_summary_table(normalized_counts_file)
 
     print "cell_types = %s" % cell_types
@@ -318,23 +316,23 @@ def normalize_plot_and_summarize(counts, cell_types, output_directory):
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
-        populate_count_fractions(fractions, counts, chromosome, cell_types)
-        populate_count_percentiles_for_cell_types(fractions, counts, chromosome, cell_types)
-        if not skip_plots: plot(output_directory, fractions, chromosome, cell_types)
+        populate_count_normalized_counts(normalized_counts, counts, chromosome, cell_types)
+        populate_count_percentiles_for_cell_types(normalized_counts, counts, chromosome, cell_types)
+        if not skip_plots: plot(output_directory, normalized_counts, chromosome, cell_types)
 
     print "Indexing normalized counts"
-    fractions.cols.bin_number.create_index()
-    fractions.cols.percentile.create_index()
-    fractions.cols.file_name.create_index()
-    fractions.cols.chromosome.create_index()
+    normalized_counts.cols.bin_number.create_index()
+    normalized_counts.cols.percentile.create_index()
+    normalized_counts.cols.file_name.create_index()
+    normalized_counts.cols.chromosome.create_index()
 
     if not skip_plots:
         print "Plotting summaries"
-        plot_summaries(output_directory, fractions, chromosomes)
+        plot_summaries(output_directory, normalized_counts, chromosomes)
 
     for chromosome in chromosomes:
         print "Creating table summary for " + chromosome
-        populate_summary(summary, fractions, chromosome, cell_types)
+        populate_summary(summary, normalized_counts, chromosome, cell_types)
 
     normalized_counts_file.close() 
                 
@@ -352,6 +350,8 @@ def main():
                                                    '"file_name", e.g. "bin_counts.hdf5" as generated by '
                                                    'bamliquidate_batch')
     args = parser.parse_args()
+
+    os.mkdir(args.output_directory)
 
     counts_file = tables.open_file(args.bin_counts_h5_file, "r")
     counts = counts_file.root.counts
