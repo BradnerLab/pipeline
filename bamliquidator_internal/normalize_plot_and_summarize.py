@@ -32,13 +32,6 @@ import tables
 import scipy.stats as stats
 import collections
 
-# globals
-counts    = None
-fractions = None
-summary   = None
-skip_normalized_count_population = False # useful if you just want to modify the csv and/or plotting 
-skip_plots = True # useful if you are just experimenting with normalization and/or summary tables
-
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the fractions table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
 # -- I should probably look into why flush was necessary and/or file a bug with pytables
@@ -58,9 +51,7 @@ def create_fractions_table(h5file):
 
     return table
 
-def all_cell_types():
-    #print "Getting cell types"
-
+def all_cell_types(counts):
     types = set()
 
     for row in counts:
@@ -69,7 +60,7 @@ def all_cell_types():
     return types 
 
 file_names_memo = {}
-def file_names(cell_type):
+def file_names(counts, cell_type):
     if not cell_type in file_names_memo:
         file_names = set() 
        
@@ -83,15 +74,15 @@ def file_names(cell_type):
         
     return file_names_memo[cell_type] 
 
-def plot_summaries(chromosomes):
-    bp.output_file("summary.html")
+def plot_summaries(output_directory, fractions, chromosomes):
+    bp.output_file(output_directory + "/summary.html")
     
     for chromosome in chromosomes:
-        plot_summary(chromosome)
+        plot_summary(fractions, chromosome)
 
     bp.save()
 
-def plot_summary(chromosome):
+def plot_summary(fractions, chromosome):
     print " - plotting " + chromosome + " summary"
 
     condition = "(file_name == '*') & (chromosome == '%s')" % chromosome
@@ -103,10 +94,10 @@ def plot_summary(chromosome):
     overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
     overall.title = chromosome + " counts per bin across all bam files"
 
-def plot(chromosome, cell_types):
-    bp.output_file(chromosome + ".html")
+def plot(output_directory, fractions, chromosome, cell_types):
+    bp.output_file(output_directory + "/" + chromosome + ".html")
 
-    plot_summary(chromosome)
+    plot_summary(fractions, chromosome)
 
     for cell_type in cell_types:
         print " - plotting " + cell_type
@@ -125,7 +116,7 @@ def plot(chromosome, cell_types):
 
     bp.save()
 
-def total_count_for_file(file_name, chromosome):
+def total_count_for_file(counts, file_name, chromosome):
     count = 0
 
     condition = "(file_name == '%s') & (chromosome == '%s')" % (file_name, chromosome)
@@ -135,9 +126,9 @@ def total_count_for_file(file_name, chromosome):
 
     return count 
 
-def populate_count_fractions(chromosome, cell_types):
+def populate_count_fractions(fractions, counts, chromosome, cell_types):
     for cell_type in cell_types:
-        files = file_names(cell_type)
+        files = file_names(counts, cell_type)
 
         processed_a_single_file_for_this_cell_type = False
         cell_type_fractions = []
@@ -145,7 +136,7 @@ def populate_count_fractions(chromosome, cell_types):
         for file_name in files:
             print " - populating count fractions for cell_type " + cell_type + " in file " + file_name 
 
-            file_total_count = total_count_for_file(file_name, chromosome)
+            file_total_count = total_count_for_file(counts, file_name, chromosome)
 
             #print "There are %d reads in this file for this chromosome" % file_total_count 
 
@@ -189,22 +180,16 @@ def populate_count_fractions(chromosome, cell_types):
 
         fractions.flush()
 
-def populate_count_percentiles_for_cell_types(chromosome, cell_types):
+def populate_count_percentiles_for_cell_types(fractions, counts, chromosome, cell_types):
     for cell_type in cell_types:
         print " - populating percentiles for cell_type " + cell_type
-        populate_count_percentiles(chromosome, cell_type, file_name="*")
+        populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name="*")
 
-        for file_name in file_names(cell_type):
+        for file_name in file_names(counts, cell_type):
             print " - populating percentiles for file " + file_name + " in cell_type " + cell_type
-            populate_count_percentiles(chromosome, cell_type, file_name)
+            populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name)
 
-def normalized_table(by_file):
-    return "normalized_bins_by_file" if by_file else "normalized_bins"
-
-def percentile_column(by_file):
-    return "percentile_in_file" if by_file else "percentile_in_cell_type" 
-
-def populate_count_percentiles(chromosome, cell_type, file_name):
+def populate_count_percentiles(fractions, counts, chromosome, cell_type, file_name):
     condition = "(chromosome == '%s') & (file_name == '%s') & (cell_type == '%s')" % (
         chromosome, file_name, cell_type)
 
@@ -239,10 +224,6 @@ def create_summary_table(h5file):
         lines_gte_5th_percentile = tables.UInt32Col(      pos=8)
         lines_lt_5th_percentile = tables.UInt32Col(       pos=9)
 
-    if skip_normalized_count_population:
-        # file wasn't created new, so already has a prior summary table that should be dropped
-        h5file.remove_node("/", "summary")
-
     table = h5file.create_table("/", "summary", Summary, "bin count summary")
 
     table.flush()
@@ -250,7 +231,7 @@ def create_summary_table(h5file):
     return table
     
 
-def populate_summary(chromosome, cell_types):
+def populate_summary(summary, fractions, chromosome, cell_types):
     #print " - calculating summaries"
 
     condition = "chromosome == '%s'" % chromosome
@@ -316,41 +297,18 @@ def populate_summary(chromosome, cell_types):
         summary.row["lines_lt_5th_percentile"] = lines_lt_low_percentile_by_bin[bin_number]
         summary.row.append()
     summary.flush()
-                
-def parse_args():
-    parser = argparse.ArgumentParser(description='Calculate and plot normalized bin count percentiles. '
-        'Normalized counts and percentiles are stored in the table normalized_bins. Plots are stored in '
-        '.html files in the current directory.  Note that this is designed to be run once per cell type '
-        'for a single version -- corresponding rows from normalized_bins should be deleted if new files '
-        'are added or the same cell type needs to be re-processed for any reason (an error will occur '
-        'and nothing will be changed in normalized_bins if there are already entries in this table for '
-        'the given cell type and version)')
-    parser.add_argument('cell_types', metavar='cell_type', nargs='+',
-                        help='a cell type to calculate -- specify "all" to process all cell types')
-    args = parser.parse_args()
-    if len(args.cell_types) == 1 and args.cell_types[0] == 'all':
-        return all_cell_types()
-    else:
-        return args.cell_types 
 
-def main():
-    global counts
-    global fractions
-    global summary
 
-    counts = tables.open_file("bin_counts.h5", "r").root.counts
+def normalize_plot_and_summarize(counts, cell_types, output_directory):
+    os.mkdir(output_directory)
 
-    if skip_normalized_count_population:
-        normalized_counts_file = tables.open_file("normalized_counts.h5", "r+")
-        fractions = normalized_counts_file.root.counts
-    else:
-        normalized_counts_file = tables.open_file("normalized_counts.h5", "w",
-                                                  title = "normalized bam liquidator genome bin read counts")
-        fractions = create_fractions_table(normalized_counts_file)
+    skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
+    normalized_counts_file = tables.open_file(output_directory + "/normalized_counts.h5", "w",
+                                              title = "normalized bam liquidator genome bin read counts")
+
+    fractions = create_fractions_table(normalized_counts_file)
     summary = create_summary_table(normalized_counts_file)
-
-    cell_types = parse_args()
 
     print "cell_types = %s" % cell_types
 
@@ -360,26 +318,49 @@ def main():
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
-        if not skip_normalized_count_population:
-            populate_count_fractions(chromosome, cell_types)
-            populate_count_percentiles_for_cell_types(chromosome, cell_types)
-        if not skip_plots: plot(chromosome, cell_types)
+        populate_count_fractions(fractions, counts, chromosome, cell_types)
+        populate_count_percentiles_for_cell_types(fractions, counts, chromosome, cell_types)
+        if not skip_plots: plot(output_directory, fractions, chromosome, cell_types)
 
-    if not skip_normalized_count_population:
-        print "Indexing normalized counts"
-        fractions.cols.bin_number.create_index()
-        fractions.cols.percentile.create_index()
-        fractions.cols.file_name.create_index()
-        fractions.cols.chromosome.create_index()
+    print "Indexing normalized counts"
+    fractions.cols.bin_number.create_index()
+    fractions.cols.percentile.create_index()
+    fractions.cols.file_name.create_index()
+    fractions.cols.chromosome.create_index()
 
     if not skip_plots:
         print "Plotting summaries"
-        plot_summaries(chromosomes)
+        plot_summaries(output_directory, fractions, chromosomes)
 
     for chromosome in chromosomes:
         print "Creating table summary for " + chromosome
-        populate_summary(chromosome, cell_types)
+        populate_summary(summary, fractions, chromosome, cell_types)
 
+    normalized_counts_file.close() 
+                
+def main():
+    parser = argparse.ArgumentParser(description='Calculate and plot normalized bin counts and percentiles. '
+        'Normalized counts, percentiles, and summaries are stored in hdf5 tables in the file "normalized_counts.h5". '
+        'Plots are stored in .html files.  The hdf5 and html files are stored by default in a new directory "output" '
+        '(which can be overridden by argument, see below), and the program aborts if this directory already exists.') 
+    parser.add_argument('--cell_type', nargs='*',
+                        help='restrict to one or more cell types to process (defaults to processing all cell types)')
+    parser.add_argument('--output_directory', default='output',
+                        help='directory to create and output the h5 and/or html files to (aborts if already exists)')
+    parser.add_argument('bin_counts_h5_file', help='the hdf5 file with a "counts" table with columns ' 
+                                                   '"bin_number", "cell_type", "chromosome", "count", and '
+                                                   '"file_name", e.g. "bin_counts.hdf5" as generated by '
+                                                   'bamliquidate_batch')
+    args = parser.parse_args()
+
+    counts_file = tables.open_file(args.bin_counts_h5_file, "r")
+    counts = counts_file.root.counts
+
+    if args.cell_type is None:
+        args.cell_types = all_cell_types(counts)
+
+    normalize_plot_and_summarize(counts, args.cell_types, args.output_directory)
+    counts_file.close()
 
 if __name__ == "__main__":
     main()

@@ -23,6 +23,9 @@
 #
 ###############################################################################
 
+# this is a make file, so to build, just run make
+# http://www.cprogramming.com/tutorial/makefiles.html
+
 ifndef SAM_DIR
 #SAM_DIR='./samtools/'
 SAM_DIR:=/home/bradneradmin/samtools
@@ -79,9 +82,6 @@ else
   # working around bug, http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53841
   CPPFLAGS += -D_GLIBCXX_USE_CLOCK_REALTIME
 endif
-
-# this is a make file, so to build, just run make
-# http://www.cprogramming.com/tutorial/makefiles.html
 
 all: ../bamliquidator bamliquidate_batch 
 
