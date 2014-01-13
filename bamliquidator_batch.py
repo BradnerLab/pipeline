@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 
 import tables
+import argparse
 
 # creates empty file, overwriting any prior existing files
-def create_count_table(file_name):
+def create_count_table(h5file):
     class BinCount(tables.IsDescription):
         bin_number = tables.UInt32Col(    pos=0)
         cell_type  = tables.StringCol(16, pos=1)
         chromosome = tables.StringCol(16, pos=2)
         count      = tables.UInt64Col(    pos=3)
         file_name  = tables.StringCol(64, pos=4)
-
-    h5file = tables.open_file(file_name, mode = "w",
-                              title = "bam liquidator genome bin read counts")
 
     table = h5file.create_table("/", "counts", BinCount, "bin counts")
 
@@ -47,7 +45,47 @@ todo
 '''
 
 def main():
-    create_count_table("bin_counts.h5")
+    parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin of each chromosome '
+                                                 'in the bam file(s) at the given directory, and then normalize, plot, '
+                                                 'and summarize the counts in the output directory.  For additional '
+                                                 'help, please see the wiki at '
+                                                 ' https://github.com/BradnerLab/pipeline/wiki , review related '
+                                                 'support tickets, and/or create a new ticket at '
+                                                 'https://github.com/BradnerLab/pipeline/issues?labels=support .')
+    parser.add_argument('--output_directory', default='output',
+                        help='Directory to create and output the h5 and/or html files to (aborts if already exists).')
+    parser.add_argument('--bin_counts_file',
+                        help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
+                             'creating a new file "bin_counts.h5" in the output directory.')
+    parser.add_argument('--ucsc_chrom_sizes',
+                        help='Tab delimitted text file with the first column naming the chromosome (e.g. chr1), the '
+                             'third column naming the genome type (e.g. mm8), and the fifth column naming the number '
+                             'of base pairs in the reference chromosome.')
+    parser.add_argument('bam_file_path', 
+                        help='The directory to recursively search for .bam files for counting.  Every .bam file must '
+                             'have a corresponding .bai file at the same location.  To count just a single file, '
+                             'provide the .bam file path instead of a directory.  The parent directory of each .bam '
+                             'file is interpretted as the cell type.   If your .bam files are not in this format, '
+                             'please consider creating a directory of sym links to your actual .bam and .bai files. '
+                             'If the .bam file already has 1 or more reads in the HDF5 counts file, then the .bam file '
+                             'is skipped.')
+    args = parser.parse_args()
+
+    assert(tables.__version__ >= '3.0.0')
+
+    os.mkdir(args.output_directory)
+
+    if args.bin_counts_file is None:
+        counts_file = tables.open_file(output_directory + "/bin_counts.h5", mode = "w",
+                                       title = "bam liquidator genome bin read counts")
+        counts = create_count_table(counts_file)
+    else:
+        counts_file = tables.open_file(args.bin_counts_h5_file, "r+")
+        counts = counts_file.root.counts
+
+    
+   
+    #create_count_table("bin_counts.h5")
 
 if __name__ == "__main__":
     main()
