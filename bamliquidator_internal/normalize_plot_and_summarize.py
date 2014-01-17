@@ -298,8 +298,11 @@ def populate_summary(summary, normalized_counts, chromosome, cell_types):
         summary.row.append()
     summary.flush()
 
+# if cell_types is None, then all cell_types will be included
+def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
+    if cell_types is None:
+        cell_types = all_cell_types(counts)
 
-def normalize_plot_and_summarize(counts, cell_types, output_directory):
     skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
     normalized_counts_file = tables.open_file(output_directory + "/normalized_counts.h5", "w",
@@ -356,10 +359,8 @@ def main():
     counts_file = tables.open_file(args.bin_counts_h5_file, "r")
     counts = counts_file.root.counts
 
-    if args.cell_type is None:
-        args.cell_types = all_cell_types(counts)
+    normalize_plot_and_summarize(counts, args.output_directory, args.cell_types)
 
-    normalize_plot_and_summarize(counts, args.cell_types, args.output_directory)
     counts_file.close()
 
 if __name__ == "__main__":

@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 
-import tables
+from bamliquidator_internal.normalize_plot_and_summarize import normalize_plot_and_summarize
+
 import argparse
+import os
+import subprocess
+import tables
+import datetime
+from time import sleep
 
 # creates empty file, overwriting any prior existing files
 def create_count_table(h5file):
@@ -30,28 +36,41 @@ todo
      * add a sample script to generate csv files from summary table rows,
        with comments so that people could create similar scripts and hopefully
        not use csv files when pytables is a nicer interface
- * master script
-     * do 3 steps outlined in comment
  * add arguments to this script
-     * output directory
-        * probably exit with error code if directory already exists
-          (I don't want to overwrite any files)
      * number of bins
      * option to add files to prior counts instead of start from scratch (maybe by supplying path to prior h5 file?)
-     * directory to search for individual bam files, or a specific bam file
- * intended usage:
-   make
-   -- compiles misc code in bamliquidator_internal and places bamliquidator in current directory (and bamliquidator_batch under internal directory)
 '''
+
+def all_bam_files_in_directory(bam_directory):
+    bam_files = []
+    for dirpath, _, files in os.walk(bam_directory, followlinks=True):
+        for file_ in files:
+            if file_.endswith(".bam"):
+                bam_files.append(os.path.join(dirpath, file_))
+    return bam_files
+
+def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_counts_file_path, executable_path):
+    for i, bam_file in enumerate(bam_files):
+        print "Liquidating %s (file %d of %d, %s)" % (
+            bam_file, i+1, len(bam_files), datetime.datetime.now().strftime('%H:%M:%S'))
+        cell_type = os.path.basename(os.path.dirname(bam_file))
+        return_code = subprocess.call([executable_path, cell_type, ucsc_chrom_sizes, bam_file, bin_counts_file_path])
+
+        if return_code != 0:
+            print "%s failed with exit code %d" % (executable_path, return_code)
+            exit(return_code)
+
+    counts_file = tables.open_file(bin_counts_file_path, mode = "r")
+    counts = counts_file.root.counts
+
+    normalize_plot_and_summarize(counts, output_directory) 
+    counts_file.close()
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin of each chromosome '
                                                  'in the bam file(s) at the given directory, and then normalize, plot, '
                                                  'and summarize the counts in the output directory.  For additional '
-                                                 'help, please see the wiki at '
-                                                 ' https://github.com/BradnerLab/pipeline/wiki , review related '
-                                                 'support tickets, and/or create a new ticket at '
-                                                 'https://github.com/BradnerLab/pipeline/issues?labels=support .')
+                                                 'help, please see https://github.com/BradnerLab/pipeline/wiki')
     parser.add_argument('--output_directory', default='output',
                         help='Directory to create and output the h5 and/or html files to (aborts if already exists).')
     parser.add_argument('--bin_counts_file',
@@ -65,27 +84,44 @@ def main():
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
                              'provide the .bam file path instead of a directory.  The parent directory of each .bam '
-                             'file is interpretted as the cell type.   If your .bam files are not in this format, '
-                             'please consider creating a directory of sym links to your actual .bam and .bai files. '
-                             'If the .bam file already has 1 or more reads in the HDF5 counts file, then the .bam file '
-                             'is skipped.')
+                             'file is interpretted as the cell type (e.g. mm1s might be an appropriate directory '
+                             'name). The .bam file name is also required to contain the genome type so that the '
+                             'corresponding entries in the ucsc_chrom_sizes file can be used.  If your .bam files are '
+                             'not in this format, please consider creating a directory of sym links to your actual '
+                             '.bam and .bai files. ')
+                      #todo: 'If the .bam file already has 1 or more reads in the HDF5 counts file, then the .bam file '
+                      #      'is skipped.')
     args = parser.parse_args()
 
     assert(tables.__version__ >= '3.0.0')
 
+    executable_path = "bamliquidator_internal/bamliquidate_batch"
+    if not os.path.isfile(executable_path):
+        print "%s is missing -- try cd'ing into the directory and running 'make'" % executable_path
+        exit(1)
+
     os.mkdir(args.output_directory)
 
     if args.bin_counts_file is None:
-        counts_file = tables.open_file(output_directory + "/bin_counts.h5", mode = "w",
+        args.bin_counts_file = os.path.join(args.output_directory, "bin_counts.h5")
+        counts_file = tables.open_file(args.bin_counts_file, mode = "w",
                                        title = "bam liquidator genome bin read counts")
         counts = create_count_table(counts_file)
     else:
-        counts_file = tables.open_file(args.bin_counts_h5_file, "r+")
+        counts_file = tables.open_file(args.bin_counts_file, "r+")
         counts = counts_file.root.counts
 
-    
+    if os.path.isdir(args.bam_file_path):
+        bam_files = all_bam_files_in_directory(args.bam_file_path)
+    else:
+        bam_files = [args.bam_file_path]
    
-    #create_count_table("bin_counts.h5")
+    #todo: remove any files from the list if there are already counts for them
+
+    counts_file.close() # The bamliquidator_internal/bamliquidate_batch will open this file and modify it,
+                        # so it is best that we not hold an out of sync reference to it
+
+    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes, args.bin_counts_file, executable_path)
 
 if __name__ == "__main__":
     main()

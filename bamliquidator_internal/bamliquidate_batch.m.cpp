@@ -27,6 +27,17 @@
      thread_group and asio to implement a thread pool)
  */
 
+namespace
+{
+  const bool logging_enabled = true;
+}
+
+#define LOG_INFO(streamable) \
+if(logging_enabled) \
+{ \
+  std::cout << streamable << std::endl; \
+}
+
 struct ChromosomeCounts
 {
   const std::string chromosome; // e.g. chr1
@@ -96,10 +107,8 @@ struct CountH5Record
   char file_name[64];
 };
 
-void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
+void write_to_hdf5(hid_t& file, threadsafe_queue<ChromosomeCounts> &computed_counts)
 {
-  hid_t file = H5Fopen("bin_counts.h5", H5F_ACC_RDWR, H5P_DEFAULT);
-
   const size_t record_size = sizeof(CountH5Record);
 
   size_t record_offset[] = { HOFFSET(CountH5Record, bin_number),
@@ -114,8 +123,6 @@ void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
                            sizeof(CountH5Record::count),
                            sizeof(CountH5Record::file_name) };
 
-
-  std::cout << "writer...\n";
   while (true)
   {
     std::shared_ptr<ChromosomeCounts> counts = computed_counts.wait_and_pop();
@@ -128,8 +135,7 @@ void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
     strncpy(record.chromosome, counts->chromosome.c_str(),    sizeof(CountH5Record::chromosome));
     strncpy(record.file_name,  counts->bam_file_name.c_str(), sizeof(CountH5Record::file_name));
    
-    std::cout << "writing " << counts->bin_counts.size() << " from " 
-              << counts->chromosome << std::endl;
+    LOG_INFO(" - writing " << counts->bin_counts.size() << " from " << counts->chromosome);
     for (auto count : counts->bin_counts)
     {
       record.count = count;
@@ -143,13 +149,11 @@ void write_to_hdf5(threadsafe_queue<ChromosomeCounts> &computed_counts)
       ++record.bin_number;
     }
   }
-
-  H5Fclose(file);
 }
 
 void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
            const std::string& cell_type,
-           const std::string& chrom_size_file,
+           const ChromosomeLengths& lengths,
            const std::string& bam_file)
 {
   const size_t last_slash_position = bam_file.find_last_of("/");
@@ -163,14 +167,12 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
 
   const int bin_size = 100000; // 100K
 
-  const ChromosomeLengths lengths(chrom_size_file);
-
   for (auto chr : chromosomes)
   {
     int base_pairs = lengths(bam_file, chr);
     int bins = std::ceil(base_pairs / (double) bin_size);
     int max_base_pair = bins * bin_size;
-    std::cout << "counting chromosome " << chr << std::endl;
+    LOG_INFO(" - counting chromosome " << chr);
     computed_counts.push(ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
       liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)});
   }
@@ -180,23 +182,50 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
 
 int main(int argc, char* argv[])
 {
-  if (argc != 4)
+  try
   {
-    std::cout << "usage: " << argv[0] << " cell_type ucsc_chrom_size_path bam_file_path\n"
-      << "\ne.g. " << argv[0] << " mm1s /grail/annotations/ucsc_chromSize.txt"
-      << "\n     /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam"
-      << std::endl;
-    return -1;
+    if (argc != 5)
+    {
+      std::cerr << "usage: " << argv[0] << " cell_type ucsc_chrom_size_path bam_file_path hdf5_file\n"
+        << "\ne.g. " << argv[0] << " mm1s /grail/annotations/ucsc_chromSize.txt"
+        << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
+        << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
+        << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
+        << std::endl;
+      return 1;
+    }
+
+    const std::string cell_type = argv[1];
+    const std::string ucsc_chrom_size_path = argv[2];
+    const std::string bam_file_path = argv[3];
+    const std::string hdf5_file_path = argv[4];
+
+    const ChromosomeLengths lengths(ucsc_chrom_size_path);
+
+    hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    if (h5file < 0)
+    {
+      std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
+      return 2;
+    }
+
+    threadsafe_queue<ChromosomeCounts> computed_counts;
+    std::thread writer_thread(write_to_hdf5, std::ref(h5file), std::ref(computed_counts));
+
+    count(computed_counts, cell_type, lengths, bam_file_path);
+
+    writer_thread.join();
+
+    H5Fclose(h5file);
+
+    return 0;
   }
+  catch(const std::exception& e)
+  {
+    std::cerr << "Unhandled exception: " << e.what() << std::endl;
 
-  threadsafe_queue<ChromosomeCounts> computed_counts;
-  std::thread writer_thread(write_to_hdf5, std::ref(computed_counts));
-
-  count(computed_counts, argv[1], argv[2], argv[3]);
-
-  writer_thread.join();
-
-  return 0;
+    return 3; 
+  }
 }
 
 /* The MIT License (MIT) 
