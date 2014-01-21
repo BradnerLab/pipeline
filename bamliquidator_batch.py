@@ -38,7 +38,6 @@ todo
        not use csv files when pytables is a nicer interface
  * add arguments to this script
      * number of bins
-     * option to add files to prior counts instead of start from scratch (maybe by supplying path to prior h5 file?)
 '''
 
 def all_bam_files_in_directory(bam_directory):
@@ -48,6 +47,21 @@ def all_bam_files_in_directory(bam_directory):
             if file_.endswith(".bam"):
                 bam_files.append(os.path.join(dirpath, file_))
     return bam_files
+
+def bam_files_with_no_counts(counts, bam_files):
+    with_no_counts = []
+
+    for bam_file in bam_files:
+        count_found = False
+        condition = "file_name == '%s'" % os.path.basename(bam_file)
+
+        for _ in counts.where(condition):
+            count_found = True
+
+        if not count_found:
+            with_no_counts.append(bam_file)
+
+    return with_no_counts
 
 def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_counts_file_path, executable_path):
     for i, bam_file in enumerate(bam_files):
@@ -88,9 +102,8 @@ def main():
                              'name). The .bam file name is also required to contain the genome type so that the '
                              'corresponding entries in the ucsc_chrom_sizes file can be used.  If your .bam files are '
                              'not in this format, please consider creating a directory of sym links to your actual '
-                             '.bam and .bai files. ')
-                      #todo: 'If the .bam file already has 1 or more reads in the HDF5 counts file, then the .bam file '
-                      #      'is skipped.')
+                             '.bam and .bai files. If the .bam file already has 1 or more reads in the HDF5 counts '
+                             'file, then the .bam file is skipped.')
     args = parser.parse_args()
 
     assert(tables.__version__ >= '3.0.0')
@@ -116,7 +129,7 @@ def main():
     else:
         bam_files = [args.bam_file_path]
    
-    #todo: remove any files from the list if there are already counts for them
+    bam_files = bam_files_with_no_counts(counts, bam_files)
 
     counts_file.close() # The bamliquidator_internal/bamliquidate_batch will open this file and modify it,
                         # so it is best that we not hold an out of sync reference to it
