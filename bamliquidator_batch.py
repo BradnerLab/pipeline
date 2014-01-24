@@ -36,8 +36,6 @@ todo
      * add a sample script to generate csv files from summary table rows,
        with comments so that people could create similar scripts and hopefully
        not use csv files when pytables is a nicer interface
- * add arguments to this script
-     * number of bins
 '''
 
 def all_bam_files_in_directory(bam_directory):
@@ -63,12 +61,13 @@ def bam_files_with_no_counts(counts, bam_files):
 
     return with_no_counts
 
-def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_counts_file_path, executable_path):
+def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_size, bin_counts_file_path, executable_path):
     for i, bam_file in enumerate(bam_files):
         print "Liquidating %s (file %d of %d, %s)" % (
             bam_file, i+1, len(bam_files), datetime.datetime.now().strftime('%H:%M:%S'))
         cell_type = os.path.basename(os.path.dirname(bam_file))
-        return_code = subprocess.call([executable_path, cell_type, ucsc_chrom_sizes, bam_file, bin_counts_file_path])
+        args = [executable_path, cell_type, str(bin_size), ucsc_chrom_sizes, bam_file, bin_counts_file_path]
+        return_code = subprocess.call(args)
 
         if return_code != 0:
             print "%s failed with exit code %d" % (executable_path, return_code)
@@ -86,11 +85,15 @@ def main():
                                                  'and summarize the counts in the output directory.  For additional '
                                                  'help, please see https://github.com/BradnerLab/pipeline/wiki')
     parser.add_argument('--output_directory', default='output',
-                        help='Directory to create and output the h5 and/or html files to (aborts if already exists).')
+                        help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
+                             'Default is "./output".')
     parser.add_argument('--bin_counts_file',
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "bin_counts.h5" in the output directory.')
-    parser.add_argument('--ucsc_chrom_sizes',
+    parser.add_argument('--bin_size', default=100000,
+                        help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
+                             "the larger the data files (default is 100000).")
+    parser.add_argument('ucsc_chrom_sizes',
                         help='Tab delimitted text file with the first column naming the chromosome (e.g. chr1), the '
                              'third column naming the genome type (e.g. mm8), and the fifth column naming the number '
                              'of base pairs in the reference chromosome.')
@@ -134,7 +137,8 @@ def main():
     counts_file.close() # The bamliquidator_internal/bamliquidate_batch will open this file and modify it,
                         # so it is best that we not hold an out of sync reference to it
 
-    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes, args.bin_counts_file, executable_path)
+    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes, args.bin_size, args.bin_counts_file,
+              executable_path)
 
 if __name__ == "__main__":
     main()

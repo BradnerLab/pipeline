@@ -153,6 +153,7 @@ void write_to_hdf5(hid_t& file, threadsafe_queue<ChromosomeCounts> &computed_cou
 
 void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
            const std::string& cell_type,
+           const unsigned int bin_size,
            const ChromosomeLengths& lengths,
            const std::string& bam_file)
 {
@@ -165,9 +166,7 @@ void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
     "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
     "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"};
 
-  const int bin_size = 100000; // 100K
-
-  for (auto chr : chromosomes)
+    for (auto chr : chromosomes)
   {
     int base_pairs = lengths(bam_file, chr);
     int bins = std::ceil(base_pairs / (double) bin_size);
@@ -184,10 +183,10 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (argc != 5)
+    if (argc != 6)
     {
-      std::cerr << "usage: " << argv[0] << " cell_type ucsc_chrom_size_path bam_file_path hdf5_file\n"
-        << "\ne.g. " << argv[0] << " mm1s /grail/annotations/ucsc_chromSize.txt"
+      std::cerr << "usage: " << argv[0] << " cell_type bin_size ucsc_chrom_size_path bam_file_path hdf5_file\n"
+        << "\ne.g. " << argv[0] << " mm1s 100000 /grail/annotations/ucsc_chromSize.txt"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
@@ -196,9 +195,16 @@ int main(int argc, char* argv[])
     }
 
     const std::string cell_type = argv[1];
-    const std::string ucsc_chrom_size_path = argv[2];
-    const std::string bam_file_path = argv[3];
-    const std::string hdf5_file_path = argv[4];
+    const unsigned int bin_size = boost::lexical_cast<unsigned int>(argv[2]);
+    const std::string ucsc_chrom_size_path = argv[3];
+    const std::string bam_file_path = argv[4];
+    const std::string hdf5_file_path = argv[5];
+
+    if (bin_size == 0)
+    {
+      std::cerr << "bin size cannot be zero" << std::endl;
+      return 2;
+    }
 
     const ChromosomeLengths lengths(ucsc_chrom_size_path);
 
@@ -206,13 +212,13 @@ int main(int argc, char* argv[])
     if (h5file < 0)
     {
       std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
-      return 2;
+      return 3;
     }
 
     threadsafe_queue<ChromosomeCounts> computed_counts;
     std::thread writer_thread(write_to_hdf5, std::ref(h5file), std::ref(computed_counts));
 
-    count(computed_counts, cell_type, lengths, bam_file_path);
+    count(computed_counts, cell_type, bin_size, lengths, bam_file_path);
 
     writer_thread.join();
 
@@ -224,7 +230,7 @@ int main(int argc, char* argv[])
   {
     std::cerr << "Unhandled exception: " << e.what() << std::endl;
 
-    return 3; 
+    return 4; 
   }
 }
 
