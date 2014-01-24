@@ -1,13 +1,12 @@
 #include "bamliquidator.h"
-#include "threadsafe_queue.h"
 
 #include <cmath>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <map>
 #include <stdexcept>
 #include <sstream>
-#include <thread>
 
 #include <boost/atomic.hpp>
 #include <boost/algorithm/string.hpp>
@@ -29,7 +28,7 @@
 
 namespace
 {
-  const bool logging_enabled = true;
+  const bool logging_enabled = false;
 }
 
 #define LOG_INFO(streamable) \
@@ -107,8 +106,47 @@ struct CountH5Record
   char file_name[64];
 };
 
-void write_to_hdf5(hid_t& file, threadsafe_queue<ChromosomeCounts> &computed_counts)
+ChromosomeCounts count(const std::string& chr,
+                       const std::string& cell_type,
+                       const unsigned int bin_size,
+                       const ChromosomeLengths& lengths,
+                       const std::string& bam_file)
 {
+  const size_t last_slash_position = bam_file.find_last_of("/");
+  const std::string bam_file_name = last_slash_position == std::string::npos 
+                                  ? bam_file
+                                  : bam_file.substr(last_slash_position + 1);
+
+  int base_pairs = lengths(bam_file, chr);
+  int bins = std::ceil(base_pairs / (double) bin_size);
+  int max_base_pair = bins * bin_size;
+  LOG_INFO(" - counting chromosome " << chr);
+  return ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
+    liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)};
+}
+
+void batch(hid_t& file,
+           const std::string& cell_type,
+           const unsigned int bin_size,
+           const ChromosomeLengths& lengths,
+           const std::string& bam_file)
+{
+  std::deque<std::future<ChromosomeCounts>> future_counts;
+
+  const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
+    "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
+    "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"};
+
+  for (auto& chr : chromosomes)
+  {
+    future_counts.push_back(std::async(count,
+                                         std::ref(chr),
+                                         std::ref(cell_type),
+                                         bin_size,
+                                         std::ref(lengths),
+                                         std::ref(bam_file)));
+  }
+
   const size_t record_size = sizeof(CountH5Record);
 
   size_t record_offset[] = { HOFFSET(CountH5Record, bin_number),
@@ -123,20 +161,18 @@ void write_to_hdf5(hid_t& file, threadsafe_queue<ChromosomeCounts> &computed_cou
                            sizeof(CountH5Record::count),
                            sizeof(CountH5Record::file_name) };
 
-  while (true)
+  for (auto& future_count : future_counts)
   {
-    std::shared_ptr<ChromosomeCounts> counts = computed_counts.wait_and_pop();
-
-    if (counts == nullptr) return; 
+    ChromosomeCounts counts = future_count.get();
 
     CountH5Record record;
     record.bin_number = 0;
-    strncpy(record.cell_type,  counts->cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-    strncpy(record.chromosome, counts->chromosome.c_str(),    sizeof(CountH5Record::chromosome));
-    strncpy(record.file_name,  counts->bam_file_name.c_str(), sizeof(CountH5Record::file_name));
+    strncpy(record.cell_type,  counts.cell_type.c_str(),     sizeof(CountH5Record::cell_type));
+    strncpy(record.chromosome, counts.chromosome.c_str(),    sizeof(CountH5Record::chromosome));
+    strncpy(record.file_name,  counts.bam_file_name.c_str(), sizeof(CountH5Record::file_name));
    
-    LOG_INFO(" - writing " << counts->bin_counts.size() << " from " << counts->chromosome);
-    for (auto count : counts->bin_counts)
+    LOG_INFO(" - writing " << counts.bin_counts.size() << " from " << counts.chromosome);
+    for (auto count : counts.bin_counts)
     {
       record.count = count;
       herr_t status = H5TBappend_records(file, "counts", 1, record_size, record_offset,
@@ -149,34 +185,6 @@ void write_to_hdf5(hid_t& file, threadsafe_queue<ChromosomeCounts> &computed_cou
       ++record.bin_number;
     }
   }
-}
-
-void count(threadsafe_queue<ChromosomeCounts> &computed_counts,
-           const std::string& cell_type,
-           const unsigned int bin_size,
-           const ChromosomeLengths& lengths,
-           const std::string& bam_file)
-{
-  const size_t last_slash_position = bam_file.find_last_of("/");
-  const std::string bam_file_name = last_slash_position == std::string::npos 
-                                  ? bam_file
-                                  : bam_file.substr(last_slash_position + 1);
-
-  const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
-    "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
-    "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"};
-
-    for (auto chr : chromosomes)
-  {
-    int base_pairs = lengths(bam_file, chr);
-    int bins = std::ceil(base_pairs / (double) bin_size);
-    int max_base_pair = bins * bin_size;
-    LOG_INFO(" - counting chromosome " << chr);
-    computed_counts.push(ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
-      liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)});
-  }
-
-  computed_counts.push(nullptr); // insert "poison pill" to signal to writer to stop 
 }
 
 int main(int argc, char* argv[])
@@ -215,13 +223,8 @@ int main(int argc, char* argv[])
       return 3;
     }
 
-    threadsafe_queue<ChromosomeCounts> computed_counts;
-    std::thread writer_thread(write_to_hdf5, std::ref(h5file), std::ref(computed_counts));
-
-    count(computed_counts, cell_type, bin_size, lengths, bam_file_path);
-
-    writer_thread.join();
-
+    batch(h5file, cell_type, bin_size, lengths, bam_file_path);
+   
     H5Fclose(h5file);
 
     return 0;

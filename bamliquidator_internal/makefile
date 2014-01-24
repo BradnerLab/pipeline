@@ -93,7 +93,7 @@ bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
 					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl
 
-bamliquidator.m.o: bamliquidator.m.cpp threadsafe_queue.h
+bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
 
 bamliquidate_batch.m.o: bamliquidate_batch.m.cpp
