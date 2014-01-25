@@ -106,23 +106,24 @@ struct CountH5Record
   char file_name[64];
 };
 
-ChromosomeCounts count(const std::string& chr,
-                       const std::string& cell_type,
+void count(std::string chr,
+                       std::string cell_type,
                        const unsigned int bin_size,
-                       const ChromosomeLengths& lengths,
-                       const std::string& bam_file)
+                       //ChromosomeLengths lengths,
+                       std::string bam_file)
 {
   const size_t last_slash_position = bam_file.find_last_of("/");
   const std::string bam_file_name = last_slash_position == std::string::npos 
                                   ? bam_file
                                   : bam_file.substr(last_slash_position + 1);
 
-  int base_pairs = lengths(bam_file, chr);
+  int base_pairs = 0; //lengths(bam_file, chr);
   int bins = std::ceil(base_pairs / (double) bin_size);
   int max_base_pair = bins * bin_size;
   LOG_INFO(" - counting chromosome " << chr);
-  return ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
-    liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)};
+  /*ChromosomeCounts counts {chr, bam_file_name, cell_type, bin_size, 
+    liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)};*/
+  return;
 }
 
 void batch(hid_t& file,
@@ -131,7 +132,7 @@ void batch(hid_t& file,
            const ChromosomeLengths& lengths,
            const std::string& bam_file)
 {
-  std::deque<std::future<ChromosomeCounts>> future_counts;
+  std::deque<std::future<void>> future_counts;
 
   const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
     "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
@@ -140,11 +141,11 @@ void batch(hid_t& file,
   for (auto& chr : chromosomes)
   {
     future_counts.push_back(std::async(count,
-                                         std::ref(chr),
-                                         std::ref(cell_type),
-                                         bin_size,
-                                         std::ref(lengths),
-                                         std::ref(bam_file)));
+                                       chr,
+                                       cell_type,
+                                       bin_size,
+                                       //lengths,
+                                       bam_file));
   }
 
   const size_t record_size = sizeof(CountH5Record);
@@ -160,7 +161,7 @@ void batch(hid_t& file,
                            sizeof(CountH5Record::chromosome),
                            sizeof(CountH5Record::count),
                            sizeof(CountH5Record::file_name) };
-
+/*
   for (auto& future_count : future_counts)
   {
     ChromosomeCounts counts = future_count.get();
@@ -185,6 +186,7 @@ void batch(hid_t& file,
       ++record.bin_number;
     }
   }
+  */
 }
 
 int main(int argc, char* argv[])
