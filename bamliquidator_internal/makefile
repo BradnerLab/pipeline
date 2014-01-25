@@ -47,8 +47,9 @@ endif
 #   2. zlib http://zlib.net/
 #
 # on a Mac, you can also install samtools via homebrew, e.g. homebrew install samtools
+#
 # todo: change #include "sam.h" to #include <sam.h> and the usage of SAM_DIR in the compiler flags 
-# probably won't be necessary if sam is installed properly
+#       probably won't be necessary if sam is installed properly
 
 
 # boost and hdf5 is required as well for bamliquidate_batch
@@ -63,24 +64,21 @@ endif
 # to install hdf5 on Mac, try "brew install hdf5" (you may need to first "brew tap homebrew/science"
 
 
-# clang was chosen instead of gcc because it generally has easier to read error messages 
-# and is the default compiler on John's Mac.  clang should be all setup on a Mac by 
-# installing XCode, and can be installed on Ubuntu with "apt-get install clang" or see the 
-# detailed steps at https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506 
-# if a more recent version is needed
+# clang/libc++ was chosen instead of gcc/libstdc++ because it generally has easier to read error 
+# messages and better support for C++11 (and it is the default compiler on John's Mac).  clang should 
+# be all setup on a Mac by installing XCode, and can be installed on Ubuntu with 
+# "apt-get install clang libc++" or see the detailed steps at 
+# https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506 and
+# https://github.com/BradnerLab/pipeline/issues/4#issuecomment-33296709 if your version of Ubuntu 
+# doesn't have useful versions 
 
-CPPFLAGS := -std=c++11 -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS := -O -g -Wall 
+CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
+LDFLAGS := -stdlib=libc++ -O -g -Wall 
 LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)
 	SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
-	CPPFLAGS += -stdlib=libc++ 
-	LDFLAGS += -stdlib=libc++ 
-else
-  # working around bug, http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53841
-  CPPFLAGS += -D_GLIBCXX_USE_CLOCK_REALTIME
 endif
 
 all: ../bamliquidator bamliquidate_batch 

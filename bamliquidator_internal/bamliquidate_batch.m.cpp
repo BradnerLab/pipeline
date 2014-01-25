@@ -140,11 +140,11 @@ void batch(hid_t& file,
   for (auto& chr : chromosomes)
   {
     future_counts.push_back(std::async(count,
-                                         std::ref(chr),
-                                         std::ref(cell_type),
-                                         bin_size,
-                                         std::ref(lengths),
-                                         std::ref(bam_file)));
+                                       std::ref(chr),
+                                       std::ref(cell_type),
+                                       bin_size,
+                                       std::ref(lengths),
+                                       std::ref(bam_file)));
   }
 
   const size_t record_size = sizeof(CountH5Record);
