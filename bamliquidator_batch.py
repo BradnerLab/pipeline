@@ -7,7 +7,7 @@ import os
 import subprocess
 import tables
 import datetime
-from time import sleep
+from time import time 
 
 # creates empty file, overwriting any prior existing files
 def create_count_table(h5file):
@@ -67,7 +67,10 @@ def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_size, bin_count
             bam_file, i+1, len(bam_files), datetime.datetime.now().strftime('%H:%M:%S'))
         cell_type = os.path.basename(os.path.dirname(bam_file))
         args = [executable_path, cell_type, str(bin_size), ucsc_chrom_sizes, bam_file, bin_counts_file_path]
+        start = time()
         return_code = subprocess.call(args)
+        end = time()
+        print "Liquidation completed in %f seconds" % (end - start)
 
         if return_code != 0:
             print "%s failed with exit code %d" % (executable_path, return_code)
