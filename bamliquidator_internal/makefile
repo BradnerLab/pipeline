@@ -78,7 +78,9 @@ LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)
-	SAM_DIR:=/usr/local/Cellar/samtools/0.1.19/include/bam
+	SAM_DIR := /usr/local/Cellar/samtools/0.1.19/include/bam
+else
+	LDLIBS += -ltcmalloc
 endif
 
 all: ../bamliquidator bamliquidate_batch 
