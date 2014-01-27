@@ -270,6 +270,10 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder):
     bashFileName = "%srose/%s_roseCall.sh" % (outputFolder,analysisName)
     #namesList is just the first dataset
     #extrmap will have to have all other datasets + their backgrounds
+
+
+
+
     namesList = nameDict.keys()
     extraMap = []
     for name in namesList[1:]:
@@ -278,17 +282,25 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder):
         extraMap+=[name,backgroundName]
 
 
-    #bashFileName = pipeline_dfci.callRose(dataFile,'',roseParentFolder,[namesList[0]],extraMap,mergedGFFFile,0,0,bashFileName) 
-    
-    
-    #os.system(bashFileName)
+    #first check to see if this has already been done
     mergedRegionMap = "%srose/%s_ROSE/%s_0KB_STITCHED_ENHANCER_REGION_MAP.txt" % (outputFolder,namesList[0],gffName)
-    return mergedRegionMap
-#    if utils.checkOutput(mergedRegionMap,5,60):
-#        return mergedRegionMap
-#    else:
-#        print "UNABLE TO CALL ROSE ENHANCER MAPPING ON MERGED ENHANCER FILE %s.\nEXITING NOW" % (mergedGFFFile)
-        #sys.exit()
+    if utils.checkOutput(mergedRegionMap,1,1):
+        return mergedRegionMap
+
+
+
+    bashFileName = pipeline_dfci.callRose(dataFile,'',roseParentFolder,[namesList[0]],extraMap,mergedGFFFile,0,0,bashFileName) 
+    
+    bashCommand = "bash %s" % (bashFileName)
+    os.system(bashCommand)
+    print "Running enhancer mapping command:\n%s" % (bashCommand)
+
+
+    if utils.checkOutput(mergedRegionMap,5,60):
+        return mergedRegionMap
+    else:
+        print "UNABLE TO CALL ROSE ENHANCER MAPPING ON CONSENSUS ENHANCER FILE %s.\nEXITING NOW" % (mergedGFFFile)
+        sys.exit()
     
 
 def makeEnhancerSignalTable(mergedRegionMap,medianDict,analysisName,genome,outputFolder):
@@ -304,16 +316,14 @@ def makeEnhancerSignalTable(mergedRegionMap,medianDict,analysisName,genome,outpu
     signalTable = [['REGION_ID','CHROM','START','STOP','NUM_LOCI','CONSTITUENT_SIZE'] + namesList]
     for line in regionMap[1:]:
 
-        newLine = line[0:5]
+        newLine = line[0:6]
         for i in range(len(namesList)):
             enhancerIndex = (i*2) + 6
             controlIndex = (i*2) + 7
             enhancerSignal = float(line[enhancerIndex]) - float(line[controlIndex])
-
             if enhancerSignal < 0:
-                enhancerSignal = 0 
+                enhancerSignal = 0
             enhancerSignal = enhancerSignal/medianDict[namesList[i]]
-
             newLine.append(enhancerSignal)
 
         signalTable.append(newLine)
@@ -324,9 +334,28 @@ def makeEnhancerSignalTable(mergedRegionMap,medianDict,analysisName,genome,outpu
     return outputFile
 
     
+
+def callRScript(genome,outputFolder,analysisName,signalTableFile):
+
+    '''
+    calls the R script to do clustering and heatmap
+    '''
             
             
-    
+    clusterTable = "%s%s_%s_clusterTable.txt" % (outputFolder,genome,analysisName)
+
+    rCmd = 'R --no-save %s %s %s %s < /ark/home/cl512/pipeline/clusterEnhancer.R' % (genome,outputFolder,analysisName,signalTableFile)
+    print("Calling command %s" % rCmd)
+
+    os.system(rCmd)
+
+    print "Checking for cluster table output at %s" % (clusterTable)
+    if utils.checkOutput(clusterTable,1,5):
+
+        return clusterTable
+    else:
+        print "ERROR: CLUSTERING TABLE FAILED TO GENERATE"
+        sys.exit()
 
 #==========================================================================
 #====================4. MAP H3K27AC TO CONSENSUS SUPERS====================
@@ -484,7 +513,7 @@ def main():
 
         #get the genome
         dataDict = pipeline_dfci.loadDataTable(dataFile)
-        genome = dataDict[namesList[0]]['genome']
+        genome = dataDict[dataDict.keys()[0]]['genome']
 
         #check if using only supers
         if options.all:
@@ -501,7 +530,8 @@ def main():
         #=====================================================
         #=================SUMMARIZE INPUTS====================
         #=====================================================
-
+        
+        print "WORKING IN GENOME %s" % (genome)
         print "DRAWING DATA FROM %s AND ROSE FOLDER %s" % (dataFile,roseFolder)
         print "USING %s AS THE OUTPUT FOLDER" % (outputFolder)
         print "STARTING ANALYSIS ON THE FOLLOWING DATASETS:"
@@ -510,7 +540,10 @@ def main():
         #=====================================================
         #==============ESTABLISH ALL WORKING FILES============
         #=====================================================
+
+        print "\n\n\nESTABLISHING WORKING FILES"
         nameDict = makeNameDict(dataFile,roseFolder,namesList)
+
             
         print nameDict
         
@@ -518,6 +551,7 @@ def main():
         #==============LAUNCH ENHANCER MAPPING================
         #=====================================================
         
+        print "\n\n\nLAUNCHING ENHANCER MAPPING (IF NECESSARY)"
         nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder)
         print nameDict
 
@@ -526,6 +560,7 @@ def main():
         #====================GET MEDIAN SIGNAL================
         #=====================================================
         
+        print "\n\n\nGETTING MEDIAN ENHANCER SIGNAL FROM EACH SAMPLE"
         medianDict = makeMedianDict(nameDict)
 
         print medianDict
@@ -534,6 +569,7 @@ def main():
         #====================MERGING ENHANCERS================
         #=====================================================
         
+        print "\n\n\nIDENTIFYING CONSENSUS ENHANCER REGIONS"
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
         mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
@@ -541,23 +577,37 @@ def main():
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
         #=====================================================
+
+        print "\n\n\nMAPPING DATA TO CONSENSUS ENHANCER REGIONS"
         mergedRegionMap = mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder)
         
         #=====================================================
         #==============CORRECT FOR MEDIAN SIGNAL==============
         #=====================================================
 
+        print "\n\n\nCREATING ENHANCER SIGNAL TABLE"
         signalTableFile = makeEnhancerSignalTable(mergedRegionMap,medianDict,analysisName,genome,outputFolder)
         #=====================================================
         #===============CALL CLUSTERING R SCRIPT==============
         #=====================================================
 
+        print "\n\n\nGENERATING CLUSTERING OUTPUT"
+        clusterTableFile = callRScript(genome,outputFolder,analysisName,signalTableFile)
         #output should be
         #png of cluster gram with rows as genes
         #png of cluster gram of samples w/ tree
         #ordered table w/ cluster assignment
         #similarity matrix for samples
 
+        #=====================================================
+        #=============GENE MAPPING BY CLUSTER=================
+        #=====================================================
+
+        os.chdir('/ark/home/cl512/rose/')
+        cmd = 'python /ark/home/cl512/rose/ROSE_geneMapper.py -g %s -i %s' % (genome,clusterTableFile)
+        os.system(cmd)
+
+        print "FINISHED"
 
 
     else:
