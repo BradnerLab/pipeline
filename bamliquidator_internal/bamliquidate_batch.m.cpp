@@ -20,10 +20,6 @@
    - don't store strings in table records, e.g. have seperate tables for chromosomes, file names,
      and cell types.  in the count table records, just store integers representing the strings.
      this should speed up the writing and cut the file sizes
-   - don't use seperate structs for counting and writing.  prepare the structs while counting,
-     then write them in bulk
-   - multithread the counting, and see if that improves performance (probably using a boost
-     thread_group and asio to implement a thread pool)
  */
 
 namespace
@@ -170,19 +166,21 @@ void batch(hid_t& file,
     strncpy(record.cell_type,  counts.cell_type.c_str(),     sizeof(CountH5Record::cell_type));
     strncpy(record.chromosome, counts.chromosome.c_str(),    sizeof(CountH5Record::chromosome));
     strncpy(record.file_name,  counts.bam_file_name.c_str(), sizeof(CountH5Record::file_name));
+
+    std::vector<CountH5Record> records(counts.bin_counts.size(), record);
+    for (size_t bin=0; bin <= counts.bin_counts.size(); ++bin)
+    {
+      records[bin].bin_number = bin;
+      records[bin].count = counts.bin_counts[bin];
+    }
    
     LOG_INFO(" - writing " << counts.bin_counts.size() << " from " << counts.chromosome);
-    for (auto count : counts.bin_counts)
-    {
-      record.count = count;
-      herr_t status = H5TBappend_records(file, "counts", 1, record_size, record_offset,
-                                         field_sizes, &record);
-      if (status != 0)
-      {
-        std::cerr << "Error appending record, status = " << status << std::endl;
-      }
 
-      ++record.bin_number;
+    herr_t status = H5TBappend_records(file, "counts", records.size(), record_size, record_offset,
+                                       field_sizes, records.data());
+    if (status != 0)
+    {
+      std::cerr << "Error appending record, status = " << status << std::endl;
     }
   }
 }
