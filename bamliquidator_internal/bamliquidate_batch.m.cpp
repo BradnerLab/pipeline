@@ -27,21 +27,6 @@ namespace
   const bool logging_enabled = false;
 }
 
-#define LOG_INFO(streamable) \
-if(logging_enabled) \
-{ \
-  std::cout << streamable << std::endl; \
-}
-
-struct ChromosomeCounts
-{
-  const std::string chromosome; // e.g. chr1
-  const std::string bam_file_name; // e.g. L228_121_DHL6_RNA_POL2.hg18.bwt.sorted.bam 
-  const std::string cell_type; // e.g. dhl6
-  const unsigned int bin_size; // e.g. 100000 base pairs per bin
-  const std::vector<double> bin_counts;
-};
-
 class ChromosomeLengths
 {
 public:
@@ -102,11 +87,11 @@ struct CountH5Record
   char file_name[64];
 };
 
-ChromosomeCounts count(const std::string& chr,
-                       const std::string& cell_type,
-                       const unsigned int bin_size,
-                       const ChromosomeLengths& lengths,
-                       const std::string& bam_file)
+std::vector<CountH5Record> count(const std::string& chr,
+                                 const std::string& cell_type,
+                                 const unsigned int bin_size,
+                                 const ChromosomeLengths& lengths,
+                                 const std::string& bam_file)
 {
   const size_t last_slash_position = bam_file.find_last_of("/");
   const std::string bam_file_name = last_slash_position == std::string::npos 
@@ -116,9 +101,23 @@ ChromosomeCounts count(const std::string& chr,
   int base_pairs = lengths(bam_file, chr);
   int bins = std::ceil(base_pairs / (double) bin_size);
   int max_base_pair = bins * bin_size;
-  LOG_INFO(" - counting chromosome " << chr);
-  return ChromosomeCounts {chr, bam_file_name, cell_type, bin_size, 
-    liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0)};
+
+  const std::vector<double> bin_counts = liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0);
+
+  CountH5Record record;
+  record.bin_number = 0;
+  strncpy(record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
+  strncpy(record.chromosome, chr.c_str(),           sizeof(CountH5Record::chromosome));
+  strncpy(record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
+
+  std::vector<CountH5Record> records(bin_counts.size(), record);
+  for (size_t bin=0; bin <= bin_counts.size(); ++bin)
+  {
+    records[bin].bin_number = bin;
+    records[bin].count = bin_counts[bin];
+  }
+
+  return records;
 }
 
 void batch(hid_t& file,
@@ -127,7 +126,7 @@ void batch(hid_t& file,
            const ChromosomeLengths& lengths,
            const std::string& bam_file)
 {
-  std::deque<std::future<ChromosomeCounts>> future_counts;
+  std::deque<std::future<std::vector<CountH5Record>>> future_counts;
 
   const std::vector<std::string> chromosomes {"chr1", "chr2", "chr3", "chr4", "chr5", 
     "chr6", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16",
@@ -159,23 +158,8 @@ void batch(hid_t& file,
 
   for (auto& future_count : future_counts)
   {
-    ChromosomeCounts counts = future_count.get();
-
-    CountH5Record record;
-    record.bin_number = 0;
-    strncpy(record.cell_type,  counts.cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-    strncpy(record.chromosome, counts.chromosome.c_str(),    sizeof(CountH5Record::chromosome));
-    strncpy(record.file_name,  counts.bam_file_name.c_str(), sizeof(CountH5Record::file_name));
-
-    std::vector<CountH5Record> records(counts.bin_counts.size(), record);
-    for (size_t bin=0; bin <= counts.bin_counts.size(); ++bin)
-    {
-      records[bin].bin_number = bin;
-      records[bin].count = counts.bin_counts[bin];
-    }
+    std::vector<CountH5Record> records = future_count.get();
    
-    LOG_INFO(" - writing " << counts.bin_counts.size() << " from " << counts.chromosome);
-
     herr_t status = H5TBappend_records(file, "counts", records.size(), record_size, record_offset,
                                        field_sizes, records.data());
     if (status != 0)
