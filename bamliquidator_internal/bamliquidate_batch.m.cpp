@@ -25,7 +25,7 @@
 class ChromosomeLengths
 {
 public:
-  ChromosomeLengths(const std::string &chrom_size_file)
+  ChromosomeLengths(const std::string& chrom_size_file)
   {
     const size_t chromosome_column = 0; 
     const size_t type_column = 2;
@@ -50,7 +50,7 @@ public:
     }
   }
 
-  size_t operator()(const std::string &bam_file, const std::string& chromosome) const
+  size_t operator()(const std::string& bam_file, const std::string& chromosome) const
   {
     for (const auto type : m_type_to_chromosome_to_count)
     {

@@ -29,11 +29,11 @@
    THE SOFTWARE. 
  */
 
-int parseArgs(std::string &bamfile, std::string &chromosome, 
-              unsigned int &start, unsigned int &stop,
-              char &strand, unsigned int &spnum,
-              unsigned int &extendlen,
-              const int argc, char *argv[])
+int parseArgs(std::string& bamfile, std::string& chromosome, 
+              unsigned int& start, unsigned int& stop,
+              char& strand, unsigned int& spnum,
+              unsigned int& extendlen,
+              const int argc, char* argv[])
 {
   if(argc!=8)
   {
@@ -44,7 +44,7 @@ int parseArgs(std::string &bamfile, std::string &chromosome,
   bamfile=argv[1];
   chromosome=argv[2];
 
-  char *tail=NULL;
+  char* tail=NULL;
   start=strtol(argv[3],&tail,10);
   if(tail[0]!='\0')
   {
@@ -79,7 +79,7 @@ int parseArgs(std::string &bamfile, std::string &chromosome,
   return 0;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
   std::string bamfile;
   std::string chromosome;

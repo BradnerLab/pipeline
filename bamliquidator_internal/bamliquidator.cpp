@@ -69,13 +69,13 @@ struct UserData
 
 
 
-static int bam_fetch_func(const bam1_t *b,void *data)
+static int bam_fetch_func(const bam1_t* b,void* data)
 {
   if (b->core.tid < 0) return 0;
 
   UserData *udata=(UserData *)data;
 
-  const bam1_core_t *c = &b->core;
+  const bam1_core_t* c = &b->core;
 
   char strand= (c->flag&BAM_FREVERSE)?'-':'+';
   if(udata->strand=='+')
@@ -90,7 +90,7 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   ReadItem r;
   r.strand=strand;
 
-  uint32_t *cigar = bam1_cigar(b);
+  uint32_t* cigar = bam1_cigar(b);
 
   // get read length
   int i, readlen;
@@ -129,7 +129,7 @@ static int bam_fetch_func(const bam1_t *b,void *data)
   return 0;
 }
 
-std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std::string &coord, char strand, unsigned int extendlen)
+std::deque<ReadItem> bamQuery_region(samfile_t* fp, bam_index_t* idx, const std::string& coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
   int ref,beg,end;
@@ -151,7 +151,7 @@ std::deque<ReadItem> bamQuery_region(samfile_t *fp, bam_index_t *idx, const std:
 }
 
 
-std::vector<double> liquidate(const std::string &bamfile, const std::string &chromosome,
+std::vector<double> liquidate(const std::string& bamfile, const std::string& chromosome,
                               const unsigned int start, const unsigned int stop,
                               const char strand, const unsigned int spnum,
                               const unsigned int extendlen)
@@ -164,8 +164,8 @@ std::vector<double> liquidate(const std::string &bamfile, const std::string &chr
     ss << chromosome << ':' << start << '-' << stop;
     coord = ss.str();
   }
-  samfile_t *fp=NULL;
-  bam_index_t *bamidx=NULL;
+  samfile_t* fp=NULL;
+  bam_index_t* bamidx=NULL;
 
   if((fp=samopen(bamfile.c_str(),"rb",0))==0)
   {

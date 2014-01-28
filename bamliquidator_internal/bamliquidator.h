@@ -22,7 +22,7 @@
  * 
  * @return the read counts for the range [start, stop], split into spnum pieces
  */
-std::vector<double> liquidate(const std::string &bamfile, const std::string &chromosome,
+std::vector<double> liquidate(const std::string& bamfile, const std::string& chromosome,
                               const unsigned int start, const unsigned int stop,
                               const char strand, const unsigned int spnum,
                               const unsigned int extendlen);
