@@ -22,11 +22,6 @@
      this should speed up the writing and cut the file sizes
  */
 
-namespace
-{
-  const bool logging_enabled = false;
-}
-
 class ChromosomeLengths
 {
 public:
