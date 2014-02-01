@@ -31,6 +31,10 @@ ifndef SAM_DIR
 SAM_DIR:=/home/bradneradmin/samtools
 endif
 
+ifeq ($(shell uname -s), Darwin)
+	SAM_DIR := /usr/local/Cellar/samtools/0.1.19/include/bam
+endif
+
 # Please change SAM_DIR to the directory where the samtools program has been
 # built (or override it in a condition below).  bamliquidator needs some of the 
 # source files in the samtools directory.  note, this is not the location of the
@@ -72,26 +76,26 @@ endif
 # https://github.com/BradnerLab/pipeline/issues/4#issuecomment-33296709 if your version of Ubuntu 
 # doesn't have useful versions 
 
-CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS := -stdlib=libc++ -O -g -Wall 
-LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S), Darwin)
-	SAM_DIR := /usr/local/Cellar/samtools/0.1.19/include/bam
-else
-	LDLIBS += -ltcmalloc
-endif
+# to install tcmalloc on Ubuntu, try "sudo apt-get install libgoogle-perftools-dev" 
+# tcmalloc was just used for multithreaded performance reasons, and can be removed if necessary
+# to install tcmalloc on Mac, try "brew install google-perftools"
+
+
+CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
+LDFLAGS := -static-libstdc++ -stdlib=libc++ -O -g -Wall 
+LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread 
+
 
 all: ../bamliquidator bamliquidate_batch 
 
 ../bamliquidator: bamliquidator.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
-# note batch additional dependencies separate from LDLIBS
+# note batch has additional dependencies separate from LDLIBS
 bamliquidate_batch: bamliquidate_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
-					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl
+					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl -ltcmalloc 
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
