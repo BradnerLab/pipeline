@@ -27,7 +27,7 @@ class ChromosomeLengths
 public:
   ChromosomeLengths(const std::string& chrom_size_file)
   {
-    const size_t chromosome_column = 0; 
+    const size_t chromosome_column = 0;
     const size_t type_column = 2;
     const size_t length_column = 4;
 
@@ -45,14 +45,14 @@ public:
       {
         throw std::runtime_error("error parsing chrom_size_file");
       }
-      m_type_to_chromosome_to_count[columns[type_column]][columns[chromosome_column]] = 
+      m_type_to_chromosome_to_length[columns[type_column]][columns[chromosome_column]] = 
         boost::lexical_cast<size_t>(columns[length_column]);
     }
   }
 
-  size_t operator()(const std::string& bam_file, const std::string& chromosome) const
+  size_t length(const std::string& bam_file, const std::string& chromosome) const
   {
-    for (const auto type : m_type_to_chromosome_to_count)
+    for (const auto& type : m_type_to_chromosome_to_length)
     {
       if (bam_file.find(type.first) != std::string::npos)
       {
@@ -69,8 +69,7 @@ public:
   }
 
 private:
-  typedef std::map<std::string, std::map<std::string, size_t>> TypeToChromosomeToCount;
-  TypeToChromosomeToCount m_type_to_chromosome_to_count;
+  std::map<std::string, std::map<std::string, size_t>> m_type_to_chromosome_to_length;
 };
 
 struct CountH5Record
@@ -93,7 +92,7 @@ std::vector<CountH5Record> count(const std::string& chr,
                                   ? bam_file
                                   : bam_file.substr(last_slash_position + 1);
 
-  int base_pairs = lengths(bam_file, chr);
+  int base_pairs = lengths.length(bam_file, chr);
   int bins = std::ceil(base_pairs / (double) bin_size);
   int max_base_pair = bins * bin_size;
 

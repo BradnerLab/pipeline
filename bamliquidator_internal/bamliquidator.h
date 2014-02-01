@@ -1,5 +1,5 @@
-#ifndef BAMLIQUIDATOR_H
-#define BAMLIQUIDATOR_H
+#ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_H
+#define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_H
 
 #include <vector>
 #include <string>
@@ -50,4 +50,4 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
    THE SOFTWARE. 
  */
 
-#endif
+#endif  // PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_H
