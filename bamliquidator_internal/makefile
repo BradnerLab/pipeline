@@ -83,7 +83,7 @@ endif
 
 
 CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS := -static-libstdc++ -stdlib=libc++ -O -g -Wall 
+LDFLAGS := -stdlib=libc++ -O -g -Wall 
 LDLIBS := -L$(SAM_DIR) -lbam -lz -ldl -lpthread 
 
 
