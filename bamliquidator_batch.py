@@ -114,7 +114,7 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
-    executable_path = "bamliquidator_internal/bamliquidate_batch"
+    executable_path = "bamliquidator_internal/bamliquidator_batch"
     if not os.path.isfile(executable_path):
         print "%s is missing -- try cd'ing into the directory and running 'make'" % executable_path
         exit(1)
@@ -137,7 +137,7 @@ def main():
    
     bam_files = bam_files_with_no_counts(counts, bam_files)
 
-    counts_file.close() # The bamliquidator_internal/bamliquidate_batch will open this file and modify it,
+    counts_file.close() # The bamliquidator_internal/bamliquidator_batch will open this file and modify it,
                         # so it is best that we not hold an out of sync reference to it
 
     liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes, args.bin_size, args.bin_counts_file,

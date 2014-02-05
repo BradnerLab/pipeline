@@ -56,7 +56,7 @@ endif
 #       probably won't be necessary if sam is installed properly
 
 
-# boost and hdf5 is required as well for bamliquidate_batch
+# boost and hdf5 is required as well for bamliquidator_batch
 #
 # to install hdf5 on Ubuntu, try "sudo apt-get install libhdf5-serial-dev"
 #
@@ -87,24 +87,24 @@ LDFLAGS := -stdlib=libc++ -O -g -Wall
 LDLIBS := -L$(SAM_DIR) -lbam -lz -lpthread 
 
 
-all: ../bamliquidator bamliquidate_batch 
+all: ../bamliquidator bamliquidator_batch 
 
 ../bamliquidator: bamliquidator.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
 # note batch has additional dependencies separate from LDLIBS
-bamliquidate_batch: bamliquidate_batch.m.o
-	clang++ $(LDFLAGS) -o bamliquidate_batch bamliquidator.o bamliquidate_batch.m.o \
+bamliquidator_batch: bamliquidator_batch.m.o
+	clang++ $(LDFLAGS) -o bamliquidator_batch bamliquidator.o bamliquidator_batch.m.o \
 					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl -ltcmalloc 
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
 
-bamliquidate_batch.m.o: bamliquidate_batch.m.cpp
-	clang++ $(CPPFLAGS) -c bamliquidate_batch.m.cpp
+bamliquidator_batch.m.o: bamliquidator_batch.m.cpp
+	clang++ $(CPPFLAGS) -c bamliquidator_batch.m.cpp
   
 bamliquidator.o: bamliquidator.cpp
 	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
-	rm -f ../bamliquidator bamliquidator bamliquidate_batch *.o 
+	rm -f ../bamliquidator bamliquidator bamliquidator_batch *.o 
