@@ -23,9 +23,6 @@
 #
 ###############################################################################
 
-# this is a make file, so to build, just run make
-# http://www.cprogramming.com/tutorial/makefiles.html
-
 ifndef SAM_DIR
 #SAM_DIR='./samtools/'
 SAM_DIR:=/home/bradneradmin/samtools
@@ -40,8 +37,6 @@ endif
 # source files in the samtools directory.  note, this is not the location of the
 # samtools program.
 #
-# please change this to the appropriate directory
-#
 # samtools can be downloaded from here:
 # 
 #   http://sourceforge.net/projects/samtools/files/latest/download?source=files
@@ -50,42 +45,14 @@ endif
 #   1. ncurses http://www.gnu.org/software/ncurses/ 
 #   2. zlib http://zlib.net/
 #
-# on a Mac, you can also install samtools via homebrew, e.g. homebrew install samtools
-#
 # todo: change #include "sam.h" to #include <sam.h> and the usage of SAM_DIR in the compiler flags 
 #       probably won't be necessary if sam is installed properly
-
-
-# boost and hdf5 is required as well for bamliquidator_batch
 #
-# to install hdf5 on Ubuntu, try "sudo apt-get install libhdf5-serial-dev"
-#
-# to install boost on Ubuntu, try "sudo apt-get install libboost-all-dev" or see the
-# notes at https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506
-#
-# to install boost on Mac, try "brew install boost"
-#
-# to install hdf5 on Mac, try "brew install hdf5" (you may need to first "brew tap homebrew/science"
-
-
-# clang/libc++ was chosen instead of gcc/libstdc++ because it generally has easier to read error 
-# messages and better support for C++11 (and it is the default compiler on John's Mac).  clang should 
-# be all setup on a Mac by installing XCode, and can be installed on Ubuntu with 
-# "apt-get install clang libc++" or see the detailed steps at 
-# https://github.com/BradnerLab/pipeline/issues/4#issuecomment-31207506 and
-# https://github.com/BradnerLab/pipeline/issues/4#issuecomment-33296709 if your version of Ubuntu 
-# doesn't have useful versions 
-
-
-# to install tcmalloc on Ubuntu, try "sudo apt-get install libgoogle-perftools-dev" 
-# tcmalloc was just used for multithreaded performance reasons, and can be removed if necessary
-# to install tcmalloc on Mac, try "brew install google-perftools"
-
+# For additional dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
 CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
 LDFLAGS := -stdlib=libc++ -O -g -Wall 
 LDLIBS := -L$(SAM_DIR) -lbam -lz -lpthread 
-
 
 all: ../bamliquidator bamliquidator_batch 
 
