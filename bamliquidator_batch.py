@@ -97,19 +97,19 @@ def main():
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000).")
     parser.add_argument('ucsc_chrom_sizes',
-                        help='Tab delimitted text file with the first column naming the chromosome (e.g. chr1), the '
+                        help='Tab delimited text file with the first column naming the chromosome (e.g. chr1), the '
                              'third column naming the genome type (e.g. mm8), and the fifth column naming the number '
                              'of base pairs in the reference chromosome.')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
                              'provide the .bam file path instead of a directory.  The parent directory of each .bam '
-                             'file is interpretted as the cell type (e.g. mm1s might be an appropriate directory '
+                             'file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
                              'name). The .bam file name is also required to contain the genome type so that the '
                              'corresponding entries in the ucsc_chrom_sizes file can be used.  If your .bam files are '
-                             'not in this format, please consider creating a directory of sym links to your actual '
-                             '.bam and .bai files. If the .bam file already has 1 or more reads in the HDF5 counts '
-                             'file, then the .bam file is skipped.')
+                             'not in this directory format, please consider creating a directory of sym links to your '
+							 'actual .bam and .bai files. If the .bam file already has 1 or more reads in the HDF5 '
+							 'counts file, then the .bam file is skipped.')
     args = parser.parse_args()
 
     assert(tables.__version__ >= '3.0.0')

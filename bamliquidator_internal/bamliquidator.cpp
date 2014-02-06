@@ -136,8 +136,9 @@ std::deque<ReadItem> bamQuery_region(samfile_t* fp, bam_index_t* idx, const std:
   int rc = bam_parse_region(fp->header,coord.c_str(),&ref,&beg,&end);
   if (rc != 0)
   {
-    printf("bam_parse_region failed with return code %d, exiting\n", rc);
-    exit(rc);
+    std::stringstream error_msg;
+    error_msg << "bam_parse_region failed with return code " << rc;
+    throw std::runtime_error(error_msg.str());
   }
   if(ref<0)
   {

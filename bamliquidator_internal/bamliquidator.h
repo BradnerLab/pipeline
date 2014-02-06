@@ -5,9 +5,11 @@
 #include <string>
 
 /** 
- * Count the number of reads in a chromosome between start and stop.
+ * Count the number of reads in a chromosome between start and stop.  This function 
+ * is thread safe.  This function throws if an error is encountered opening or parsing
+ * the bamfile with samtools.
  *
- * @param bamfile   the path of the bamfile,
+ * @param bamfile   the path of the bamfile (which is opened readonly),
  *                  e.g. "../tmp/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam" 
  * @param chromsome the chromosome to count on, e.g. "chr1" or "chrX" 
  * @param start     the first base pair index to count on (inclusive), e.g. 0 to start 
