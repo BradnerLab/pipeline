@@ -337,9 +337,19 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
         print "Creating table summary for " + chromosome
         populate_summary(summary, normalized_counts, chromosome, cell_types)
 
-    print "Indexing summaries"
-    summary.cols.bin_number.create_csindex()
+    print "Sorting and indexing summaries"
     summary.cols.avg_cell_type_percentile.create_csindex()
+    # Iterating over this index in reverse order is hundreds of times slower than iterating
+    # in ascending order in my tests, but copying into a reverse sorted table is very fast.
+    # So we create a sorted summary table sorted in decreasing percentile order.  If we need to
+    # iterate in the reverse sorted order, than this sorted_summary table should be used.
+    # Otherwise, we should use the summary table (including the case of ascending percentile
+    # order, which is fast since the table is indexed by that column). See
+    # https://groups.google.com/d/topic/pytables-users/EKMUxghQiPQ/discussion
+    sorted_summary = summary.copy(newname="sorted_summary", sortby=summary.cols.avg_cell_type_percentile,
+                                  step=-1, checkCSI=True,
+                                  title="Summary table sorted in decreasing percentile order")
+    sorted_summary.cols.bin_number.create_csindex()
 
     normalized_counts_file.close() 
                 
