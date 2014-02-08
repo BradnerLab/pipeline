@@ -337,6 +337,10 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
         print "Creating table summary for " + chromosome
         populate_summary(summary, normalized_counts, chromosome, cell_types)
 
+    print "Indexing summaries"
+    summary.cols.bin_number.create_csindex()
+    summary.cols.avg_cell_type_percentile.create_csindex()
+
     normalized_counts_file.close() 
                 
 def main():
