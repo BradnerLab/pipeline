@@ -23,36 +23,11 @@
 #
 ###############################################################################
 
-ifndef SAM_DIR
-#SAM_DIR='./samtools/'
-SAM_DIR:=/home/bradneradmin/samtools
-endif
-
-ifeq ($(shell uname -s), Darwin)
-	SAM_DIR := /usr/local/Cellar/samtools/0.1.19/include/bam
-endif
-
-# Please change SAM_DIR to the directory where the samtools program has been
-# built (or override it in a condition below).  bamliquidator needs some of the 
-# source files in the samtools directory.  note, this is not the location of the
-# samtools program.
-#
-# samtools can be downloaded from here:
-# 
-#   http://sourceforge.net/projects/samtools/files/latest/download?source=files
-#
-# samtools has two dependencies:
-#   1. ncurses http://www.gnu.org/software/ncurses/ 
-#   2. zlib http://zlib.net/
-#
-# todo: change #include "sam.h" to #include <sam.h> and the usage of SAM_DIR in the compiler flags 
-#       probably won't be necessary if sam is installed properly
-#
-# For additional dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
+# For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
 CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
 LDFLAGS := -stdlib=libc++ -O -g -Wall 
-LDLIBS := -L$(SAM_DIR) -lbam -lz -lpthread 
+LDLIBS := -lbam -lz -lpthread 
 
 all: ../bamliquidator bamliquidator_batch 
 
@@ -62,7 +37,7 @@ all: ../bamliquidator bamliquidator_batch
 # note batch has additional dependencies separate from LDLIBS
 bamliquidator_batch: bamliquidator_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidator_batch bamliquidator.o bamliquidator_batch.m.o \
-					$(LDLIBS) -lhdf5 -lhdf5_hl -ltcmalloc 
+					$(LDLIBS) -lhdf5 -lhdf5_hl -ltcmalloc_minimal
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp

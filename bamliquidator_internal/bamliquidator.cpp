@@ -1,7 +1,7 @@
 #include "bamliquidator.h"
 
 #include <stdio.h>
-#include "sam.h"
+#include <samtools/sam.h>
 
 #include <deque>
 #include <stdexcept>
