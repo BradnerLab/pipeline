@@ -62,7 +62,7 @@ all: ../bamliquidator bamliquidator_batch
 # note batch has additional dependencies separate from LDLIBS
 bamliquidator_batch: bamliquidator_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidator_batch bamliquidator.o bamliquidator_batch.m.o \
-					$(LDLIBS) -lboost_system -lhdf5 -lhdf5_hl -ltcmalloc 
+					$(LDLIBS) -lhdf5 -lhdf5_hl -ltcmalloc 
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
