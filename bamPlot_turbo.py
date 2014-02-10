@@ -380,7 +380,7 @@ def main():
         #bring in the genome
         genome = upper(options.genome)
         if ['HG18','HG19','MM9','RN5'].count(genome) == 0:
-            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, RN5, OR MM9' % (genome))
+            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN5, OR MM9' % (genome))
             parser.print_help()
             exit()
 
