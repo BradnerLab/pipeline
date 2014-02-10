@@ -602,11 +602,11 @@ def main():
         print('\tMERGING ENHANCERS AND CALLING ROSE')
         if superOnly:
             mergedGFFFile = '%s%s_%s_MERGED_SUPERS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)
-            #callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergedGFFFile,parentFolder)
+            callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergedGFFFile,parentFolder)
 
         else:
             mergedGFFFile = '%s%s_%s_MERGED_ENHANCERS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)
-            #callMergeSupers(dataFile,allFile1,allFile2,name1,name2,mergedGFFFile,parentFolder)
+            callMergeSupers(dataFile,allFile1,allFile2,name1,name2,mergedGFFFile,parentFolder)
 
 
         if superOnly:
@@ -661,7 +661,7 @@ def main():
         finishRankOutput(dataFile,rankOutput,genome,parentFolder,mergeName,name1,name2,1,100000,superOnly,plotBam)
     else:
         parser.print_help()
-        exit()
+        sys.exit()
 
 main()
 
