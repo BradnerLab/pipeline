@@ -460,7 +460,7 @@ def main():
 
     from optparse import OptionParser
 
-    usage = "usage: %prog [options] -d [DATA_FILE] -n [NAMES_LIST] -r [ROSE_FOLDER] -o [OUTPUTFOLDER]"
+    usage = "usage: %prog [options] -d [DATA_FILE] -i [INPUT_LIST] -r [ROSE_FOLDER] -o [OUTPUTFOLDER]"
     parser = OptionParser(usage = usage)
     #required flags
     parser.add_option("-d","--data", dest="data",nargs = 1, default=None,
