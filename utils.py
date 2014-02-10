@@ -84,6 +84,7 @@ from collections import defaultdict
 #def gffToLocusCollection(gff,window =500): <- turns a gff into a locus collection (reverse of gff)
 #def makeTSSLocus(gene,startDict,upstream,downstream): <- from a start dict makes a locus surrounding the tss
 #def makeSearchLocus(locus,upSearch,downSearch): <- takes an existing locus and makes a larger flanking locus
+#def makeSECollection(enhancerFile,name,top=0):
 
 
 #6. Bam class
@@ -97,7 +98,7 @@ from collections import defaultdict
 #8 Sequence functions
 #def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True): <- grabs sequence from a region
 #def gffToFasta(species,directory,gff,UCSC = True): <- converts a gff to a fasta
-
+#def revComp(seq,rev = True, RNA=False): <- is awesome
 
 
 #==================================================================
@@ -231,6 +232,19 @@ def checkOutput(fileName,waitTime = 1,timeOut = 30):
        else:
               print('ERROR: OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
               return False
+
+def getParentFolder(inputFile):
+
+       '''
+       returns the parent folder for any file
+       '''
+ 
+       parentFolder = join(inputFile.split('/')[:-1],'/') +'/'
+       if parentFolder =='':
+              return './'
+       else:
+              return parentFolder
+        
 
 #==================================================================
 #===================ANNOTATION FUNCTIONS===========================
@@ -863,6 +877,28 @@ def makeSearchLocus(locus,upSearch,downSearch):
     return searchLocus
 
 
+def makeSECollection(enhancerFile,name,top=0):
+    '''
+    returns a locus collection from a super table
+    top gives the number of rows
+    '''
+    enhancerTable = parseTable(enhancerFile,'\t')
+    superLoci = []
+
+    ticker = 0
+    for line in enhancerTable:
+        if line[0][0] == '#' or line[0][0] == 'R':
+            continue
+        else:
+            ticker+=1
+
+            superLoci.append(Locus(line[1],line[2],line[3],'.',name+'_'+line[0]))
+
+            if ticker == top:
+                break
+    return LocusCollection(superLoci,50)
+
+
 #==================================================================
 #==========================BAM CLASS===============================
 #==================================================================
@@ -1169,3 +1205,33 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
             fastaList.append(sequence)
         ticker += 1
     return fastaList
+
+
+
+#10/23/08
+#pair(nuc)
+#returns the basepair of a nucleotide
+
+def pair(nuc):
+    pairDict = {'A':'T','C':'G','G':'C','T':'A','U':'A','a':'t','c':'g','g':'c','t':'a','u':'a'}
+    if pairDict.has_key(nuc):
+        return pairDict[nuc]
+    else:
+        return nuc
+
+#10/23/08
+#revComp(seq)
+#takes in a sequence and spits out the reverse Complement
+
+def revComp(seq,rev = True, RNA=False):
+    if rev:
+        revComp = join(map(pair,seq[::-1]),'')
+    else:
+        revComp = join(map(pair,seq),'')
+    if RNA:
+        revComp = revComp.replace('T','U')
+        revComp = revComp.replace('t','u')
+    else:
+        revComp = revComp.replace('U','T')
+        revComp = revComp.replace('u','t')
+    return revComp

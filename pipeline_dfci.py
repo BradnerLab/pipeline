@@ -111,6 +111,9 @@ def formatDataTable(dataFile):
     for line in dataTable[1:]:
         if len(line) < 3:
             continue
+        #this spots header lines that may be out of place
+        if line[0] == 'FILE_PATH':
+            continue 
         #check if it at least has the first 3 columns filled in
         if len(line[0]) == 0 or len(line[1]) == 0 or len(line[2]) == 0:
             print('ERROR required fields missing in line')
@@ -687,7 +690,7 @@ def callMacsQsub(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9
 
 
 
-def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
+def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',useBackground =True):
 
     '''
     calls the macs error model
@@ -707,7 +710,7 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
     for name in namesList:
         
         #skip if a background set
-        if upper(dataDict[name]['background']) == 'NONE':
+        if useBackground and upper(dataDict[name]['background']) == 'NONE':
             continue
 
         #check for the bam
@@ -722,14 +725,14 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
             backgroundName = dataDict[name]['background']
             backbroundBam = open(dataDict[backgroundName]['bam'],'r')
             hasBackground = True
-        except IOError:
+        except (IOError, KeyError) as e:
             hasBackground = False
 
         if not hasBam:
             print('no bam found for %s. macs not called' % (name))
             continue
 
-        if not hasBackground:
+        if useBackground and hasBackground == False:
             print('no background bam %s found for dataset %s. macs not called' % (backgroundName,name))
             continue
         #make a new folder for every dataset
@@ -748,16 +751,30 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
         os.chdir(outdir)
         genome = dataDict[name]['genome']
         #print('USING %s FOR THE GENOME' % genome)
-        
-        bamFile = dataDict[name]['bam']
-        backgroundName =  dataDict[name]['background']
-        backgroundBamFile = dataDict[backgroundName]['bam']
-        if upper(genome[0:2]) == 'HG':
-            cmd = "macs14 -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
-        elif upper(genome[0:2]) == 'MM':
-            cmd = "macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
-        elif upper(genome[0:2]) == 'RN':
-            cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+        if useBackground == True:
+            bamFile = dataDict[name]['bam']
+            backgroundName =  dataDict[name]['background']
+            backgroundBamFile = dataDict[backgroundName]['bam']
+            if upper(genome[0:2]) == 'HG':
+                cmd = "macs14 -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+            elif upper(genome[0:2]) == 'MM':
+                cmd = "macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+            elif upper(genome[0:2]) == 'RN':
+                cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+
+        if useBackground == False:
+            bamFile = dataDict[name]['bam']
+
+
+            if upper(genome[0:2]) == 'HG':
+                cmd = "macs14 -t %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
+            elif upper(genome[0:2]) == 'MM':
+                cmd = "macs14 -t %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
+            elif upper(genome[0:2]) == 'RN':
+                cmd = "macs14 -t %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
+
+
+
         print(cmd)
         os.system(cmd)
 
@@ -2116,7 +2133,7 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
 
 
-def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500):
+def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500,bashFileName =''):
 
     '''
     calls rose w/ standard parameters
@@ -2132,7 +2149,8 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
     formatFolder(parentFolder,True)
 
-    bashFileName = '%srose_%s_%s.sh' % (parentFolder,timeStamp,randTicker)
+    if len(bashFileName) == 0:
+        bashFileName = '%srose_%s_%s.sh' % (parentFolder,timeStamp,randTicker)
     bashFile = open(bashFileName,'w')
     bashFile.write("cd /ark/home/cl512/src/rose/")
     bashFile.write('\n')
