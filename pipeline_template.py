@@ -46,8 +46,8 @@ import string
 #==========================================================================
 
 dataFile = '/grail/projects/mmp1/MMP1_TABLE.txt' #PATH TO YOUR DATA TABLE
-genome ='hg18'
-annotFile = '/ark/home/cl512/src/pipeline/annotation/hg18_refseq.ucsc'
+genome ='hg19'
+annotFile = '/ark/home/cl512/src/pipeline/annotation/hg19_refseq.ucsc'
 
 #project folders
 projectFolder = '/grail/projects/mmp1/' #PATH TO YOUR PROJECT FOLDER
