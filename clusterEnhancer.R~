@@ -69,20 +69,13 @@ enhancerMatrix = as.matrix(enhancerTable[,7:ncol(enhancerTable)])
 #distance by samples
 sampleDist = as.dist(1-cor(enhancerMatrix))
 sampleHC = hclust(sampleDist)
+plot(sampleHC)
 
-#PLOTTING THE SAMPLE TREE
-
-treePDFFile = paste(outputFolder,genome,'_',analysisName,"_treePlot.pdf",sep='')
-pdf(treePDFFile,width=8,height=8)
-
-
-plot(sampleHC,xlab='',main = paste(genome,'_',analysisName,sep=''))
-dev.off()
 
 #distances by SEs
 seDist = as.dist(1-cor(t(enhancerMatrix)))
 seHC = hclust(seDist)
-#plot(seHC)
+plot(seHC)
 
 
 
@@ -99,7 +92,7 @@ seOrder = seHC$order
 #===================================================================
 
 #establishing individual clusters
-seClusterOrder = cutree(seHC,k=5)
+seClusterOrder = cutree(seHC,k=10)
 
 # #try to guess the distance cutoff
 # seDistRange = range(seDist)
@@ -161,20 +154,16 @@ exemplarMatrix = matrix(nrow=10,ncol = ncol(enhancerMatrix))
 #Plot the examplars
 for(i in 1:max(seClusterOrder)){
 	
-	cluster = matrix(enhancerMatrix[which(seClusterOrder==i),],ncol=ncol(enhancerMatrix))
+	cluster = enhancerMatrix[which(seClusterOrder==i),]
 	plot(1:ncol(enhancerMatrix),rep(0,ncol(enhancerMatrix)),ylim =quantile(cluster,c(0.025,0.975)),cex=0,xlab='Samples',xaxt='n',ylab='Enhancer signal (fold/median)',main = paste('Cluster',i))
 	axis(1,1:ncol(enhancerMatrix),colnames(enhancerMatrix)[sampleOrder])
 	for(j in 1:nrow(cluster)){
 		lines(1:ncol(enhancerMatrix),cluster[j,sampleOrder],col = rgb(0.2,0.2,0.2,0.1),lwd=1)
 		
 	}
-	lines(1:ncol(enhancerMatrix),apply(cluster,2,median)[sampleOrder],col='red',lwd=4)
+	lines(1:ncol(enhancerMatrix),apply(cluster,2,median),col='red',lwd=4)
 	legend(1,quantile(cluster,.95),paste("n =",nrow(cluster)))
-	if(nrow(cluster) == 1){
-		exemplarMatrix[i,] = cluster[,exemplarOrder]
-	}else{
-		exemplarMatrix[i,] = apply(cluster[,sampleOrder],2,median)
-	}
+	exemplarMatrix[i,] = apply(cluster[,sampleOrder],2,median)
 }
 
 colnames(exemplarMatrix) = colnames(enhancerMatrix)[sampleOrder]
@@ -320,7 +309,7 @@ plot(as.dendrogram(sampleHC),ylab='Distance')
 par(mar=c(4,12,2,0))
 
 
-image(1:ncol(exemplarMatrix),1:nrow(exemplarMatrix),t(exemplarMatrix),breaks=color_cuts,col=colorSpectrum,xaxt="n",yaxt="n",ylab='Clusters',xlab='')
+image(1:ncol(exemplarMatrix),1:nrow(exemplarMatrix),t(exemplarMatrix[,sampleOrder]),breaks=color_cuts,col=colorSpectrum,xaxt="n",yaxt="n",ylab='Clusters',xlab='')
 axis(2,1:10,1:10)
 
 
