@@ -16,7 +16,7 @@ def write_tab(table, chromosome, tab_file_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Writes bamliquidator_batch.py hdf5 tables into tab delimited '
-        'text files, one for each chromosome.  Note that this is provided as a convienence, but it is hoped that '
+        'text files, one for each chromosome.  Note that this is provided as a convenience, but it is hoped that '
         'the hdf5 files will be used directly since they are much more efficient to work with -- e.g. please see '
         'http://www.pytables.org/ for easy to use Python APIs and '
         'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for browsing HDF5 '
