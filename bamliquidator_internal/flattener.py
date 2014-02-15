@@ -4,6 +4,7 @@ import argparse
 import csv
 import os
 import tables
+from chromosome_list import chromosomes
 
 def write_tab(table, chromosome, tab_file_path):
     with open(tab_file_path, 'wb') as tab_file:
@@ -30,10 +31,6 @@ def main():
     h5_file = tables.open_file(args.h5_file, mode = "r")
     table = h5_file.get_node("/" + args.table)
     
-    chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX',
-                    'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
-                    'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
-
     for chromosome in chromosomes:
         print "Writing " + chromosome
         write_tab(table, chromosome, os.path.join(args.output_directory, chromosome + ".tab"))

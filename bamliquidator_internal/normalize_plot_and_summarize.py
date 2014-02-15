@@ -32,6 +32,8 @@ import tables
 import scipy.stats as stats
 import collections
 
+from chromosome_list import chromosomes
+
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
 # -- I should probably look into why flush was necessary and/or file a bug with pytables
@@ -74,7 +76,7 @@ def file_names(counts, cell_type):
         
     return file_names_memo[cell_type] 
 
-def plot_summaries(output_directory, normalized_counts, chromosomes):
+def plot_summaries(output_directory, normalized_counts):
     bp.output_file(output_directory + "/summary.html")
     
     for chromosome in chromosomes:
@@ -313,10 +315,6 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
 
     print "cell_types = %s" % cell_types
 
-    chromosomes = [ 'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr8', 'chr9', 'chrX',
-                    'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
-                    'chr18', 'chr19', 'chr20', 'chr21', 'chr22' ]
-
     for chromosome in chromosomes:
         print "Processing " + chromosome
         populate_count_normalized_counts(normalized_counts, counts, chromosome, cell_types)
@@ -331,7 +329,7 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
 
     if not skip_plots:
         print "Plotting summaries"
-        plot_summaries(output_directory, normalized_counts, chromosomes)
+        plot_summaries(output_directory, normalized_counts)
 
     for chromosome in chromosomes:
         print "Creating table summary for " + chromosome
