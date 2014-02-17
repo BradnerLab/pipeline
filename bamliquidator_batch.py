@@ -116,7 +116,8 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
-    executable_path = "bamliquidator_internal/bamliquidator_batch"
+    executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                   "bamliquidator_internal", "bamliquidator_batch")
     if not os.path.isfile(executable_path):
         print "%s is missing -- try cd'ing into the directory and running 'make'" % executable_path
         exit(1)
