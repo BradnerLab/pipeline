@@ -105,7 +105,7 @@ std::vector<CountH5Record> count(const std::string& chr,
   strncpy(record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
 
   std::vector<CountH5Record> records(bin_counts.size(), record);
-  for (size_t bin=0; bin <= bin_counts.size(); ++bin)
+  for (size_t bin=0; bin < bin_counts.size(); ++bin)
   {
     records[bin].bin_number = bin;
     records[bin].count = bin_counts[bin];
