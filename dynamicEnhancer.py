@@ -53,7 +53,7 @@ import pipeline_dfci
 import os
 import time
 import string
-
+import numpy
 
 #================================================================================
 #============================GLOBAL PARAMETERS===================================
@@ -79,7 +79,79 @@ roseDir = '/ark/home/cl512/rose/'
 #=================================FUNCTIONS======================================
 #================================================================================
 
-#write your specific functions here
+def getFile(fileString,fileList,parentFolder):
+    '''
+    returns full path of file from fileList containing the fileString
+    returns an error if multiple files match
+    '''
+    if not utils.formatFolder(parentFolder,False):
+        print "ERROR: Folder %s does not exist" % (parentFolder)
+        sys.exit()
+    parentFolder = utils.formatFolder(parentFolder,False)
+    matchFiles = [fileName for fileName in fileList if fileName.count(fileString) == 1]
+    if len(matchFiles) == 0:
+        print "ERROR: No files found in %s with %s in title" % (parentFolder,fileString)
+        sys.exit()
+    if len(matchFiles) > 1:
+        print "ERROR: Multiple files found in %s with %s in title" % (parentFolder,fileString)
+        sys.exit()
+    matchFilePath  = "%s%s" % (parentFolder,matchFiles[0])
+    return matchFilePath
+
+
+
+def makeRoseDict(roseFolder):
+
+    '''
+    analyzes a rose folder to try to find all of the various necessary files
+    creates a dictionary with their full paths
+    '''
+    if not utils.formatFolder(roseFolder,False):
+        
+        print "Folder %s does not exist" % (roseFolder)
+        sys.exit()
+
+    roseFolder = utils.formatFolder(roseFolder,False)
+    roseFileList = [x for x in os.listdir(roseFolder) if x[0] != '.'] #no hidden files
+    if len(roseFileList) == 0:
+        print "No files found in %s" % (roseFolder)
+        sys.exit()
+
+    #create a dictionary to store stuff
+    roseDict = {}
+    #there are 5 files that we're interested in
+    #REGION_MAP, AllEnhancers.table.txt, SuperEnhancers.table.txt, ENHANCER_TO_GENE, Enhancers_withSuper.bed
+
+    #sequentially find each one and add the full path to the roseDict
+    roseDict['AllEnhancer'] = getFile('AllEnhancers.table.txt',roseFileList,roseFolder)
+    roseDict['SuperEnhancer'] = getFile('SuperEnhancers.table.txt',roseFileList,roseFolder)
+    roseDict['EnhancerToGene'] = getFile('ENHANCER_TO_GENE',roseFileList,roseFolder)
+    roseDict['RegionMap'] = getFile('REGION_MAP',roseFileList,roseFolder)
+    roseDict['bed'] = getFile('Enhancers_withSuper.bed',roseFileList,roseFolder)
+
+    return roseDict
+
+
+def getMedianSignal(enhancerFile,name,dataFile):
+
+    '''
+    returns the median enhancer signal of a file
+    '''
+    dataDict = pipeline_dfci.loadDataTable(dataFile)
+    enhancerTable = utils.parseTable(enhancerFile,'\t')
+
+    backgroundName = dataDict[name]['background']
+    if dataDict.has_key(backgroundName):
+        enhancerVector = [float(line[6]) - float(line[7]) for line in enhancerTable[6:]]
+    else:
+        enhancerVector = [float(line[6]) for line in enhancerTable[6:]]
+            
+
+    median= numpy.median(enhancerVector)
+
+    return median
+
+
 
 
 def makeSECollection(enhancerFile,name,top=0):
@@ -123,17 +195,17 @@ def makeSEDict(enhancerFile,name,superOnly = True):
         if superOnly:
             if int(line[supColumn]) == 1:
                 
-                signal = float(line[6]) - float(line[7])
+            
                 rank = int(line[-2])
                 enhancerID = name+'_'+line[0]
-                seDict[enhancerID] = {'rank':rank,'signal':signal}
+                seDict[enhancerID] = {'rank':rank}
 
         else:
 
             signal = float(line[6]) - float(line[7])
             rank = int(line[-2])
             enhancerID = name+'_'+line[0]
-            seDict[enhancerID] = {'rank':rank,'signal':signal}
+            seDict[enhancerID] = {'rank':rank}
 
     return seDict
 
@@ -199,20 +271,43 @@ def callRoseMerged(dataFile,mergedGFFFile,name1,name2,parentFolder):
 
     dataDict = pipeline_dfci.loadDataTable(dataFile)
 
-    namesList = [name1]    
-    extraMap = [name2,dataDict[name2]['background']]
+    
+    backgroundName1 = dataDict[name1]['background']
+    backgroundName2 = dataDict[name2]['background']
+    if dataDict.has_key(backgroundName1) and dataDict.has_key(backgroundName2):
+        hasBackground = True
+    elif not dataDict.has_key(backgroundName1) and not dataDict.has_key(backgroundName2):
+        hasBackground =False
+    else:
+        print "ERROR: Only 1 dataset has a background file. This is a very very bad idea"
+        sys.exit()
+
+
+    if hasBackground:
+        namesList = [name1]    
+        extraMap = [name2,dataDict[name2]['background']]
+    else:
+        namesList = [name1]
+        extraMap = [name2]
 
 
     return pipeline_dfci.callRose(dataFile,'',parentFolder,namesList,extraMap,mergedGFFFile,tss=0,stitch=0)
 
 
-def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergedGFFFile,parentFolder):
+def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,parentFolder):
 
     '''
     this is the main run function for the script
     all of the work should occur here, but no functions should be defined here
     '''
-    
+    mergedGFFFile = '%s%s_%s_MERGED_REGIONS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)    
+
+    #check to make sure this hasn't been done yet
+    roseOutput = "%s%s_ROSE/%s_%s_MERGED_REGIONS_-0_+0_SuperEnhancers_ENHANCER_TO_GENE.txt" % (parentFolder,name1,string.upper(genome),mergeName)
+    if utils.checkOutput(roseOutput,1,1):
+        print "ROSE OUTPUT ALREADY FOUND HERE %s" % (roseOutput)
+        return roseOutput
+    print "MERGING ENHANCER REGIONS FROM %s and %s" % (superFile1,superFile2)
     mergedGFF = mergeCollections(superFile1,superFile2,name1,name2,mergedGFFFile)
 
     #call rose on the merged shit    
@@ -223,19 +318,36 @@ def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergedGFFFile,par
 
     #run the bash command
     os.system('bash %s' % (roseBashFile))
+    
+    #check for and return output
+    if utils.checkOutput(roseOutput,30):
+        return roseOutput
+    else:
+        print "ERROR: ROSE CALL ON MERGED REGIONS FAILED"
+        sys.exit()
 
-def callDeltaRScript(mergedGFFFile,parentFolder,name1,name2):
+def callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,allFile2,medianScale = False):
 
     '''
     runs the R script
     '''
+    if medianScale:
+        median1 = getMedianSignal(allFile1,name1,dataFile)
+        median2 = getMedianSignal(allFile2,name2,dataFile)
+        print "normalizing signal for %s by median value of %s" % (name1,median1)
+        print "normalizing signal for %s by median value of %s" % (name2,median2)
 
+    else:
+        median1 =1
+        median2 =2
+
+    
     gffName = mergedGFFFile.split('/')[-1].split('.')[0]
     stitchedFile = "%s%s_ROSE/%s_0KB_STITCHED_ENHANCER_REGION_MAP.txt" % (parentFolder,name1,gffName)
     #print(stitchedFile)
     os.chdir(pipelineDir)
 
-    rcmd = "R --no-save %s %s %s < ./dynamicEnhancer_plot.R" % (stitchedFile,name1,name2)
+    rcmd = "R --no-save %s %s %s %s %s < ./dynamicEnhancer_plot.R" % (stitchedFile,name1,name2,median1,median2)
 
     return rcmd
 
@@ -528,7 +640,7 @@ def main():
 
     from optparse import OptionParser
 
-    usage = "usage: %prog [options] -g [GENOME] -d [DATAFILE] -r [ROSE_FOLDERS] -o [OUTPUT_FOLDER]"
+    usage = "usage: %prog [options] -g [GENOME] -d [DATAFILE] -n [DATA_NAMES] -r [ROSE_FOLDERS] -o [OUTPUT_FOLDER]"
     parser = OptionParser(usage = usage)
     #required flags
     parser.add_option("-g","--genome", dest="genome",nargs = 1, default=None,
@@ -539,21 +651,24 @@ def main():
                       help = "Enter a comma separated list of rose folder")
     parser.add_option("-o","--output", dest="output",nargs = 1, default=None,
                       help = "Enter the output folder for the project")
-
-    #additional options
     parser.add_option("-n","--names", dest="names",nargs = 1, default=None,
                       help = "Enter a comma separated list of names to go with the datasets")
+
+
+    #additional options
     parser.add_option("-p","--plot", dest="plot",action = 'store_true', default=False,
                       help = "If flagged, will plot differential regions")
     parser.add_option("-a","--all", dest="all",action = 'store_true', default=False,
                       help = "If flagged, will run analysis for all enhancers and not just supers.")
+    parser.add_option("-m","--median", dest="median",action = 'store_true', default=False,
+                      help = "If flagged, will use median enhancer scaling")
 
     (options,args) = parser.parse_args()
 
     print(options)
     print(args)
     
-    if options.genome and options.data and options.rose and options.output:
+    if options.genome and options.data and options.rose and options.output and options.names:
         genome = string.upper(options.genome)
         dataFile = options.data
 
@@ -561,17 +676,14 @@ def main():
         [roseFolder1,roseFolder2] = roseFolderString.split(',')
         parentFolder = utils.formatFolder(options.output,True)
         
-        if options.names:
-            nameString = options.names
-            [name1,name2] =nameString.split(',')
-        else:
-            name1 = roseFolder1.split('/')[-1]
-            name1 = string.replace(name1,'_ROSE','')
 
-            name2 = roseFolder2.split('/')[-1]
-            name2 = string.replace(name2,'_ROSE','')
+        nameString = options.names
+        [name1,name2] =nameString.split(',')
 
         mergeName = "%s_%s_merged" % (name1,name2)
+
+        #option for median scaling
+        medianScale = options.median
 
         plotBam = options.plot
         if options.all:
@@ -591,40 +703,39 @@ def main():
         #part 1
         print "PART1: analyzing ROSE output from %s and %s" % (name1,name2)
         #start with the all enhancer tables from the initial rose calls
+
         roseFolder1 = pipeline_dfci.formatFolder(roseFolder1,False)
         roseFolder2 = pipeline_dfci.formatFolder(roseFolder2,False)
-        superFile1 = '%s%s_peaks_SuperEnhancers.table.txt' % (roseFolder1,name1)
-        superFile2 = '%s%s_peaks_SuperEnhancers.table.txt' % (roseFolder2,name2)
 
-        allFile1 = '%s/%s_peaks_AllEnhancers.table.txt' % (roseFolder1,name1)
-        allFile2 = '%s/%s_peaks_AllEnhancers.table.txt' % (roseFolder2,name2)
+        roseDict1 = makeRoseDict(roseFolder1)
+        roseDict2 = makeRoseDict(roseFolder2)
+
+        superFile1 = roseDict1['SuperEnhancer']
+        superFile2 = roseDict2['SuperEnhancer']
+
+        allFile1 = roseDict1['AllEnhancer']
+        allFile2 = roseDict2['AllEnhancer']
 
         print('\tMERGING ENHANCERS AND CALLING ROSE')
         if superOnly:
-            mergedGFFFile = '%s%s_%s_MERGED_SUPERS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)
-            callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergedGFFFile,parentFolder)
+
+            roseOutput = callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,parentFolder)
 
         else:
-            mergedGFFFile = '%s%s_%s_MERGED_ENHANCERS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)
-            callMergeSupers(dataFile,allFile1,allFile2,name1,name2,mergedGFFFile,parentFolder)
+
+            roseOutput = callMergeSupers(dataFile,allFile1,allFile2,name1,name2,mergeName,genome,parentFolder)
 
 
-        if superOnly:
-            superOutput = "%s%s_ROSE/%s_%s_MERGED_SUPERS_-0_+0_SuperEnhancers_ENHANCER_TO_GENE.txt" % (parentFolder,name1,string.upper(genome),mergeName)
-        else:
-            superOutput = "%s%s_ROSE/%s_%s_MERGED_ENHANCERS_-0_+0_SuperEnhancers_ENHANCER_TO_GENE.txt" % (parentFolder,name1,string.upper(genome),mergeName)
 
         print('\tCALCULATING ENHANCER DELTA AND MAKING PLOTS')
-        if utils.checkOutput(superOutput):
-            #part2 is the R script
-            rcmd = callDeltaRScript(mergedGFFFile,parentFolder,name1,name2)
-            print(rcmd) 
-            os.system(rcmd)
-            time.sleep(30)
-            callRoseGeneMapper(mergedGFFFile,genome,parentFolder,name1)
-        else:
-            print('ERROR: ROSE CALL FAILED')
-            sys.exit()
+
+        #part2 is the R script
+        mergedGFFFile = '%s%s_%s_MERGED_REGIONS_-0_+0.gff' % (parentFolder,string.upper(genome),mergeName)    
+        rcmd = callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,allFile2,medianScale)
+        print(rcmd) 
+        os.system(rcmd)
+        time.sleep(30)
+        callRoseGeneMapper(mergedGFFFile,genome,parentFolder,name1)
 
         #rank the genes
 
@@ -633,10 +744,8 @@ def main():
         #rank the delta
         print "PART 3: assinging ranks to differential enhancers"
         print('\tASSIGNING SUPER RANK TO MERGED ENHANCERS')
-        if superOnly:
-            gffName = '%s_%s_MERGED_SUPERS_-0_+0' % (string.upper(genome),mergeName)
-        else:
-            gffName = '%s_%s_MERGED_ENHANCERS_-0_+0' % (string.upper(genome),mergeName)
+
+        gffName = '%s_%s_MERGED_REGIONS_-0_+0' % (string.upper(genome),mergeName)
         enhancerToGeneFile = "%s%s_ROSE/%s_0KB_STITCHED_ENHANCER_DELTA_ENHANCER_TO_GENE_100KB.txt" % (parentFolder,name1,gffName)
         if utils.checkOutput(enhancerToGeneFile):
             rankOutput = "%s%s_ROSE/%s_0KB_STITCHED_ENHANCER_DELTA_ENHANCER_TO_GENE_100KB_RANK.txt" % (parentFolder,name1,gffName)
@@ -664,232 +773,3 @@ def main():
         sys.exit()
 
 main()
-
-# #=====================================================
-# #=======================MAC_SUPERS====================
-# #=====================================================
-# #MAC H4K12AC supers
-# mergeName = 'MAC_MERGED_SUPERS'
-# genome ='mm9'
-# dataFile = '/ark/home/cl512/projects/mouse_macrophage/MAC_TABLE.txt'
-# mergeFolder = '/ark/home/cl512/projects/mouse_macrophage/mergeTest/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/ark/home/cl512/projects/mouse_macrophage/rose/MAC_H4K12AC_0H_MINUS_ROSE'
-# roseFolder2 = '/ark/home/cl512/projects/mouse_macrophage/rose/MAC_H4K12AC_1H_MINUS_ROSE'
-
-# name1 = 'MAC_H4K12AC_0H_MINUS'
-# name2 = 'MAC_H4K12AC_1H_MINUS'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,True,True)
-
-
-
-#=====================================================
-#===================MYC NB LEVELS=====================
-#=====================================================
-#MYC vs MYCN in BE(2)C
-mergeName = 'BE2C_MYC_SUPERS'
-genome ='hg18'
-dataFile = '/ark/home/cl512/projects/neuroblastoma/NEURO_TABLE.txt'
-mergeFolder = '/ark/home/cl512/projects/neuroblastoma/MYC_analysis/dynamicEnhancer/%s/' % (mergeName)
-mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-roseFolder1 = '/ark/home/cl512/projects/neuroblastoma/MYC_analysis/be2c_mycn_rose/'
-roseFolder2 = '/ark/home/cl512/projects/neuroblastoma/MYC_analysis/be2c_myc_rose/'
-
-name1 = 'BE2C_MYCN'
-name2 = 'BE2C_MYC'
-
-
-#main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,True,True)
-
-
-
-
-# #=====================================================
-# #=======================786-O_SUPERS==================
-# #=====================================================
-# #786O
-# mergeName = 'RCC_786O_MERGED_SUPERS'
-# genome ='hg18'
-# dataFile = '/ark/home/cl512/projects/renal/RENAL_TABLE.txt'
-# mergeFolder = '/ark/home/cl512/projects/renal/dynamicEnhancer/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/ark/home/cl512/projects/renal/rose/786-O_H3K27AC_ROSE'
-# roseFolder2 = '/ark/home/cl512/projects/renal/rose/28-6_H3K27AC_ROSE'
-
-# name1 = '786-O_H3K27AC'
-# name2 = '28-6_H3K27AC'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,True,True)
-
-
-
-# #=====================================================
-# #=======================786-O_TYPICALS================
-# #=====================================================
-# #786O
-# mergeName = 'RCC_786O_MERGED_ENHANCERS'
-# genome ='hg18'
-# dataFile = '/ark/home/cl512/projects/renal/RENAL_TABLE.txt'
-# mergeFolder = '/ark/home/cl512/projects/renal/dynamicEnhancer/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/ark/home/cl512/projects/renal/rose/786-O_H3K27AC_ROSE'
-# roseFolder2 = '/ark/home/cl512/projects/renal/rose/28-6_H3K27AC_ROSE'
-
-# name1 = '786-O_H3K27AC'
-# name2 = '28-6_H3K27AC'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,False,False)
-
-
-# #=====================================================
-# #===================EC_ALL_ENHANCERS==================
-# #=====================================================
-# #EC_BRD4 ALL enhancers in con and tnf
-# mergeName = 'EC_MERGED_ENHANCERS'
-# mergeFolder = '/ark/home/cl512/projects/athero/mergeTest/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/ark/home/cl512/projects/athero/rose/EC_BRD4_CON_ROSE/'
-# roseFolder2 = '/ark/home/cl512/projects/athero/rose/EC_BRD4_TNF_ROSE/'
-
-# name1 = 'EC_BRD4_CON'
-# name2 = 'EC_BRD4_TNF'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,False,False)
-
-
-
-# #=====================================================
-# #===================EC_SUPER_ENHANCERS==================
-# #=====================================================
-# #EC_BRD4 ALL enhancers in con and tnf
-# mergeName = 'EC_MERGED_SUPERS'
-# mergeFolder = '/ark/home/cl512/projects/athero/mergeTest/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/ark/home/cl512/projects/athero/rose/EC_BRD4_CON_ROSE/'
-# roseFolder2 = '/ark/home/cl512/projects/athero/rose/EC_BRD4_TNF_ROSE/'
-
-# name1 = 'EC_BRD4_CON'
-# name2 = 'EC_BRD4_TNF'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName,True,True)
-
-
-
-
-# #=====================================================
-# #====================786O_H3K27AC=====================
-# #=====================================================
-# #786O_H3K27AC
-# mergeName = '786O_H3K27AC'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/786O/786O_H3K27AC_VHL_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/786O/786O_H3K27AC_VHL_NULL_ROSE/'
-# name1 = '786O_H3K27AC_VHL_WT'
-# name2 = '786O_H3K27AC_VHL_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-# # #=====================================================
-# # #====================UMRC2_H3K27AC=====================
-# # #=====================================================
-# # #UMRC2_H3K27AC
-# # mergeName = 'UMRC2_H3K27AC'
-# # mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# # mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# # roseFolder1 = '/home/clin/projects/131106_seComp/rose/UMRC2/UMRC2_H3K27AC_VHL_WT_ROSE/'
-# # roseFolder2 = '/home/clin/projects/131106_seComp/rose/UMRC2/UMRC2_H3K27AC_VHL_NULL_ROSE/'
-# # name1 = 'UMRC2_H3K27AC_VHL_WT'
-# # name2 = 'UMRC2_H3K27AC_VHL_NULL'
-
-
-# # main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-
-# #=====================================================
-# #====================RCC4_H3K27AC=====================
-# #=====================================================
-# #RCC4_H3K27AC
-# mergeName = 'RCC4_H3K27AC'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/RCC4/RCC4_H3K27AC_VHL_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/RCC4/RCC4_H3K27AC_VHL_NULL_ROSE/'
-# name1 = 'RCC4_H3K27AC_VHL_WT'
-# name2 = 'RCC4_H3K27AC_VHL_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-
-# #=====================================================
-# #====================RCC4_MED1=====================
-# #=====================================================
-# #RCC4_MED1
-# mergeName = 'RCC4_MED1'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/RCC4/RCC4_MED1_VHL_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/RCC4/RCC4_MED1_VHL_NULL_ROSE/'
-# name1 = 'RCC4_MED1_VHL_WT'
-# name2 = 'RCC4_MED1_VHL_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-
-
-
-# #=====================================================
-# #====================A704_H3K27AC=====================
-# #=====================================================
-# #A704_H3K27AC
-# mergeName = 'A704_H3K27AC'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/A704/A704_H3K27AC_BAF180_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/A704/A704_H3K27AC_BAF180_NULL_ROSE/'
-# name1 = 'A704_H3K27AC_BAF180_WT'
-# name2 = 'A704_H3K27AC_BAF180_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-
-# #=====================================================
-# #====================CAKI2_H3K27AC=====================
-# #=====================================================
-# #CAKI2_H3K27AC
-# mergeName = 'CAKI2_H3K27AC'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/CAKI2/CAKI2_H3K27AC_BAF180_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/CAKI2/CAKI2_H3K27AC_BAF180_NULL_ROSE/'
-# name1 = 'CAKI2_H3K27AC_BAF180_WT'
-# name2 = 'CAKI2_H3K27AC_BAF180_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)
-
-
-# #=====================================================
-# #====================CAKI2_MED1=====================
-# #=====================================================
-# #CAKI2_MED1
-# mergeName = 'CAKI2_MED1'
-# mergeFolder = '/home/clin/projects/131106_seComp/mergeAnalysis/%s/' % (mergeName)
-# mergeFolder = pipeline_dfci.formatFolder(mergeFolder,True)
-# roseFolder1 = '/home/clin/projects/131106_seComp/rose/CAKI2/CAKI2_MED1_BAF180_WT_ROSE/'
-# roseFolder2 = '/home/clin/projects/131106_seComp/rose/CAKI2/CAKI2_MED1_BAF180_NULL_ROSE/'
-# name1 = 'CAKI2_MED1_BAF180_WT'
-# name2 = 'CAKI2_MED1_BAF180_NULL'
-
-
-# main(dataFile,genome,mergeFolder,roseFolder1,roseFolder2,name1,name2,mergeName)

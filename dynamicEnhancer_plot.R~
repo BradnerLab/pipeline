@@ -1,29 +1,6 @@
-#dynamicEnhancer_plot.R
+#rankMerged.R
 
 #produces a ranked table from the region map table
-
-# The MIT License (MIT)
-
-# Copyright (c) 2013 Charles Lin
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
 
 #===========================================================
 #======================DEBUG PARAM==========================
@@ -44,40 +21,26 @@
 
 args <- commandArgs()
 
-print(args[3:7])
+print(args[3:5])
 
 stitchedFile = args[3]
 name1 = args[4]
 name2 = args[5]
-median1 = as.numeric(args[6])
-median2 = as.numeric(args[7])
 
 #===========================================================
 #=================MAKING DELTA TABLE========================
 #===========================================================
 outFile = gsub('REGION_MAP','DELTA',stitchedFile)
 stitched_regions = read.delim(stitchedFile,header=TRUE)
-if(ncol(stitched_regions) == 10){
-			
-	factor1 = stitched_regions[,7] - stitched_regions[,8]
-	factor2 = stitched_regions[,9] - stitched_regions[,10]
-}else{
 
-	factor1 = stitched_regions[,7]
-	factor2 = stitched_regions[,8]
-}
+factor1 = stitched_regions[,7] - stitched_regions[,8]
+factor2 = stitched_regions[,9] - stitched_regions[,10]
 
-
-
-#prevent negative values and 0 division
 factor1[factor1 <= 1] <- 1 
 factor2[factor2 <= 1] <- 1 
 
-factor1 = factor1/median1
-factor2 = factor2/median2
-
 deltaFactor = log2(factor2/factor1)
-
+deltaFactor[is.infinite(deltaFactor)] <- -6
 deltaFactor[deltaFactor < -8] <- -8
 deltaFactor[deltaFactor > 8] <- 8
 
