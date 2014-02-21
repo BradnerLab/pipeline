@@ -80,7 +80,7 @@ def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_size, bin_count
     counts_file = tables.open_file(bin_counts_file_path, mode = "r")
     counts = counts_file.root.counts
 
-    normalize_plot_and_summarize(counts, output_directory) 
+    normalize_plot_and_summarize(counts, output_directory, bin_size) 
     counts_file.close()
 
 def main():
@@ -94,7 +94,7 @@ def main():
     parser.add_argument('--bin_counts_file',
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "bin_counts.h5" in the output directory.')
-    parser.add_argument('--bin_size', default=100000,
+    parser.add_argument('--bin_size', type=int, default=100000,
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000).")
     parser.add_argument('ucsc_chrom_sizes',
