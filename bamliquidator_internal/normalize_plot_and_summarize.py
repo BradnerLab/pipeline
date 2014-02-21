@@ -24,6 +24,8 @@
 #
 ##################################################################################
 
+from __future__ import division
+
 import sys
 import os
 import argparse
@@ -128,7 +130,111 @@ def total_count_for_file(counts, file_name, chromosome):
 
     return count 
 
-def populate_count_normalized_counts(normalized_counts, counts, chromosome, cell_types):
+# todo: bin_size should be stored in hdf5
+def populate_normalized_counts(normalized_counts, counts, file_name, bin_size):
+    # todo: is this the actual total count? what if a read is in two bins?
+    total_count = sum(counts.read_where("file_name == '%s'" % file_name, field="count"))
+
+    million = 10**6 
+    
+    '''
+    Excerpt from Feb 13, 2014 email from Charles Lin:
+
+    We typically report read density in units of reads per million per basepair
+
+    bamliquidator reports counts back in total read positions per bin.  To convert that 
+    into reads per million per basepair, we first need to divide by the total million 
+    number of reads in the bam.  Then we need to divide by the size of the bin
+
+    So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
+    reads you would calculate density as 2500/1000/30 = 0.083rpm/bp
+    '''
+
+    factor = (1 / bin_size) * (1 / (total_count / million))
+
+    for count_row in counts.where("file_name == '%s'" % file_name):
+        normalized_counts.row["bin_number"] = count_row["bin_number"]
+        normalized_counts.row["cell_type"] = count_row["cell_type"] 
+        normalized_counts.row["chromosome"] = count_row["chromosome"] 
+        assert file_name == count_row["file_name"]
+        normalized_counts.row["file_name"] = file_name 
+        normalized_counts.row["count"] = count_row["count"] * factor 
+        normalized_counts.row["percentile"] = -1
+        normalized_counts.row.append()
+
+    normalized_counts.flush()
+    
+def populate_percentiles(normalized_counts, cell_type, file_name):
+    bin_numbers = []
+    normalized_count_list = []
+
+    condition = "(cell_type == '%s') & (file_name == '%s')" % (cell_type, file_name)
+
+    for row in normalized_counts.where(condition):
+        bin_numbers.append(row["bin_number"])
+        normalized_count_list.append(row["count"])
+
+    percentiles = (stats.rankdata(normalized_count_list) - 1) / (len(normalized_count_list)-1) * 100
+    # percentiles calculated in bulk as suggested at 
+    # http://grokbase.com/t/python/python-list/092235vj27/faster-scipy-percentileofscore
+
+    for i, row in enumerate(normalized_counts.where(condition)):
+        assert bin_numbers[i] == row["bin_number"]
+        row["percentile"] = percentiles[i]
+        row.update()
+    normalized_counts.flush()
+
+def file_names_in_cell_type(normalized_counts, cell_type):
+    file_names = set()
+    for row in normalized_counts.where("(file_name != '*') & (cell_type == '%s')" % cell_type):
+        file_names.add(row["file_name"])
+    return list(file_names)
+
+# the cell type normalized counts are the averages of the genomes in the cell type
+def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_names):
+    processed_a_single_file = False
+    chromosome_to_summed_counts = collections.OrderedDict() 
+
+    for file_name in file_names:
+        condition = "(file_name == '%s') & (cell_type == '%s')" % (file_name, cell_type)
+        for row in normalized_counts.where(condition):
+            if processed_a_single_file:
+                chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] += row["count"]
+            else:
+                if not chromosome_to_summed_counts.has_key(row["chromosome"]):
+                    chromosome_to_summed_counts[row["chromosome"]] = []
+                chromosome_to_summed_counts[row["chromosome"]].append(row["count"])
+        processed_a_single_file = True
+            
+    cell_type_condition = "(file_name == '*') & (cell_type == '%s')" % cell_type
+    prior_normalized_cell_type_rows_found = False
+    for row in normalized_counts.where(cell_type_condition):
+        prior_normalized_cell_type_rows_found = True
+        break
+    if not prior_normalized_cell_type_rows_found:
+        # just add all the rows with -1 counts, so that the same code path for populating the counts
+        # is used regardless of whether there were any prior normalized counts for this cell type
+        for chromosome, summed_counts in chromosome_to_summed_counts.iteritems():
+            for i, summed_count in enumerate(summed_counts):
+                normalized_counts.row["bin_number"] = i
+                normalized_counts.row["cell_type"] = cell_type 
+                normalized_counts.row["chromosome"] = chromosome 
+                normalized_counts.row["file_name"] = "*" 
+                # using "*" instead of "" due to pytables empty string query bug
+                # -- https://github.com/PyTables/PyTables/issues/184
+                normalized_counts.row["count"] = -1 
+                normalized_counts.row["percentile"] = -1
+                normalized_counts.row.append()
+        normalized_counts.flush()
+
+    for row in normalized_counts.where(cell_type_condition):
+        row["count"] = chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] / len(file_names)
+        row.update()
+    
+    normalized_counts.flush()
+
+# todo: delete the below function, since we should normalize by genome, not by chromosome, and not using cell types
+def populate_normalized_counts_del_me(normalized_counts, counts, chromosome, cell_types):
     for cell_type in cell_types:
         files = file_names(counts, cell_type)
 
@@ -231,9 +337,75 @@ def create_summary_table(h5file):
     table.flush()
 
     return table
+   
+
+def populate_summary(summary, normalized_counts, chromosome):
+    high = 95 # 95th percentile
+    low  = 5  # 5th percentile
+
+    summed_cell_type_percentiles_by_bin = collections.defaultdict(float) 
+    cell_types_gte_high_percentile_by_bin = collections.defaultdict(int)
+    cell_types_lt_high_percentile_by_bin = collections.defaultdict(int)
+    lines_gte_high_percentile_by_bin = collections.defaultdict(int)
+    lines_lt_high_percentile_by_bin = collections.defaultdict(int)
+    cell_types_gte_low_percentile_by_bin = collections.defaultdict(int)
+    cell_types_lt_low_percentile_by_bin = collections.defaultdict(int)
+    lines_gte_low_percentile_by_bin = collections.defaultdict(int)
+    lines_lt_low_percentile_by_bin = collections.defaultdict(int)
+    lines = set()
+    cell_types = set()
+    max_bin = 0
+
+    # note populating the dictionaries this way is much faster than looping through
+    # each bin and finding the matching fraction rows
+    for row in normalized_counts.where("chromosome == '%s'" % chromosome):
+        bin_number = row["bin_number"]
+        max_bin = max(max_bin, bin_number)
+        percentile = row["percentile"]
+
+        if row["file_name"] == "*":
+            cell_types.add(row["cell_type"])
+            summed_cell_type_percentiles_by_bin[bin_number] += percentile
+            if percentile >= high:
+                cell_types_gte_high_percentile_by_bin[bin_number] += 1
+            else:
+                cell_types_lt_high_percentile_by_bin[bin_number] += 1
+
+            if percentile >= low:
+                cell_types_gte_low_percentile_by_bin[bin_number] += 1
+            else:
+                cell_types_lt_low_percentile_by_bin[bin_number] += 1
+        else:
+            lines.add(row["file_name"])
+            if percentile >= high:
+                lines_gte_high_percentile_by_bin[bin_number] += 1
+            else:
+                lines_lt_high_percentile_by_bin[bin_number] += 1
+
+            if percentile >= low:
+                lines_gte_low_percentile_by_bin[bin_number] += 1
+            else:
+                lines_lt_low_percentile_by_bin[bin_number] += 1
+
+    #print " - populating summary table with calculated summaries"
+
+    for bin_number in xrange(max_bin+1):
+        summary.row["bin_number"] = bin_number
+        summary.row["chromosome"] = chromosome
+        summary.row["avg_cell_type_percentile"] = summed_cell_type_percentiles_by_bin[bin_number] / len(cell_types)
+        summary.row["cell_types_gte_95th_percentile"] = cell_types_gte_high_percentile_by_bin[bin_number]
+        summary.row["cell_types_lt_95th_percentile"] = cell_types_lt_high_percentile_by_bin[bin_number]
+        summary.row["lines_gte_95th_percentile"] = lines_gte_high_percentile_by_bin[bin_number]
+        summary.row["lines_lt_95th_percentile"] = lines_lt_high_percentile_by_bin[bin_number]
+        summary.row["cell_types_gte_5th_percentile"] = cell_types_gte_low_percentile_by_bin[bin_number]
+        summary.row["cell_types_lt_5th_percentile"] = cell_types_lt_low_percentile_by_bin[bin_number]
+        summary.row["lines_gte_5th_percentile"] = lines_gte_low_percentile_by_bin[bin_number]
+        summary.row["lines_lt_5th_percentile"] = lines_lt_low_percentile_by_bin[bin_number]
+        summary.row.append()
+    summary.flush()
     
 
-def populate_summary(summary, normalized_counts, chromosome, cell_types):
+def populate_summary_del_me(summary, normalized_counts, chromosome, cell_types):
     #print " - calculating summaries"
 
     condition = "chromosome == '%s'" % chromosome
@@ -317,7 +489,7 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
 
     for chromosome in chromosomes:
         print "Processing " + chromosome
-        populate_count_normalized_counts(normalized_counts, counts, chromosome, cell_types)
+        populate_normalized_counts_del_me(normalized_counts, counts, chromosome, cell_types)
         populate_count_percentiles_for_cell_types(normalized_counts, counts, chromosome, cell_types)
         if not skip_plots: plot(output_directory, normalized_counts, chromosome, cell_types)
 
@@ -333,7 +505,7 @@ def normalize_plot_and_summarize(counts, output_directory, cell_types = None):
 
     for chromosome in chromosomes:
         print "Creating table summary for " + chromosome
-        populate_summary(summary, normalized_counts, chromosome, cell_types)
+        populate_summary_del_me(summary, normalized_counts, chromosome, cell_types)
 
     print "Sorting and indexing summaries"
     summary.cols.avg_cell_type_percentile.create_csindex()

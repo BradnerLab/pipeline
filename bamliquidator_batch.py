@@ -16,6 +16,7 @@ def create_count_table(h5file):
         cell_type  = tables.StringCol(16, pos=1)
         chromosome = tables.StringCol(16, pos=2)
         count      = tables.UInt64Col(    pos=3)
+        # todo: rename file_name to genome or line
         file_name  = tables.StringCol(64, pos=4)
 
     table = h5file.create_table("/", "counts", BinCount, "bin counts")
