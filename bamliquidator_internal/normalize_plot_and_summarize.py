@@ -138,26 +138,22 @@ def total_count_for_file(counts, file_name, chromosome):
 
     return count 
 
-def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, normalize_to_one=False):
-    # todo: why doesn't this count match up to the samtools flagstat numbers? 
+def populate_normalized_counts(normalized_counts, counts, file_name, bin_size):
     total_count = sum(counts.read_where("file_name == '%s'" % file_name, field="count"))
 
-    if normalize_to_one:
-        factor = 1 / total_count
-    else:
-        '''
-        Excerpt from Feb 13, 2014 email from Charles Lin:
+    '''
+    Excerpt from Feb 13, 2014 email from Charles Lin:
 
-        We typically report read density in units of reads per million per basepair
+    We typically report read density in units of reads per million per basepair
 
-        bamliquidator reports counts back in total read positions per bin.  To convert that 
-        into reads per million per basepair, we first need to divide by the total million 
-        number of reads in the bam.  Then we need to divide by the size of the bin
+    bamliquidator reports counts back in total read positions per bin.  To convert that 
+    into reads per million per basepair, we first need to divide by the total million 
+    number of reads in the bam.  Then we need to divide by the size of the bin
 
-        So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
-        reads you would calculate density as 2500/1000/30 = 0.083rpm/bp
-        '''
-        factor = (1 / bin_size) * (1 / (total_count / 10**6))
+    So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
+    reads you would calculate density as 2500/1000/30 = 0.083rpm/bp
+    '''
+    factor = (1 / bin_size) * (1 / (total_count / 10**6))
 
     for count_row in counts.where("file_name == '%s'" % file_name):
         normalized_counts.row["bin_number"] = count_row["bin_number"]
