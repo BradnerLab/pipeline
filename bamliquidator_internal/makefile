@@ -29,7 +29,7 @@ CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARG
 LDFLAGS := -stdlib=libc++ -O -g -Wall 
 LDLIBS := -lbam -lz -lpthread 
 
-all: ../bamliquidator bamliquidator_batch 
+all: ../bamliquidator bamliquidator_batch bamliquidator_regions 
 
 ../bamliquidator: bamliquidator.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
@@ -39,14 +39,23 @@ bamliquidator_batch: bamliquidator_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidator_batch bamliquidator.o bamliquidator_batch.m.o \
 					$(LDLIBS) -lhdf5 -lhdf5_hl -ltcmalloc_minimal
 
+# todo: experiment with both tcmalloc and the tbb allocator
+# note regions has additional dependencies separate from LDLIBS
+bamliquidator_regions: bamliquidator_regions.m.o
+	clang++ $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
+					$(LDLIBS) -lhdf5 -lhdf5_hl -ltbb
+
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
 
 bamliquidator_batch.m.o: bamliquidator_batch.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator_batch.m.cpp
+
+bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
+	clang++ $(CPPFLAGS) -c bamliquidator_regions.m.cpp
   
 bamliquidator.o: bamliquidator.cpp
 	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
-	rm -f ../bamliquidator bamliquidator bamliquidator_batch *.o 
+	rm -f ../bamliquidator bamliquidator bamliquidator_batch bamliquidator_regions *.o 

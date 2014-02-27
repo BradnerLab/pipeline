@@ -25,6 +25,21 @@ def create_count_table(h5file):
 
     return table
 
+def create_regions_table(h5file):
+    class Region(tables.IsDescription):
+        chromosome = tables.StringCol(16, pos=0)
+        name       = tables.StringCol(64, pos=1)
+        start      = tables.UInt64Col(    pos=2)
+        stop       = tables.UInt64Col(    pos=3)
+        strand     = tables.CharCol(      pos=4)
+        count      = tables.UInt64Col(    pos=5)
+
+    table = h5file.create_table("/", "region_counts", Region, "region counts")
+
+    table.flush()
+
+    return table
+
 '''
 todo
 

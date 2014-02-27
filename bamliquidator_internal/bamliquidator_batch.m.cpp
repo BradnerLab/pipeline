@@ -8,19 +8,11 @@
 #include <stdexcept>
 #include <sstream>
 
-#include <boost/atomic.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
-
-/* todo:
-  
-   - don't store strings in table records, e.g. have seperate tables for chromosomes, file names,
-     and cell types.  in the count table records, just store integers representing the strings.
-     this should speed up the writing and cut the file sizes
- */
 
 class ChromosomeLengths
 {
@@ -169,7 +161,7 @@ int main(int argc, char* argv[])
   {
     if (argc != 6)
     {
-      std::cerr << "usage: " << argv[0] << " cell_type bin_size ucsc_chrom_size_path bam_file_path hdf5_file\n"
+      std::cerr << "usage: " << argv[0] << " cell_type bin_size ucsc_chrom_size_file bam_file hdf5_file\n"
         << "\ne.g. " << argv[0] << " mm1s 100000 /grail/annotations/ucsc_chromSize.txt"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
