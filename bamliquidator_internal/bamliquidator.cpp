@@ -157,6 +157,34 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
                               const char strand, const unsigned int spnum,
                               const unsigned int extendlen)
 {
+	samfile_t* fp=NULL;
+	fp=samopen(bamfile.c_str(),"rb",0);
+	if(fp == NULL)
+	{
+		throw std::runtime_error("samopen() error with " + bamfile);
+	}
+
+  bam_index_t* bamidx=NULL;
+  bamidx=bam_index_load(bamfile.c_str());
+	if (bamidx == NULL)
+	{
+		throw std::runtime_error("bam_index_load() error with " + bamfile);
+	}
+
+	std::vector<double> counts = liquidate(fp, bamidx, chromosome, start, stop, strand, spnum, extendlen);
+
+  bam_index_destroy(bamidx);
+  samclose(fp);
+
+	return counts;
+}
+
+std::vector<double> liquidate(samfile_t* fp, bam_index_t* bamidx,
+															const std::string& chromosome,
+                              const unsigned int start, const unsigned int stop,
+                              const char strand, const unsigned int spnum,
+                              const unsigned int extendlen)
+{
   std::vector<double> data(spnum, 0);
   
   std::string coord;
@@ -165,15 +193,6 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
     ss << chromosome << ':' << start << '-' << stop;
     coord = ss.str();
   }
-  samfile_t* fp=NULL;
-  bam_index_t* bamidx=NULL;
-
-  if((fp=samopen(bamfile.c_str(),"rb",0))==0)
-  {
-    throw std::runtime_error("samopen() error with " + bamfile);
-  }
-
-  bamidx=bam_index_load(bamfile.c_str());
 
   /* fetch bed items for a region and compute density
   only deal with coord, so use generic item
@@ -205,10 +224,6 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
       }
     }
   }
-
-  bam_index_destroy(bamidx);
-
-  samclose(fp);
 
   return data;
 }

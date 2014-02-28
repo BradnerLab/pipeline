@@ -31,7 +31,7 @@ def create_regions_table(h5file):
         name       = tables.StringCol(64, pos=1)
         start      = tables.UInt64Col(    pos=2)
         stop       = tables.UInt64Col(    pos=3)
-        strand     = tables.CharCol(      pos=4)
+        strand     = tables.Int8Col(      pos=4)
         count      = tables.UInt64Col(    pos=5)
 
     table = h5file.create_table("/", "region_counts", Region, "region counts")
@@ -108,14 +108,12 @@ def main():
                              'Default is "./output".')
     parser.add_argument('--bin_counts_file',
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
-                             'creating a new file "bin_counts.h5" in the output directory.')
+                             'creating a new file "bin_counts.h5" in the output directory. (todo: combine all hdf5 files into 1.)')
     parser.add_argument('--bin_size', type=int, default=100000,
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
-                             "the larger the data files (default is 100000).")
-    parser.add_argument('ucsc_chrom_sizes',
-                        help='Tab delimited text file with the first column naming the chromosome (e.g. chr1), the '
-                             'third column naming the genome type (e.g. mm8), and the fifth column naming the number '
-                             'of base pairs in the reference chromosome.')
+                             "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
+    parser.add_argument('ucsc_chrom_sizes_or_regions_file',
+                        help='Tab delimited text file, interpretted as a ucsc chromosome size file if ending in .txt and a region file if ending in .gff (todo: support .bed regions as well). A ucsc chromosome size file must have the first column naming the chromosome (e.g. chr1), the third column naming the genome type (e.g. mm8), and the fifth column naming the number of base pairs in the reference chromosome. (todo add description of .gff and .bed files)')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '

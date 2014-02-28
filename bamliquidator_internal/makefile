@@ -41,9 +41,9 @@ bamliquidator_batch: bamliquidator_batch.m.o
 
 # todo: experiment with both tcmalloc and the tbb allocator
 # note regions has additional dependencies separate from LDLIBS
-bamliquidator_regions: bamliquidator_regions.m.o
+bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
-					$(LDLIBS) -lhdf5 -lhdf5_hl -ltbb
+					$(LDLIBS) -lhdf5 -lhdf5_hl -ltbb -ltcmalloc_minimal
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -54,7 +54,7 @@ bamliquidator_batch.m.o: bamliquidator_batch.m.cpp
 bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator_regions.m.cpp
   
-bamliquidator.o: bamliquidator.cpp
+bamliquidator.o: bamliquidator.cpp bamliquidator.h
 	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:

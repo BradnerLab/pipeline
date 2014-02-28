@@ -1,6 +1,8 @@
 #ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_H
 #define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_H
 
+#include <samtools/sam.h>
+
 #include <vector>
 #include <string>
 
@@ -25,9 +27,16 @@
  * @return the read counts for the range [start, stop], split into spnum pieces
  */
 std::vector<double> liquidate(const std::string& bamfile, const std::string& chromosome,
-                              const unsigned int start, const unsigned int stop,
-                              const char strand, const unsigned int spnum,
-                              const unsigned int extendlen);
+                              unsigned int start, unsigned int stop,
+                              char strand, unsigned int spnum,
+                              unsigned int extendlen);
+
+// todo: create javadoc comments
+std::vector<double> liquidate(samfile_t* fp,  bam_index_t* bamidx,
+															const std::string& chromosome,
+                              unsigned int start, unsigned int stop,
+                              char strand, unsigned int spnum,
+                              unsigned int extendlen);
 
 /* The MIT License (MIT) 
 

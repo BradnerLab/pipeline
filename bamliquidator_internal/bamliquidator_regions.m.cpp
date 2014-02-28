@@ -12,6 +12,8 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
+#include <tbb/task_scheduler_init.h>
+
 struct Region
 {
   char chromosome[16];
@@ -59,6 +61,10 @@ std::vector<Region> parse_regions(const std::string& region_file_path)
     strncpy(region.name,       columns[name_column].c_str(),       sizeof(Region::name));
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
     region.stop  = boost::lexical_cast<uint64_t>(columns[stop_column]);
+    if (region.start > region.stop)
+    {
+      std::swap(region.start, region.stop);
+    }
 
     if (columns[strand_column].size() != 1)
     {
@@ -72,38 +78,81 @@ std::vector<Region> parse_regions(const std::string& region_file_path)
   return regions;
 }
 
+void write(hid_t& file, std::vector<Region>& regions)
+{
+  const size_t record_size = sizeof(Region);
+
+  size_t record_offset[] = { HOFFSET(Region, chromosome),
+                             HOFFSET(Region, name),
+                             HOFFSET(Region, start),
+                             HOFFSET(Region, stop),
+                             HOFFSET(Region, strand),
+                             HOFFSET(Region, count) };
+
+  size_t field_sizes[] = { sizeof(Region::chromosome),
+                           sizeof(Region::name),
+                           sizeof(Region::start),
+                           sizeof(Region::stop),
+                           sizeof(Region::strand),
+                           sizeof(Region::count) };
+
+  herr_t status = H5TBappend_records(file, "region_counts", regions.size(), record_size, record_offset,
+                                     field_sizes, regions.data());
+  if (status != 0)
+  {
+    std::cerr << "Error appending record, status = " << status << std::endl;
+  }
+}
+
 void liquidate_regions(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
 {
-  // todo: open bam_file here, instead of repeatedly inside loop
+  // opening the bamfiles once instead of each loop iteration brought the test runtime from 4.129s to 0.244s !
+  // todo: experiment with opening bamfiles once instead of 23 times in bamliquidator_batch, and remove above comment
+  
+	samfile_t* fp=NULL;
+	fp=samopen(bam_file_path.c_str(),"rb",0);
+	if(fp == NULL)
+	{
+		throw std::runtime_error("samopen() error with " + bam_file_path);
+	}
+
+  bam_index_t* bamidx=NULL;
+  bamidx=bam_index_load(bam_file_path.c_str());
+	if (bamidx == NULL)
+	{
+		throw std::runtime_error("bam_index_load() error with " + bam_file_path);
+	}
  
   for (size_t i=0; i < regions.size(); ++i)
+  try
   {
-    try
+    std::vector<double> counts = liquidate(fp, bamidx,
+                                           regions[i].chromosome,
+                                           regions[i].start, 
+                                           regions[i].stop, 
+                                           regions[i].strand, 
+                                           1, 0);
+    if (counts.size() != 1)
     {
-      std::cout << "about to liquidate " << i << ": " << regions[i] << std::endl;
-      std::vector<double> counts = liquidate(bam_file_path,
-                                             regions[i].chromosome,
-                                             regions[i].start, 
-                                             regions[i].stop, 
-                                             regions[i].strand, 
-                                             1, 0);
-      if (counts.size() != 0)
-      {
-        std::cout << "about to throw..." << std::endl;
-        throw std::runtime_error("liquidate failed to provide exactly one count (count is ");// +
-        //  boost::lexical_cast<std::string>(counts.size()) + ")");
-      }
-      std::cout << "done liquidated " << i << std::endl;
-    } catch(const std::exception& e)
-    {
-      std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
-                << e.what() << std::endl;
+      throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
+        boost::lexical_cast<std::string>(counts.size()) + ")");
     }
+    regions[i].count = counts[0];
+  } catch(const std::exception& e)
+  {
+    std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
+              << e.what() << std::endl;
   }
+
+  bam_index_destroy(bamidx);
+  samclose(fp);
+
+  write(file, regions);
 }
 
 int main(int argc, char* argv[])
 {
+  tbb::task_scheduler_init init;
   try
   {
     if (argc != 4)
@@ -121,7 +170,7 @@ int main(int argc, char* argv[])
     const std::string bam_file_path = argv[2];
     const std::string hdf5_file_path = argv[3];
 
-    hid_t h5file = 0; //todo:H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
     {
       std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
@@ -132,7 +181,7 @@ int main(int argc, char* argv[])
 
     liquidate_regions(h5file, regions, bam_file_path);
    
-    //todo: H5Fclose(h5file);
+    H5Fclose(h5file);
 
     return 0;
   }
