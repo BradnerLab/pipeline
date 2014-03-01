@@ -31,8 +31,8 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
                               char strand, unsigned int spnum,
                               unsigned int extendlen);
 
-// todo: create javadoc comments
-std::vector<double> liquidate(samfile_t* fp,  bam_index_t* bamidx,
+// todo: document
+std::vector<double> liquidate(samfile_t* fp, const bam_index_t* bamidx,
 															const std::string& chromosome,
                               unsigned int start, unsigned int stop,
                               char strand, unsigned int spnum,

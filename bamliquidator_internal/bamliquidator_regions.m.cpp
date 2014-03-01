@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+#include <mutex>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -12,6 +13,8 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
 struct Region
@@ -26,8 +29,8 @@ struct Region
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
 {
-    os << r.chromosome << ' ' << r.name << ' ' << r.start << " -> " << r.stop << ' ' << r.strand;
-    return os;
+  os << r.chromosome << ' ' << r.name << ' ' << r.start << " -> " << r.stop << ' ' << r.strand;
+  return os;
 }
 
 std::vector<Region> parse_regions(const std::string& region_file_path)
@@ -122,27 +125,51 @@ void liquidate_regions(hid_t& file, std::vector<Region>& regions, const std::str
 	{
 		throw std::runtime_error("bam_index_load() error with " + bam_file_path);
 	}
+
+#ifdef jdlog
+  std::mutex m;
+#endif
  
-  for (size_t i=0; i < regions.size(); ++i)
-  try
-  {
-    std::vector<double> counts = liquidate(fp, bamidx,
-                                           regions[i].chromosome,
-                                           regions[i].start, 
-                                           regions[i].stop, 
-                                           regions[i].strand, 
-                                           1, 0);
-    if (counts.size() != 1)
+  tbb::parallel_for(
+    tbb::blocked_range<int>(0, regions.size(), 1),
+    [&] (const tbb::blocked_range<int>& range)
     {
-      throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
-        boost::lexical_cast<std::string>(counts.size()) + ")");
-    }
-    regions[i].count = counts[0];
-  } catch(const std::exception& e)
-  {
-    std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
-              << e.what() << std::endl;
-  }
+      for (size_t i=range.begin(); i < range.end(); ++i)
+      {
+        try
+        {
+#ifdef jdlog
+          {
+            std::lock_guard<std::mutex> lock(m);
+            std::cout << "i = " << i << std::endl;
+          } 
+#endif
+          std::vector<double> counts = liquidate(fp, bamidx,
+                                                 regions[i].chromosome,
+                                                 regions[i].start, 
+                                                 regions[i].stop, 
+                                                 regions[i].strand, 
+                                                 1, 0);
+#ifdef jdlog
+          {
+            std::lock_guard<std::mutex> lock(m);
+            std::cout << "i = " << i << std::endl;
+          } 
+#endif
+          if (counts.size() != 1)
+          {
+            throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
+              boost::lexical_cast<std::string>(counts.size()) + ")");
+          }
+          regions[i].count = counts[0];
+        } catch(const std::exception& e)
+        {
+          std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
+                    << e.what() << std::endl;
+        }
+      }
+    },
+    tbb::auto_partitioner());
 
   bam_index_destroy(bamidx);
   samclose(fp);
