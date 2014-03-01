@@ -129,7 +129,7 @@ static int bam_fetch_func(const bam1_t* b,void* data)
   return 0;
 }
 
-std::deque<ReadItem> bamQuery_region(samfile_t* fp, const bam_index_t* idx, const std::string& coord, char strand, unsigned int extendlen)
+std::deque<ReadItem> bamQuery_region(const samfile_t* fp, const bam_index_t* idx, const std::string& coord, char strand, unsigned int extendlen)
 {
   // will not fill chromidx
   int ref,beg,end;
@@ -179,7 +179,7 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
 	return counts;
 }
 
-std::vector<double> liquidate(samfile_t* fp, const bam_index_t* bamidx,
+std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
 															const std::string& chromosome,
                               const unsigned int start, const unsigned int stop,
                               const char strand, const unsigned int spnum,

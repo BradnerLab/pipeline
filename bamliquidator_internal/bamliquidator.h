@@ -31,8 +31,13 @@ std::vector<double> liquidate(const std::string& bamfile, const std::string& chr
                               char strand, unsigned int spnum,
                               unsigned int extendlen);
 
-// todo: document
-std::vector<double> liquidate(samfile_t* fp, const bam_index_t* bamidx,
+/** 
+ * Same as above function, except this is not thread safe (as bamfile/bamidx cannot be
+ * used simultaneously in different threads).  This variant should be preferred when
+ * looping over many start/stop values for the same bamfile in a single thread, since
+ * opening the file/index takes more time than the liquidation. 
+ */
+std::vector<double> liquidate(const samfile_t* bamfile, const bam_index_t* bamidx,
 															const std::string& chromosome,
                               unsigned int start, unsigned int stop,
                               char strand, unsigned int spnum,
