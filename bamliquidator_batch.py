@@ -157,7 +157,11 @@ def main():
     counts_file.close() # The bamliquidator_internal/bamliquidator_batch will open this file and modify it,
                         # so it is best that we not hold an out of sync reference to it
 
-    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes, args.bin_size, args.bin_counts_file,
+
+    # todo: handle region files
+    ucsc_chrom_sizes_path = args.ucsc_chrom_sizes_or_regions_file
+
+    liquidate(bam_files, args.output_directory, ucsc_chrom_sizes_path, args.bin_size, args.bin_counts_file,
               executable_path)
 
 if __name__ == "__main__":
