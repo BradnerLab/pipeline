@@ -304,27 +304,31 @@ def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,
 
     #check to make sure this hasn't been done yet
     roseOutput = "%s%s_ROSE/%s_%s_MERGED_REGIONS_-0_+0_SuperEnhancers_ENHANCER_TO_GENE.txt" % (parentFolder,name1,string.upper(genome),mergeName)
-    if utils.checkOutput(roseOutput,1,1):
+
+    try:
+        foo = utils.parseTable(roseOutput,'\t')
         print "ROSE OUTPUT ALREADY FOUND HERE %s" % (roseOutput)
         return roseOutput
-    print "MERGING ENHANCER REGIONS FROM %s and %s" % (superFile1,superFile2)
-    mergedGFF = mergeCollections(superFile1,superFile2,name1,name2,mergedGFFFile)
+    except IOError:
+        
+        print "MERGING ENHANCER REGIONS FROM %s and %s" % (superFile1,superFile2)
+        mergedGFF = mergeCollections(superFile1,superFile2,name1,name2,mergedGFFFile)
 
-    #call rose on the merged shit    
+        #call rose on the merged shit    
 
 
-    roseBashFile = callRoseMerged(dataFile,mergedGFF,name1,name2,parentFolder)
-    print('i can has rose bash file %s' % (roseBashFile))
+        roseBashFile = callRoseMerged(dataFile,mergedGFF,name1,name2,parentFolder)
+        print('i can has rose bash file %s' % (roseBashFile))
 
-    #run the bash command
-    os.system('bash %s' % (roseBashFile))
-    
-    #check for and return output
-    if utils.checkOutput(roseOutput,30):
-        return roseOutput
-    else:
-        print "ERROR: ROSE CALL ON MERGED REGIONS FAILED"
-        sys.exit()
+        #run the bash command
+        os.system('bash %s' % (roseBashFile))
+
+        #check for and return output
+        if utils.checkOutput(roseOutput,1,30):
+            return roseOutput
+        else:
+            print "ERROR: ROSE CALL ON MERGED REGIONS FAILED"
+            sys.exit()
 
 def callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,allFile2,medianScale = False):
 
@@ -339,7 +343,7 @@ def callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,al
 
     else:
         median1 =1
-        median2 =2
+        median2 =1
 
     
     gffName = mergedGFFFile.split('/')[-1].split('.')[0]
@@ -734,6 +738,7 @@ def main():
         rcmd = callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,allFile2,medianScale)
         print(rcmd) 
         os.system(rcmd)
+
         time.sleep(30)
         callRoseGeneMapper(mergedGFFFile,genome,parentFolder,name1)
 
