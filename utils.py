@@ -419,6 +419,37 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
     return transCollection
 
 
+#140213
+
+def nameToRefseq(geneNamesList,annotFile,unique=True):
+
+       '''
+       takes a list of names and gets you the refseqID
+       '''
+       startDict=  makeStartDict(annotFile)
+       nameDict = defaultdict(list)
+       for refID in startDict.keys():
+
+              name = startDict[refID]['name']
+              nameDict[name].append(refID)
+
+       newTable = []
+       for name in geneNamesList:
+              refIDList = nameDict[name]
+              
+              #unique preserves the initial number of genes in geneNamesList
+              #by taking only 1 refID per geneName
+              #will take the first in the refList, which should usually be the lower
+              #refID and thus the more relevant, but no guarantees
+              if unique:
+                     newTable.append([name,refIDList[0]]) 
+              else:
+                     for refID in refIDList:
+                            newTable.append([name,refID])
+
+       return newTable
+       
+
 #06/11/09                                                                                                                              
 #import bound region                                                                                                                   
 #imports a bound region file and turns it into a locus collection                                                                      
@@ -822,6 +853,19 @@ class Gene:
 #06/11/09
 #turns a locusCollection into a gff
 #does not write to disk though
+
+
+def locusCollectionToBed(locusCollection):
+
+    lociList = locusCollection.getLoci()
+    bed = []
+    for locus in lociList:
+        newLine = [locus.chr(),locus.coords()[0],locus.coords()[1],locus.sense(),locus.ID()]
+        bed.append(newLine)
+    return bed
+
+
+
 def locusCollectionToGFF(locusCollection):
     lociList = locusCollection.getLoci()
     gff = []
@@ -829,6 +873,9 @@ def locusCollectionToGFF(locusCollection):
         newLine = [locus.chr(),locus.ID(),'',locus.coords()[0],locus.coords()[1],'',locus.sense(),'',locus.ID()]
         gff.append(newLine)
     return gff
+
+
+
 
 
 def gffToLocusCollection(gff,window =500):
