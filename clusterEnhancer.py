@@ -72,6 +72,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
     
     #draw the parent folder from the dataFile
     parentFolder = utils.getParentFolder(dataFile)
+    print "Using %s as the parent folder" % (parentFolder)
 
     #check to see if a rose folder exists already
     if utils.formatFolder(roseFolder,False):
@@ -94,7 +95,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
     for name in namesList:
         
         nameDict[name] = {}
-        
+
         #check if each dataset has a background
 
         backgroundName = dataDict[name]['background']
@@ -107,7 +108,8 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
         
         #assumes standard folder structure for enriched file
         enrichedFile = "%smacsEnriched/%s" % (parentFolder,dataDict[name]['enrichedMacs'])
-        print enrichedFile
+
+
         try:
             foo = open(enrichedFile,'r')
             foo.close()
@@ -131,6 +133,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
         
         if nameDict[name]['enhancerFile'] == '' and nameDict[name]['enrichedFile'] =='':
             print "INSUFFICIENT DATA TO RUN ENAHNCER ANALYSIS ON %s. PLEASE MAKE SURE ROSE OUTPUT OR MACS ENRICHED REGION PEAKS FILE EXISTS" % (name)
+            print nameDict[name]
             sys.exit()
     return nameDict
 
