@@ -25,25 +25,23 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOLOR32 
-LDFLAGS := -stdlib=libc++ -O -g -Wall 
-LDLIBS := -lbam -lz -lpthread 
+CPPFLAGS := -std=c++11 -stdlib=libc++ -O -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+LDFLAGS := -stdlib=libc++ -O -g -Wall
+LDLIBS := -lbam -lz -lpthread
+ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal
 
 all: ../bamliquidator bamliquidator_batch bamliquidator_regions 
 
 ../bamliquidator: bamliquidator.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
-# note batch has additional dependencies separate from LDLIBS
 bamliquidator_batch: bamliquidator_batch.m.o
 	clang++ $(LDFLAGS) -o bamliquidator_batch bamliquidator.o bamliquidator_batch.m.o \
-					$(LDLIBS) -lhdf5 -lhdf5_hl -ltcmalloc_minimal
+					$(LDLIBS) $(ADDITIONAL_LDLIBS)
 
-# todo: experiment with both tcmalloc and the tbb allocator
-# note regions has additional dependencies separate from LDLIBS
 bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o
 	clang++ $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
-					$(LDLIBS) -lhdf5 -lhdf5_hl -ltbb -ltcmalloc_minimal
+					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
