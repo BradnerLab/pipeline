@@ -67,7 +67,12 @@ for(i in 1:nrow(summaryTable)){
 	sense = summaryTable[i,6]
 	start = summaryTable[i,7]
 	end = summaryTable[i,8]
-	
+
+	#don't attempt to plot regions w/o data
+	if(is.na(plotTable[1,8])){
+		next
+		}
+
 	nBins = length(plotTable[1,])-7
 	yMinDiagram = min(diagramTable[,2]-3)
 	
