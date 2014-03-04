@@ -43,6 +43,14 @@ std::vector<double> liquidate(const samfile_t* bamfile, const bam_index_t* bamid
                               char strand, unsigned int spnum,
                               unsigned int extendlen);
 
+inline std::string file_name_from_path(const std::string& path)
+{
+  const size_t last_slash_position = path.find_last_of("/");
+  return last_slash_position == std::string::npos 
+         ? path 
+         : path.substr(last_slash_position + 1);
+}
+
 /* The MIT License (MIT) 
 
    Copyright (c) 2013 Xin Zhong and Charles Lin

@@ -79,10 +79,7 @@ std::vector<CountH5Record> count(const std::string& chr,
                                  const ChromosomeLengths& lengths,
                                  const std::string& bam_file)
 {
-  const size_t last_slash_position = bam_file.find_last_of("/");
-  const std::string bam_file_name = last_slash_position == std::string::npos 
-                                  ? bam_file
-                                  : bam_file.substr(last_slash_position + 1);
+  const std::string bam_file_name = file_name_from_path(bam_file);
 
   int base_pairs = lengths.length(bam_file, chr);
   int bins = std::ceil(base_pairs / (double) bin_size);
@@ -146,8 +143,8 @@ void batch(hid_t& file,
   {
     std::vector<CountH5Record> records = future_count.get();
    
-    herr_t status = H5TBappend_records(file, "counts", records.size(), record_size, record_offset,
-                                       field_sizes, records.data());
+    herr_t status = H5TBappend_records(file, "bin_counts", records.size(), record_size,
+                                       record_offset, field_sizes, records.data());
     if (status != 0)
     {
       std::cerr << "Error appending record, status = " << status << std::endl;

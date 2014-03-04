@@ -19,7 +19,7 @@ def create_count_table(h5file):
         # todo: rename file_name to genome or line
         file_name  = tables.StringCol(64, pos=4)
 
-    table = h5file.create_table("/", "counts", BinCount, "bin counts")
+    table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
 
     table.flush()
 
@@ -27,12 +27,14 @@ def create_count_table(h5file):
 
 def create_regions_table(h5file):
     class Region(tables.IsDescription):
-        chromosome = tables.StringCol(16, pos=0)
-        name       = tables.StringCol(64, pos=1)
-        start      = tables.UInt64Col(    pos=2)
-        stop       = tables.UInt64Col(    pos=3)
-        strand     = tables.Int8Col(      pos=4)
-        count      = tables.UInt64Col(    pos=5)
+        cell_type   = tables.StringCol(16, pos=0)
+        file_name   = tables.StringCol(64, pos=1)
+        chromosome  = tables.StringCol(16, pos=2)
+        region_name = tables.StringCol(64, pos=3)
+        start       = tables.UInt64Col(    pos=4)
+        stop        = tables.UInt64Col(    pos=5)
+        strand      = tables.StringCol(1,  pos=6)
+        count       = tables.UInt64Col(    pos=7)
 
     table = h5file.create_table("/", "region_counts", Region, "region counts")
 
@@ -77,12 +79,16 @@ def bam_files_with_no_counts(counts, bam_files):
 
     return with_no_counts
 
-def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_size, bin_counts_file_path, executable_path):
+def liquidate(bam_files, output_directory, ucsc_or_region_file, counts_file_path, executable_path, bin_size = None):
     for i, bam_file in enumerate(bam_files):
         print "Liquidating %s (file %d of %d, %s)" % (
             bam_file, i+1, len(bam_files), datetime.datetime.now().strftime('%H:%M:%S'))
         cell_type = os.path.basename(os.path.dirname(bam_file))
-        args = [executable_path, cell_type, str(bin_size), ucsc_chrom_sizes, bam_file, bin_counts_file_path]
+        if bin_size:
+            args = [executable_path, cell_type, str(bin_size), ucsc_or_region_file, bam_file, counts_file_path]
+        else:
+            args = [executable_path, cell_type, ucsc_or_region_file, bam_file, counts_file_path]
+            print args
         start = time()
         return_code = subprocess.call(args)
         end = time()
@@ -92,23 +98,24 @@ def liquidate(bam_files, output_directory, ucsc_chrom_sizes, bin_size, bin_count
             print "%s failed with exit code %d" % (executable_path, return_code)
             exit(return_code)
 
-    counts_file = tables.open_file(bin_counts_file_path, mode = "r")
-    counts = counts_file.root.counts
+    if bin_size:
+        counts_file = tables.open_file(counts_file_path, mode = "r")
+        normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size) 
+        counts_file.close()
 
-    normalize_plot_and_summarize(counts, output_directory, bin_size) 
-    counts_file.close()
+    # todo: normalize regions
 
 def main():
-    parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin of each chromosome '
-                                                 'in the bam file(s) at the given directory, and then normalize, plot, '
+    parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
+                                                 'in the bam file(s) at the given directory, and then normalize, plot bins, '
                                                  'and summarize the counts in the output directory.  For additional '
                                                  'help, please see https://github.com/BradnerLab/pipeline/wiki')
     parser.add_argument('--output_directory', default='output',
                         help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
                              'Default is "./output".')
-    parser.add_argument('--bin_counts_file',
+    parser.add_argument('--counts_file',
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
-                             'creating a new file "bin_counts.h5" in the output directory. (todo: combine all hdf5 files into 1.)')
+                             'creating a new file "counts.h5" in the output directory.')
     parser.add_argument('--bin_size', type=int, default=100000,
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
@@ -130,22 +137,33 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
+    _, extension = os.path.splitext(args.ucsc_chrom_sizes_or_regions_file)
+    if extension == ".gff":
+        region_mode = True
+        args.bin_size = None
+    else:
+        region_mode = False 
+
     executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   "bamliquidator_internal", "bamliquidator_batch")
+                                   "bamliquidator_internal",
+                                   "bamliquidator_regions" if region_mode else "bamliquidator_bins")
     if not os.path.isfile(executable_path):
         print "%s is missing -- try cd'ing into the directory and running 'make'" % executable_path
         exit(1)
 
     os.mkdir(args.output_directory)
 
-    if args.bin_counts_file is None:
-        args.bin_counts_file = os.path.join(args.output_directory, "bin_counts.h5")
-        counts_file = tables.open_file(args.bin_counts_file, mode = "w",
+    if args.counts_file is None:
+        args.counts_file = os.path.join(args.output_directory, "counts.h5")
+        counts_file = tables.open_file(args.counts_file, mode = "w",
                                        title = "bam liquidator genome bin read counts")
-        counts = create_count_table(counts_file)
+        if region_mode:
+            counts = create_regions_table(counts_file)
+        else:
+            counts = create_count_table(counts_file)
     else:
-        counts_file = tables.open_file(args.bin_counts_file, "r+")
-        counts = counts_file.root.counts
+        counts_file = tables.open_file(args.counts_file, "r+")
+        counts = counts_file.root.region_counts if region_mode else counts_file.root.bin_counts
 
     if os.path.isdir(args.bam_file_path):
         bam_files = all_bam_files_in_directory(args.bam_file_path)
@@ -154,15 +172,11 @@ def main():
    
     bam_files = bam_files_with_no_counts(counts, bam_files)
 
-    counts_file.close() # The bamliquidator_internal/bamliquidator_batch will open this file and modify it,
-                        # so it is best that we not hold an out of sync reference to it
+    counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and 
+                        # modify it, so it is best that we not hold an out of sync reference
 
-
-    # todo: handle region files
-    ucsc_chrom_sizes_path = args.ucsc_chrom_sizes_or_regions_file
-
-    liquidate(bam_files, args.output_directory, ucsc_chrom_sizes_path, args.bin_size, args.bin_counts_file,
-              executable_path)
+    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes_or_regions_file, 
+              args.counts_file, executable_path, args.bin_size)
 
 if __name__ == "__main__":
     main()
