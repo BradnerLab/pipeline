@@ -1,4 +1,8 @@
 #bamPlot.py
+import sys
+
+
+from utils import *
 
 '''
 The MIT License (MIT)
@@ -24,41 +28,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 '''
 
+#script that takes in a list of bams, makes an intermediate table file, and then calls R to make the plot
 
-
-
-#==========================================================================
-#=======================DEPENDENCIES=======================================
-#==========================================================================
-
-import sys
-
-
-#MUST SET THIS STRING TO THE PATH OF THE bamliquidator program
-bamliquidatorString = 'bamliquidator'
+#borrows liberally from bamToGFF.py
 
 #as of now the number of bins to sample the space is hard wired
 nBins = 200
-
-from utils import *
-import pipeline_dfci
-import time
-import subprocess
-import os
-import string
-
-
-#script that takes in a list of bams, makes an intermediate table file, and then calls R to make the plot
-
-#updated for batching with bamliquidator magic
-
-
-#==========================================================================
-#======================HELPER FUNCTIONS====================================
-#==========================================================================
-
-
-
 
 def loadAnnotFile(genome):
 
@@ -70,8 +45,6 @@ def loadAnnotFile(genome):
         'MM9': './annotation/mm9_refseq.ucsc',
         'hg18':'./annotation/hg18_refseq.ucsc',
         'mm9': './annotation/mm9_refseq.ucsc',
-        'HG19':'./annotation/hg19_refseq.ucsc',
-        'hg19':'./annotation/hg19_refseq.ucsc'
         }
 
     annotFile = genomeDict[genome]
@@ -97,16 +70,13 @@ def tasteTheRainbow(n):
         colorList.append(color)
     return colorList
 
-def mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both',header=''):
+def mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both'):
 
     '''
     for every line produces a file with all of the rectangles to draw
     '''
 
-    if len(header) == 0:
-        gffString = '%s_%s_%s_%s' % (gffLine[0],gffLine[6],gffLine[3],gffLine[4])
-    else:
-        gffString = header
+    gffString = '%s_%s_%s_%s' % (gffLine[0],gffLine[6],gffLine[3],gffLine[4])
     diagramTable = [[0,0,0,0]]
     nameTable = [['',0,0]]
     gffLocus = Locus(gffLine[0],int(gffLine[3]),int(gffLine[4]),gffLine[6],gffLine[1])    
@@ -166,76 +136,119 @@ def mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both'
     unParseTable(diagramTable,outFolder+gffString+'_diagramTemp.txt','\t')
     unParseTable(nameTable,outFolder+gffString+'_nameTemp.txt','\t')    
 
-def mapBamToGFFLine(bamFile,MMR,name,gffLine,color,nBins,sense = 'both',extension = 200):
+def mapBamToGFFLine(bamFile,name,gffLine,color,nBins,sense = 'both',unique = False,extension = 200,floor = 0,rpm = True,includeJxnReads = False):
     '''maps reads from a bam to a gff'''
 
+    floor = int(floor)
+    bam = Bam(bamFile)
 
+    #=============
+    #millionMappedReads
+    if rpm:    
+        MMR= round(float(bam.getTotalReads('mapped'))/1000000,4)
+    else:
+        MMR = 1
     
     print('using a MMR value of %s' % (MMR))
-
+    
+    senseTrans = maketrans('-+.','+-+')
     
     line = gffLine[0:9]
     gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
+    searchLocus = makeSearchLocus(gffLocus,int(extension),int(extension))
 
-    #setting up the output clusterline
+    reads = bam.getReadsLocus(searchLocus,'both',unique,'none',includeJxnReads)
+    #now extend the reads and make a list of extended reads
+    extendedReads = []
+    for locus in reads:
+        if locus.sense() == '+' or locus.sense() == '.':
+            locus = Locus(locus.chr(),locus.start(),locus.end()+extension,locus.sense(), locus.ID())
+        if locus.sense() == '-':
+            locus = Locus(locus.chr(),locus.start()-extension,locus.end(),locus.sense(),locus.ID())
+        extendedReads.append(locus)
+    if gffLocus.sense() == '+' or gffLocus.sense == '.':
+        senseReads = filter(lambda x:x.sense() == '+' or x.sense() == '.',extendedReads)
+        antiReads = filter(lambda x:x.sense() == '-',extendedReads)
+    else:
+        senseReads = filter(lambda x:x.sense() == '-' or x.sense() == '.',extendedReads)
+        antiReads = filter(lambda x:x.sense() == '+',extendedReads)
+
+    #at this point can output starts onto the GFF unless density is called
+
+
+
+    senseHash = defaultdict(int)
+    antiHash = defaultdict(int)
+
+    #filling in the readHashes             
+    if sense == '+' or sense == 'both' or sense =='.':
+        for read in senseReads:
+            for x in range(read.start(),read.end()+1,1):
+                senseHash[x]+=1
+    if sense == '-' or sense == 'both' or sense == '.':
+        #print('foo')
+        for read in antiReads:
+            for x in range(read.start(),read.end()+1,1):
+                antiHash[x]+=1
+
+    #now apply flooring and filtering for coordinates
+    keys = uniquify(senseHash.keys()+antiHash.keys())
+    if floor > 0:
+
+        keys = filter(lambda x: (senseHash[x]+antiHash[x]) > floor,keys)
+    #coordinate filtering
+    keys = filter(lambda x: gffLocus.start() < x < gffLocus.end(),keys)
+
+    #this is where we add Shit About the region like color, name etc...
+    print(color)
     colorLine = color
     bamName = bamFile.split('/')[-1]
     clusterLine = [bamName,gffLocus.ID(),name,gffLocus.__str__()]+colorLine
 
+    binSize = (gffLocus.len()-1)/int(nBins)
 
-    binSize = gffLocus.len()/nBins
-    #some regions will be too short to get info on
-    #we just kick these back and abandon them
     if binSize == 0:
         clusterLine+=['NA']*int(nBins)
         return clusterLine
 
+    n=0
+    if gffLocus.sense() == '+' or gffLocus.sense() =='.' or gffLocus.sense() == 'both':
+        i = gffLocus.start()
 
-    #flippy flip if sense is negative
-    senseTrans = maketrans('-+.','+-+')
-    if sense == '-':
-        bamSense = string.translate(gffLocus.sense(),senseTrans)
-    elif sense == '+':
-        bamSense = gffLocus.sense()
+        while n <nBins:
+            n+=1
+            binKeys = filter(lambda x: i < x < i+binSize,keys)
+            binDen = float(sum([senseHash[x]+antiHash[x] for x in binKeys]))/binSize
+            clusterLine+=[round(binDen/MMR,4)]
+            i = i+binSize
     else:
-        bamSense = '.'
-    #using the bamLiquidator to get the readstring            
-    #print('using nBin of %s' % nBin)
+        i = gffLocus.end()
+        while n < nBins:
+            n+=1
+            binKeys = filter(lambda x: i-binSize < x < i,keys)
+            binDen = float(sum([senseHash[x]+antiHash[x] for x in binKeys]))/binSize
+            clusterLine+=[round(binDen/MMR,4)]
+            i = i-binSize
 
-    bamCommand = "%s %s %s %s %s %s %s %s" % (bamliquidatorString,bamFile,gffLocus.chr(),gffLocus.start(),gffLocus.end(),bamSense,nBins,extension)
-    #print(bamCommand)
-    getReads = subprocess.Popen(bamCommand,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
-    readString = getReads.communicate()
-    denList = readString[0].split('\n')[:-1]
-
-    #flip the denList if the actual gff region is -
-    if gffLocus.sense() == '-':
-        denList = denList[::-1]
-
-    #converting from units of total bp of read sequence per bin to rpm/bp
-    denList = [round(float(x)/binSize/MMR,4) for x in denList]
-
-    clusterLine += denList
-        
+            
     return clusterLine
 
 
-def callRPlot(summaryFile,outFile,yScale,plotStyle):
-
+def callRPlot(nameTable,diagramTable,plotTable,yScale,plotStyle,fileName):
     '''
     calls the R plotting thingy
     '''
 
-    cmd = 'R --no-save %s %s %s %s < ./bamPlot_turbo.R' % (summaryFile,outFile,yScale,plotStyle)
+    cmd = 'R --no-save %s %s %s %s %s %s < ./bamPlot.R' % (nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
     print('calling command %s' % (cmd))
-    return cmd
+    os.system(cmd)
 
     
 
 
 
 
-def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,outFolder,names,title):
+def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,unique,extension,floor,rpm,outFolder,yScale,names,plotStyle,fileName):
 
     '''
     makes a plot table for each line of the gff mapped against all the bams in the bamList
@@ -246,30 +259,16 @@ def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm
         gff = parseTable(gff,'\t')
 
     #load in the annotation
+
     print('loading in annotation for %s' % (genome))
+
     geneDict,txCollection = loadAnnotFile(genome)
 
-    #make an MMR dict so MMRs are only computed once
-    print('Getting information about read depth in bams')
-    mmrDict = {}
-    for bamFile in bamFileList:
-        #millionMappedReads
-        bam = Bam(bamFile)
-        if rpm:    
-            MMR= round(float(bam.getTotalReads('mapped'))/1000000,4)
-        else:
-            MMR = 1
-        mmrDict[bamFile] = MMR
-        #mmrDict[bamFile] = 21.5377
-        
-    ticker = 1
     #go line by line in the gff
-    summaryTable = [['DIAGRAM_TABLE','NAME_TABLE','PLOT_TABLE','CHROM','ID','SENSE','START','END']]
     for gffLine in gff:
-        gffString = 'line_%s_%s_%s_%s_%s_%s' % (ticker,gffLine[0],gffLine[1],gffLine[6],gffLine[3],gffLine[4])
-        ticker+=1
-        print('writing the gene diagram table for region %s' % (gffLine[1]))
-        mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both',header=gffString)
+        gffString = '%s_%s_%s_%s' % (gffLine[0],gffLine[6],gffLine[3],gffLine[4])
+        print('writing the gene diagram table for %s' % (gffLine[1]))
+        mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both')
 
         outTable = []
 
@@ -281,27 +280,17 @@ def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm
             
             color = colorList[i]
             print('getting data for location %s in dataset %s' % (gffLine[1],bamFile))
-            mmr = mmrDict[bamFile]
-            newLine = mapBamToGFFLine(bamFile,mmr,name,gffLine,color,nBins,sense,extension)
+            newLine = mapBamToGFFLine(bamFile,name,gffLine,color,nBins,sense,unique,extension,floor,rpm,includeJxnReads = False)
 
 
             outTable.append(newLine)
 
-        #get the gene name
-        if geneDict.has_key(gffLine[1]):
-            geneName = geneDict[gffLine[1]].commonName()
-        else:
-            geneName = gffLine[1]
+
         unParseTable(outTable,outFolder+gffString+'_plotTemp.txt','\t')
         diagramTable = outFolder+gffString+'_diagramTemp.txt'
         plotTable = outFolder+gffString+'_plotTemp.txt'
         nameTable = outFolder +gffString+'_nameTemp.txt'
-        summaryTable.append([diagramTable,nameTable,plotTable,gffLine[0],geneName,gffLine[6],gffLine[3],gffLine[4]])
-    summaryTableFileName = "%s%s_summary.txt" % (outFolder,title)
-    unParseTable(summaryTable,summaryTableFileName,'\t')
-    return summaryTableFileName
-
-
+        callRPlot(nameTable,diagramTable,plotTable,yScale,plotStyle,fileName)
 
 
 
@@ -314,7 +303,7 @@ def main():
 
     from optparse import OptionParser
 
-    usage = "usage: %prog [options] -g [GENOME] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
+    usage = "usage: %prog [options] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
     parser = OptionParser(usage = usage)
     #required flags
     parser.add_option("-b","--bam", dest="bam",nargs = 1, default=None,
@@ -333,10 +322,14 @@ def main():
                       help = "Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
     parser.add_option("-s","--sense", dest="sense",nargs = 1, default='both',
                       help = "Map to '+','-' or 'both' strands. Default maps to both.")
+    parser.add_option("-f","--floor", dest="floor",nargs =1, default=0,
+                      help = "Sets a read floor threshold necessary to count towards density")    
     parser.add_option("-e","--extension", dest="extension",nargs = 1, default=200,
                       help = "Extends reads by n bp. Default value is 200bp")
-    parser.add_option("-r","--rpm", dest="rpm",action = 'store_true', default=False,
+    parser.add_option("-r","--rpm", dest="rpm",action = 'store_true', default=True,
                       help = "Normalizes density to reads per million (rpm) Default is True")
+    parser.add_option("-u","--unique", dest="unique",action = 'store_false', default=True,
+                      help = "Uses only unique reads")
     parser.add_option("-y","--yScale",dest="yScale",nargs =1, default = "relative",
                       help = "Choose either relative or uniform y axis scaling. options = 'relative,uniform' Default is relative scaling")
     parser.add_option("-n","--names",dest="names",nargs =1, default = None,
@@ -344,13 +337,8 @@ def main():
     parser.add_option("-p","--plot",dest="plot",nargs =1, default = "multiple",
                       help = "Choose either all lines on a single plot or multiple plots. options = 'single,multiple'")
     parser.add_option("-t","--title",dest ="title",nargs=1,default = '',
-                      help = "Specify a title for the output plot(s), default will be the coordinate region")
-
-    #DEBUG OPTION TO SAVE TEMP FILES
-    parser.add_option("--save-temp",dest ="save",action='store_true',default = False,
-                      help = "If flagged will save temporary files made by bamPlot")
-
-
+                      help = "Specify a title for the output plot, default will be the coordinate region")
+                  
 
 
     (options,args) = parser.parse_args()
@@ -358,7 +346,7 @@ def main():
     print(options)
     print(args)
     
-    if options.bam and options.input and options.genome and options.output:
+    if options.bam and options.input and options.genome:
 
         #bring in the bams
         bamFileList = options.bam.split(',')
@@ -366,7 +354,6 @@ def main():
         #bring in the gff
         try:
             gff = parseTable(options.input,'\t')
-            gffName = options.input.split('/')[-1].split('.')[0]
         except IOError:
             #means a coordinate line has been given e.g. chr1:+:1-100
 
@@ -379,39 +366,28 @@ def main():
                 print('ERROR: UNRECOGNIZED GFF OR CHROMOSOME LINE INPUT')
                 exit()
             gffLine = [chrom,'',options.input,start,end,'',sense,'','']
-            gffName = "%s_%s_%s_%s" % (chrom,sense,start,end)
             gff = [gffLine]
 
         #bring in the genome
         genome = upper(options.genome)
-        if ['HG18','HG19','MM9','RN5'].count(genome) == 0:
-            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN5, OR MM9' % (genome))
+        if ['HG18','MM9','RN5'].count(genome) == 0:
+            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, RN5, OR MM9' % (genome))
             parser.print_help()
             exit()
 
         #bring in the rest of the options
         
         #output
-        rootFolder = options.output
-        if rootFolder[-1] != '/':
-            rootFolder+='/'
+        outFolder = options.output
+        if outFolder[-1] != '/':
+            outFolder+='/'
         try:
-            foo = os.listdir(rootFolder)
+            foo = os.listdir(outFolder)
         except OSError:
-            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %S' % (rootFolder))
+            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %S' % (outFolder))
             exit()
 
-        #Get analysis title
-        if len(options.title) == 0:
-            title = gffName
-        else:
-            title = options.title
-
-        #make a temp folder
-        tempFolder = rootFolder + title + '/'
-        print("CREATING TEMP FOLDER %s" % (tempFolder))
-        pipeline_dfci.formatFolder(tempFolder,create=True)
-                         
+                 
         #colors
         if options.color:
             colorList = options.color.split(':')
@@ -429,12 +405,17 @@ def main():
         #sense
         sense = options.sense
         
+        #floor
+        floor = int(options.floor)
+        
         extension = int(options.extension)
 
         rpm = options.rpm
 
+        unique = options.unique
         yScale = upper(options.yScale)
                                      
+        fileName = options.title 
         #names
         if options.names:
             names = options.names.split(',')
@@ -444,7 +425,7 @@ def main():
                 parser.print_help()
                 exit()
         else:
-            names = [x.split('/')[-1] for x in bamFileList]
+            names = bamFileList
 
         #plot style
         plotStyle = upper(options.plot)
@@ -455,32 +436,9 @@ def main():
 
 
         #now run!
-        summaryTableFileName = makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,tempFolder,names,title)
-        print ("%s is the summary table" % (summaryTableFileName))
 
+        makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,unique,extension,floor,rpm,outFolder,yScale,names,plotStyle,fileName)
 
-        outFile = "%s%s_plots.pdf" % (rootFolder,title)
-        rCmd = callRPlot(summaryTableFileName,outFile,yScale,plotStyle)
-
-        #open a bash file to get shit done
-        bashFileName = "%s%s_Rcmd.sh" % (tempFolder,title)
-        bashFile = open(bashFileName,'w')
-        bashFile.write('#!/usr/bin/bash\n')
-        bashFile.write(rCmd)
-        bashFile.close()
-        print("Wrote R command to %s" % (bashFileName))
-        os.system("bash %s" % (bashFileName))
-
-        #delete temp files
-        if not options.save:
-            if checkOutput(outFile,1,10):
-                removeCommand =  "rm -rf %s" %(tempFolder)
-                print removeCommand
-                os.system(removeCommand)
-            else:
-                print "ERROR: NO OUTPUT FILE %s DETECTED" % (outFile)
-
-        
     else:
         parser.print_help()
         exit()

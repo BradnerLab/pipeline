@@ -104,8 +104,9 @@ for(i in 1:nrow(summaryTable)){
 		yMax = 	1.2*max(plotTable[1,(8:(nBins+7))])
 			
 		if(yScale =='RELATIVE'){
-			color = colorVector[1]
-			plot(spline(1:nBins,as.numeric(plotTable[1,(8:(nBins+7))]),n=nBins),ylim = c(0.1,yMax),type='l',col= color,lwd=2.5,xaxt='n',yaxt='n',xlab='',ylab='Relative peak heights',main=name)
+			#establish a blank plot			
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Relative peak heights',xaxt = 'n',main=name)
+
 			if(sense =='-'){
 				axis(1,at = c(0,nBins),labels= c(paste(chrom,end,sep=':'),paste(chrom,start,sep=':')))
 				}else{
@@ -113,17 +114,21 @@ for(i in 1:nrow(summaryTable)){
 				}
 			legend(0,yMax,as.vector(plotTable[,3]),col=colorVector,lwd=2.5,cex=1.2)
 	
-			for(i in 2:nrow(plotTable)){
+			for(i in 1:nrow(plotTable)){
 				scaleFactor = max(plotTable[1,(8:(nBins+7))])/(1.2*max(plotTable[i,(8:(nBins+7))]))
-				print(scaleFactor)
-				#scaleFactor = 1
 				color = colorVector[i]
-				lines(spline(1:nBins,scaleFactor*as.numeric(plotTable[i,(8:(nBins+7))]),n=3*nBins),lwd=2,col = color)
+				plotSpline = spline(1:nBins,scaleFactor*as.numeric(plotTable[i,(8:(nBins+7))]),n=2*nBins)			
+				xVector = c(1,plotSpline$x,max(plotSpline$x))
+				yVector = c(0,plotSpline$y,0)			
+				polygon(xVector,yVector,col= color,lty=0)
 				}
 			
 		}else{
 			color = colorVector[1]  ## BJA tweaked to style of RELATIVE
-			plot(spline(1:nBins,as.numeric(plotTable[1,(8:(nBins+7))]),n=nBins),ylim = c(0.1,yMax),type='l',col= color,lwd=2.5,xaxt='n',xlab='',ylab='ChIP-Seq reads',main=name)
+
+			#establish a blank plot
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Relative peak heights',xaxt = 'n',main=name)
+
 			if(sense =='-'){
 				axis(1,at = c(0,nBins),labels= c(paste(chrom,end,sep=':'),paste(chrom,start,sep=':')))
 				}else{
@@ -134,7 +139,11 @@ for(i in 1:nrow(summaryTable)){
 			for(i in 2:nrow(plotTable)){
 				color = colorVector[i] ## BJA tweaked to style of RELATIVE
 	# 			color = rgb(plotTable[i,5],plotTable[i,6],plotTable[i,7],maxColorValue=255)
-				lines(spline(1:nBins,as.numeric(plotTable[i,(8:(nBins+7))]),n=3*nBins),lwd=2,col = color)
+				plotSpline = spline(1:nBins,as.numeric(plotTable[i,(8:(nBins+7))]),n=2*nBins)
+				xVector = c(1,plotSpline$x,max(plotSpline$x))
+				yVector = c(0,plotSpline$y,0)			
+				polygon(xVector,yVector,col= color,lty=0)
+
 				}
 			}
 			
@@ -152,7 +161,12 @@ for(i in 1:nrow(summaryTable)){
 				yMax = 1.2*max(plotTable[i,(8:(nBins+7))])
 			}
 			color = colorVector[i]
-			plot(spline(1:nBins,as.numeric(plotTable[i,(8:(nBins+7))]),n=2*nBins),ylim = c(0.05*yMax,yMax),type='l',col= color,lwd=2,xlab='',ylab='ChIP-Seq Reads',xaxt = 'n',main=name)
+			plotSpline = spline(1:nBins,as.numeric(plotTable[i,(8:(nBins+7))]),n=2*nBins)
+	
+			xVector = c(1,plotSpline$x,max(plotSpline$x))
+			yVector = c(0,plotSpline$y,0)			
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='ChIP-Seq Reads',xaxt = 'n',main=name)
+			polygon(xVector,yVector,col= color,lty=0)
 			legend(0,yMax,as.vector(plotTable[i,3]),col=colorVector[i],lwd=2.5,cex=1.2)
 			if(sense =='-'){
 				axis(1,at = c(0,nBins),labels= c(paste(chrom,end,sep=':'),paste(chrom,start,sep=':')))
