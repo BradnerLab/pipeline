@@ -153,8 +153,8 @@ def main():
     parser.add_argument('--bin_size', type=int, default=100000,
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
-    parser.add_argument('ucsc_chrom_sizes_or_regions_file',
-                        help='Tab delimited text file, interpretted as a ucsc chromosome size file if ending in .txt and a region file if ending in .gff (todo: support .bed regions as well). A ucsc chromosome size file must have the first column naming the chromosome (e.g. chr1), the third column naming the genome type (e.g. mm8), and the fifth column naming the number of base pairs in the reference chromosome. (todo add description of .gff and .bed files)')
+    parser.add_argument('--regions_file',
+                        help='a region file in either .gff or .bed format -- todo: this is not yet fully supported')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -171,12 +171,11 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
-    _, extension = os.path.splitext(args.ucsc_chrom_sizes_or_regions_file)
-    if extension == ".gff":
+    if args.regions_file is None:
+        region_mode = False 
+    else:
         region_mode = True
         args.bin_size = None
-    else:
-        region_mode = False 
 
     executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                    "bamliquidator_internal",
@@ -212,7 +211,7 @@ def main():
     file_chromosome_tuple_to_length, file_to_count = lengths_and_total_counts(bam_file_paths)
 
     liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, file_to_count, 
-              args.counts_file, executable_path, args.bin_size)
+              args.counts_file, executable_path, args.bin_size, args.regions_file)
 
 if __name__ == "__main__":
     main()
