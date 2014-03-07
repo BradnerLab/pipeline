@@ -154,7 +154,7 @@ def main():
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
     parser.add_argument('--regions_file',
-                        help='a region file in either .gff or .bed format -- todo: this is not yet fully supported')
+                        help='a region file in either .gff or .bed format')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -162,11 +162,11 @@ def main():
                              'file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
                              'name).  Bam files in the same directory are grouped together for plotting. Plots use '
                              'normalized counts, such that all .bam files in the same directory have bin '
-                             'counts that add up to 1 for each chromosome.  The .bam file name is also required to '
-                             'contain the genome type so that the corresponding entries in the ucsc_chrom_sizes file '
-                             'can be used.  If your .bam files are not in this directory format, please consider '
-                             'creating a directory of sym links to your actual .bam and .bai files. If the .bam file '
-                             'already has 1 or more reads in the HDF5 counts file, then that .bam file is skipped.')
+                             'counts that add up to 1 for each chromosome.  If your .bam files are not in this '
+                             'directory format, please consider creating a directory of sym links to your actual '
+                             '.bam and .bai files. If the .bam file already has 1 or more reads in the HDF5 counts file, '
+                             'then that .bam file is skipped from liquidation, but is still included in normalization, '
+                             'plotting, and summaries.')
     args = parser.parse_args()
 
     assert(tables.__version__ >= '3.0.0')
@@ -174,6 +174,7 @@ def main():
     if args.regions_file is None:
         region_mode = False 
     else:
+        print "WARNING -- REGION PROCESSING IS NOT YET COMPLETE!"
         region_mode = True
         args.bin_size = None
 
