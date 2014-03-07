@@ -4,9 +4,9 @@
 #include <fstream>
 #include <future>
 #include <iostream>
-#include <map>
 #include <stdexcept>
 #include <sstream>
+#include <vector>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -55,7 +55,7 @@ std::vector<CountH5Record> count(const std::string chr,
 void batch(hid_t& file,
            const std::string& cell_type,
            const unsigned int bin_size,
-           std::map<std::string, size_t> chromosomeLengths,
+           const std::vector<std::pair<std::string, size_t>>& chromosomeLengths,
            const std::string& bam_file)
 {
   std::deque<std::future<std::vector<CountH5Record>>> future_counts;
@@ -111,10 +111,11 @@ int main(int argc, char* argv[])
         << std::endl;
       return 1;
     }
-    std::map<std::string, size_t> chromosomeLengths;
+    std::vector<std::pair<std::string, size_t>> chromosomeLengths;
     for (int arg = 5; arg < argc && arg + 1 < argc; arg += 2)
     {
-      chromosomeLengths[argv[arg]] = boost::lexical_cast<size_t>(argv[arg+1]);
+      chromosomeLengths.push_back(
+        std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
     }
 
     const std::string cell_type = argv[1];
