@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# unfortunately these tests are currently defunct, as they weren't updated when the normalization
+# method was switched over to samtoolds idxstats
+
 from os import sys, path
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__)))) # so we can import parent directory
 

@@ -1,12 +1,24 @@
 #!/usr/bin/env python
 
+'''
+todo
+
+ * testing
+     * check why top couple bins don't match in plot
+     * check some unnormalized count rows
+     * check some normalized count rows
+     * check some summary table rows
+'''
+
 from bamliquidator_internal.normalize_plot_and_summarize import normalize_plot_and_summarize
+from bamliquidator_internal.chromosome_list import chromosomes
 
 import argparse
 import os
 import subprocess
 import tables
 import datetime
+import csv
 from time import time 
 
 # creates empty file, overwriting any prior existing files
@@ -42,53 +54,75 @@ def create_regions_table(h5file):
 
     return table
 
-'''
-todo
-
- * testing
-     * check why top couple bins don't match in plot
-     * check some unnormalized count rows
-     * check some normalized count rows
-     * check some summary table rows
- * csv file replacement
-     * add a sample script to generate csv files from summary table rows,
-       with comments so that people could create similar scripts and hopefully
-       not use csv files when pytables is a nicer interface
-'''
-
-def all_bam_files_in_directory(bam_directory):
-    bam_files = []
+def all_bam_file_paths_in_directory(bam_directory):
+    bam_file_paths = []
     for dirpath, _, files in os.walk(bam_directory, followlinks=True):
         for file_ in files:
             if file_.endswith(".bam"):
-                bam_files.append(os.path.join(dirpath, file_))
-    return bam_files
+                bam_file_paths.append(os.path.join(dirpath, file_))
+    return bam_file_paths
 
-def bam_files_with_no_counts(counts, bam_files):
+def bam_file_paths_with_no_counts(counts, bam_file_paths):
     with_no_counts = []
 
-    for bam_file in bam_files:
+    for bam_file_path in bam_file_paths:
         count_found = False
-        condition = "file_name == '%s'" % os.path.basename(bam_file)
+        condition = "file_name == '%s'" % os.path.basename(bam_file_path)
 
         for _ in counts.where(condition):
             count_found = True
 
         if not count_found:
-            with_no_counts.append(bam_file)
+            with_no_counts.append(bam_file_path)
 
     return with_no_counts
 
-def liquidate(bam_files, output_directory, ucsc_or_region_file, counts_file_path, executable_path, bin_size = None):
-    for i, bam_file in enumerate(bam_files):
+# returns a tuple of two dictionaries:
+# 1) (bam_file_name, chromosome) -> sequence length
+# 2) base_bam_file_name -> total mapped count
+def lengths_and_total_counts(bam_file_paths):
+    file_chromosome_tuple_to_length = {}
+    file_to_count = {}
+
+    chr_col         = 0
+    length_col      = 1
+    mapped_read_col = 2
+
+    for bam_file_path in bam_file_paths:
+        args = ["samtools", "idxstats", bam_file_path]
+        output = subprocess.check_output(args)
+        # skip last two lines: the unmapped chromosome line and the empty line
+        reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
+        file_name = os.path.basename(bam_file_path)
+        file_count = 0
+        for row in reader:
+            file_count += int(row[mapped_read_col])
+            file_chromosome_tuple_to_length[file_name, row[chr_col]] = int(row[length_col])
+        file_to_count[file_name] = file_count
+
+    return file_chromosome_tuple_to_length, file_to_count
+
+def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length, file_to_count, 
+              counts_file_path, executable_path, bin_size = None, region_file = None):
+
+    if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
+        sys.exit("either bin_size or region_file must be provided, but not both")
+
+    for i, bam_file_path in enumerate(bam_file_paths):
         print "Liquidating %s (file %d of %d, %s)" % (
-            bam_file, i+1, len(bam_files), datetime.datetime.now().strftime('%H:%M:%S'))
-        cell_type = os.path.basename(os.path.dirname(bam_file))
+            bam_file_path, i+1, len(bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
+        cell_type = os.path.basename(os.path.dirname(bam_file_path))
+
         if bin_size:
-            args = [executable_path, cell_type, str(bin_size), ucsc_or_region_file, bam_file, counts_file_path]
+            args = [executable_path, cell_type, str(bin_size), bam_file_path, counts_file_path]
+
+            bam_file_name = os.path.basename(bam_file_path)
+            for chromosome in chromosomes:
+                args.append(chromosome)
+                args.append(str(file_chromosome_tuple_to_length[bam_file_name, chromosome]))
         else:
-            args = [executable_path, cell_type, ucsc_or_region_file, bam_file, counts_file_path]
-            print args
+            args = [executable_path, cell_type, region_file, bam_file_path, counts_file_path]
+
         start = time()
         return_code = subprocess.call(args)
         end = time()
@@ -100,7 +134,7 @@ def liquidate(bam_files, output_directory, ucsc_or_region_file, counts_file_path
 
     if bin_size:
         counts_file = tables.open_file(counts_file_path, mode = "r")
-        normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size) 
+        normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
         counts_file.close()
 
     # todo: normalize regions
@@ -148,34 +182,36 @@ def main():
                                    "bamliquidator_internal",
                                    "bamliquidator_regions" if region_mode else "bamliquidator_bins")
     if not os.path.isfile(executable_path):
-        print "%s is missing -- try cd'ing into the directory and running 'make'" % executable_path
-        exit(1)
+        sys.exit("%s is missing -- try cd'ing into the directory and running 'make'" % executable_path)
 
     os.mkdir(args.output_directory)
 
     if args.counts_file is None:
         args.counts_file = os.path.join(args.output_directory, "counts.h5")
+    
         counts_file = tables.open_file(args.counts_file, mode = "w",
                                        title = "bam liquidator genome bin read counts")
-        if region_mode:
-            counts = create_regions_table(counts_file)
-        else:
-            counts = create_count_table(counts_file)
     else:
         counts_file = tables.open_file(args.counts_file, "r+")
+
+    try: 
         counts = counts_file.root.region_counts if region_mode else counts_file.root.bin_counts
+    except:
+        counts = create_regions_table(counts_file) if region_mode else create_count_table(counts_file)
 
     if os.path.isdir(args.bam_file_path):
-        bam_files = all_bam_files_in_directory(args.bam_file_path)
+        bam_file_paths = all_bam_files_in_directory(args.bam_file_path)
     else:
-        bam_files = [args.bam_file_path]
+        bam_file_paths = [args.bam_file_path]
    
-    bam_files = bam_files_with_no_counts(counts, bam_files)
+    bam_file_paths = bam_file_paths_with_no_counts(counts, bam_file_paths)
 
     counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and 
                         # modify it, so it is best that we not hold an out of sync reference
 
-    liquidate(bam_files, args.output_directory, args.ucsc_chrom_sizes_or_regions_file, 
+    file_chromosome_tuple_to_length, file_to_count = lengths_and_total_counts(bam_file_paths)
+
+    liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, file_to_count, 
               args.counts_file, executable_path, args.bin_size)
 
 if __name__ == "__main__":

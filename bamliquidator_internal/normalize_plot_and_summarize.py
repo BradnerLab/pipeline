@@ -128,19 +128,7 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
 
     bp.save()
 
-def total_count_for_file(counts, file_name, chromosome):
-    count = 0
-
-    condition = "(file_name == '%s') & (chromosome == '%s')" % (file_name, chromosome)
-
-    for row in counts.where(condition):
-        count += row["count"]
-
-    return count 
-
-def populate_normalized_counts(normalized_counts, counts, file_name, bin_size):
-    total_count = sum(counts.read_where("file_name == '%s'" % file_name, field="count"))
-
+def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, total_count):
     '''
     Excerpt from Feb 13, 2014 email from Charles Lin:
 
@@ -318,8 +306,7 @@ def populate_summary(summary, normalized_counts, chromosome):
     summary.flush()
     
 
-# todo: should bin_size should be stored in hdf5?
-def normalize_plot_and_summarize(counts, output_directory, bin_size):
+def normalize_plot_and_summarize(counts, output_directory, bin_size, file_to_count):
     cell_types = all_cell_types(counts)
 
     skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
@@ -336,7 +323,7 @@ def normalize_plot_and_summarize(counts, output_directory, bin_size):
         print "Normalizing and calculating percentiles for cell type " + cell_type 
         current_file_names = file_names(counts, cell_type)
         for file_name in current_file_names:
-           populate_normalized_counts(normalized_counts, counts, file_name, bin_size) 
+           populate_normalized_counts(normalized_counts, counts, file_name, bin_size, file_to_count[file_name]) 
            populate_percentiles(normalized_counts, cell_type, file_name)
         populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_names) 
         populate_percentiles(normalized_counts, cell_type)
