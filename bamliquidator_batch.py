@@ -199,7 +199,7 @@ def main():
         counts = create_regions_table(counts_file) if region_mode else create_count_table(counts_file)
 
     if os.path.isdir(args.bam_file_path):
-        bam_file_paths = all_bam_files_in_directory(args.bam_file_path)
+        bam_file_paths = all_bam_file_paths_in_directory(args.bam_file_path)
     else:
         bam_file_paths = [args.bam_file_path]
    
