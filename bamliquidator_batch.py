@@ -113,10 +113,11 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
             bam_file_path, i+1, len(bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
         cell_type = os.path.basename(os.path.dirname(bam_file_path))
 
+        bam_file_name = os.path.basename(bam_file_path)
+
         if bin_size:
             args = [executable_path, cell_type, str(bin_size), bam_file_path, counts_file_path]
 
-            bam_file_name = os.path.basename(bam_file_path)
             for chromosome in chromosomes:
                 args.append(chromosome)
                 args.append(str(file_chromosome_tuple_to_length[bam_file_name, chromosome]))
@@ -127,20 +128,25 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         return_code = subprocess.call(args)
         end = time()
         duration = end - start
-        reads = file_to_count[bam_file_name]
-        rate = reads / (10**6) / duration
-        print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
+        if bin_size:
+            reads = file_to_count[bam_file_name]
+            rate = reads / (10**6) / duration
+            print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
+        else:
+            print "Liquidation completed: %f seconds" % (duration)
 
         if return_code != 0:
             print "%s failed with exit code %d" % (executable_path, return_code)
             exit(return_code)
 
+    counts_file = tables.open_file(counts_file_path, mode = "r")
     if bin_size:
-        counts_file = tables.open_file(counts_file_path, mode = "r")
         normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
-        counts_file.close()
-
-    # todo: normalize regions
+    else:
+        print "todo: normalize region counts"
+        # maybe something like this? just store normalized counts in same records with an extra column?
+        # normalize(counts_file.root.region_counts, file_to_count) 
+    counts_file.close()
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
@@ -177,7 +183,6 @@ def main():
     if args.regions_file is None:
         region_mode = False 
     else:
-        print "WARNING -- REGION PROCESSING IS NOT YET COMPLETE!"
         region_mode = True
         args.bin_size = None
 
