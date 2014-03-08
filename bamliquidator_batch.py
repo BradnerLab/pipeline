@@ -126,7 +126,10 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         start = time()
         return_code = subprocess.call(args)
         end = time()
-        print "Liquidation completed in %f seconds" % (end - start)
+        duration = end - start
+        reads = file_to_count[bam_file_name]
+        rate = reads / (10**6) / duration
+        print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
 
         if return_code != 0:
             print "%s failed with exit code %d" % (executable_path, return_code)
