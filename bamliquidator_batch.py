@@ -10,7 +10,7 @@ todo
      * check some summary table rows
 '''
 
-from bamliquidator_internal.normalize_plot_and_summarize import normalize_plot_and_summarize
+import bamliquidator_internal.normalize_plot_and_summarize as npt 
 from bamliquidator_internal.chromosome_list import chromosomes
 
 import argparse
@@ -39,14 +39,14 @@ def create_count_table(h5file):
 
 def create_regions_table(h5file):
     class Region(tables.IsDescription):
-        cell_type   = tables.StringCol(16, pos=0)
-        file_name   = tables.StringCol(64, pos=1)
-        chromosome  = tables.StringCol(16, pos=2)
-        region_name = tables.StringCol(64, pos=3)
-        start       = tables.UInt64Col(    pos=4)
-        stop        = tables.UInt64Col(    pos=5)
-        strand      = tables.StringCol(1,  pos=6)
-        count       = tables.UInt64Col(    pos=7)
+        file_name        = tables.StringCol(64, pos=0)
+        chromosome       = tables.StringCol(16, pos=1)
+        region_name      = tables.StringCol(64, pos=2)
+        start            = tables.UInt64Col(    pos=3)
+        stop             = tables.UInt64Col(    pos=4)
+        strand           = tables.StringCol(1,  pos=5)
+        count            = tables.UInt64Col(    pos=6)
+        normalized_count = tables.Float64Col(   pos=7)
 
     table = h5file.create_table("/", "region_counts", Region, "region counts")
 
@@ -122,7 +122,7 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
                 args.append(chromosome)
                 args.append(str(file_chromosome_tuple_to_length[bam_file_name, chromosome]))
         else:
-            args = [executable_path, cell_type, region_file, bam_file_path, counts_file_path]
+            args = [executable_path, region_file, bam_file_path, counts_file_path]
 
         start = time()
         return_code = subprocess.call(args)
@@ -139,13 +139,12 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
             print "%s failed with exit code %d" % (executable_path, return_code)
             exit(return_code)
 
-    counts_file = tables.open_file(counts_file_path, mode = "r")
     if bin_size:
-        normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
+        counts_file = tables.open_file(counts_file_path, mode = "r")
+        npt.normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
     else:
-        print "todo: normalize region counts"
-        # maybe something like this? just store normalized counts in same records with an extra column?
-        # normalize(counts_file.root.region_counts, file_to_count) 
+        counts_file = tables.open_file(counts_file_path, mode = "r+")
+        npt.normalize(counts_file.root.region_counts, file_to_count) 
     counts_file.close()
 
 def main():

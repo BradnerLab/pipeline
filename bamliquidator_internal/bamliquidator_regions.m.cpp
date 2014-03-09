@@ -15,25 +15,24 @@
 struct Region
 {
   char file_name[64];
-  char cell_type[16];
   char chromosome[16];
   char region_name[64];
   uint64_t start;
   uint64_t stop;
   char strand;
   uint64_t count;
+  double normalized_count;
 };
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
 {
-  os << r.file_name << ' ' << r.cell_type << ' ' << r.chromosome << ' '
-     << r.region_name << ' ' << r.start << " -> " << r.stop << ' ' << r.strand;
+  os << r.file_name << ' ' << r.chromosome << ' ' << r.region_name << ' ' 
+     << r.start << " -> " << r.stop << ' ' << r.strand << ' ' << r.normalized_count;
   return os;
 }
 
 std::vector<Region> parse_regions(const std::string& region_file_path,
-                                  const std::string& file_name,
-                                  const std::string& cell_type)
+                                  const std::string& file_name)
 {
   // todo: support both gff and bed, for now just gff
   std::vector<Region> regions;
@@ -61,7 +60,6 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     }
     Region region;
     strncpy(region.file_name,   file_name.c_str(),                  sizeof(Region::file_name));
-    strncpy(region.cell_type,   cell_type.c_str(),                  sizeof(Region::cell_type));
     strncpy(region.chromosome,  columns[chromosome_column].c_str(), sizeof(Region::chromosome));
     strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name));
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
@@ -87,23 +85,23 @@ void write(hid_t& file, std::vector<Region>& regions)
 {
   const size_t record_size = sizeof(Region);
 
-  size_t record_offset[] = { HOFFSET(Region, cell_type), 
-                             HOFFSET(Region, file_name),
+  size_t record_offset[] = { HOFFSET(Region, file_name),
                              HOFFSET(Region, chromosome),
                              HOFFSET(Region, region_name),
                              HOFFSET(Region, start),
                              HOFFSET(Region, stop),
                              HOFFSET(Region, strand),
-                             HOFFSET(Region, count) };
+                             HOFFSET(Region, count),
+                             HOFFSET(Region, normalized_count) };
 
-  size_t field_sizes[] = { sizeof(Region::cell_type),
-                           sizeof(Region::file_name),
+  size_t field_sizes[] = { sizeof(Region::file_name),
                            sizeof(Region::chromosome),
                            sizeof(Region::region_name),
                            sizeof(Region::start),
                            sizeof(Region::stop),
                            sizeof(Region::strand),
-                           sizeof(Region::count) };
+                           sizeof(Region::count),
+                           sizeof(Region::normalized_count) };
 
   herr_t status = H5TBappend_records(file, "region_counts", regions.size(), record_size, record_offset,
                                      field_sizes, regions.data());
@@ -116,7 +114,6 @@ void write(hid_t& file, std::vector<Region>& regions)
 void liquidate_regions(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
 {
   // opening the bamfiles once instead of each loop iteration brought the test runtime from 4.129s to 0.244s !
-  // todo: experiment with opening bamfiles once instead of 23 times in bamliquidator_batch, and remove above comment
   
 	samfile_t* fp=NULL;
 	fp=samopen(bam_file_path.c_str(),"rb",0);
@@ -165,10 +162,10 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (argc != 5)
+    if (argc != 4)
     {
-      std::cerr << "usage: " << argv[0] << " cell_type gff_or_bed_file bam_file hdf5_file\n"
-        << "\ne.g. " << argv[0] << " mm1s /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
+      std::cerr << "usage: " << argv[0] << " gff_or_bed_file bam_file hdf5_file\n"
+        << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
@@ -176,10 +173,9 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    const std::string cell_type = argv[1];
-    const std::string region_file_path = argv[2];
-    const std::string bam_file_path = argv[3];
-    const std::string hdf5_file_path = argv[4];
+    const std::string region_file_path = argv[1];
+    const std::string bam_file_path = argv[2];
+    const std::string hdf5_file_path = argv[3];
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
@@ -189,8 +185,7 @@ int main(int argc, char* argv[])
     }
 
     std::vector<Region> regions = parse_regions(region_file_path,
-                                                file_name_from_path(bam_file_path),
-                                                cell_type);
+                                                file_name_from_path(bam_file_path));
 
     liquidate_regions(h5file, regions, bam_file_path);
    

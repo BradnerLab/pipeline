@@ -154,7 +154,25 @@ def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, t
         normalized_counts.row.append()
 
     normalized_counts.flush()
-    
+   
+def normalize(region_counts, file_to_count):
+    print "Normalizing"
+     
+    file_name = None
+
+    for row in region_counts:
+        if row["file_name"] != file_name:
+            file_name = row["file_name"]
+            total_count = file_to_count[file_name]
+        
+        region_size = row["stop"] - row["start"]
+        factor = (1 / region_size) * (1 / (total_count / 10**6))
+
+        row["normalized_count"] = row["count"] * factor 
+        row.update()
+
+    region_counts.flush()
+
 # leave off file_name argument to calculate percentiles for the cell_type averaged normalized counts
 def populate_percentiles(normalized_counts, cell_type, file_name = "*"):
     bin_numbers = []
@@ -304,7 +322,6 @@ def populate_summary(summary, normalized_counts, chromosome):
         summary.row["lines_lt_5th_percentile"] = lines_lt_low_percentile_by_bin[bin_number]
         summary.row.append()
     summary.flush()
-    
 
 def normalize_plot_and_summarize(counts, output_directory, bin_size, file_to_count):
     cell_types = all_cell_types(counts)
