@@ -34,15 +34,38 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& file_name)
 {
-  // todo: support both gff and bed, for now just gff
-  std::vector<Region> regions;
+  const std::string extension = extension_from_file_name(region_file_path);
 
-  const int chromosome_column = 0;
-  const int name_column = 1;
-  const int start_column = 3;
-  const int stop_column = 4;
-  const int strand_column = 6;
-  const int min_columns = 7;
+  int chromosome_column = 0;
+  int name_column = 0;
+  int start_column = 0;
+  int stop_column = 0;
+  int strand_column = 0;
+  int min_columns = 0;
+
+  if (extension == "gff")
+  {
+    chromosome_column = 0;
+    name_column = 1;
+    start_column = 3;
+    stop_column = 4;
+    strand_column = 6;
+    min_columns = 7;
+  }
+  else if (extension == "bed")
+  {
+    chromosome_column = 0;
+    name_column = 3;
+    start_column = 1;
+    stop_column = 2;
+    strand_column = -1;
+    min_columns = 4;
+  }
+  else
+  {
+    throw std::runtime_error("unsupported region file format (" + region_file_path
+                             + "), please supply a .gff or .bed file");
+  }
 
   std::ifstream region_file(region_file_path);
   if (!region_file.is_open())
@@ -50,6 +73,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     throw std::runtime_error("failed to open region_file " + region_file_path);
   }
 
+  std::vector<Region> regions;
   for(std::string line; std::getline(region_file, line); )
   {
     std::vector<std::string> columns;
@@ -69,11 +93,18 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       std::swap(region.start, region.stop);
     }
 
-    if (columns[strand_column].size() != 1)
+    if (strand_column == -1)
     {
-      throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
+      region.strand = '.';
     }
-    region.strand = columns[strand_column][0];
+    else
+    {
+      if (columns[strand_column].size() != 1)
+      {
+        throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
+      }
+      region.strand = columns[strand_column][0];
+    }
 
     regions.push_back(region);
   }

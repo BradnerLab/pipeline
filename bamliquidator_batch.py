@@ -152,16 +152,16 @@ def main():
                                                  'in the bam file(s) at the given directory, and then normalize, plot bins, '
                                                  'and summarize the counts in the output directory.  For additional '
                                                  'help, please see https://github.com/BradnerLab/pipeline/wiki')
-    parser.add_argument('--output_directory', default='output',
+    parser.add_argument('-o', '--output_directory', default='output',
                         help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
                              'Default is "./output".')
-    parser.add_argument('--counts_file',
+    parser.add_argument('-c', '--counts_file',
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "counts.h5" in the output directory.')
-    parser.add_argument('--bin_size', type=int, default=100000,
+    parser.add_argument('-b', '--bin_size', type=int, default=100000,
                         help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
                              "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
-    parser.add_argument('--regions_file',
+    parser.add_argument('-r', '--regions_file',
                         help='a region file in either .gff or .bed format')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
