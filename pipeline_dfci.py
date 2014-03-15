@@ -2,6 +2,8 @@
 #pipeline.py
 
 samtoolsString = 'samtools'
+pipelineFolder = '/ark/home/cl512/pipeline/' # need to set this to where this code is stored
+
 
 '''
 The MIT License (MIT)
@@ -29,6 +31,11 @@ THE SOFTWARE.
 
 #module of functions/code/structures from the myc project that has now been
 #addapted for general use
+
+
+
+
+
 
 
 import sys
@@ -1459,10 +1466,11 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
             fullBamFile = dataDict[name]['bam']
             outFile = outdir+gffName+'_'+name+'.gff'
 
-
+            
 
             if overWrite:
                 cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                print cmd1
                 os.system(cmd1)
 
             else:
@@ -1471,6 +1479,7 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
                     print('File %s Already Exists, not mapping' % (outFile))
                 except IOError:
                     cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                    print cmd1
                     os.system(cmd1)
 
 
@@ -1875,58 +1884,119 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     os.system(cmd)
 
 #==========================================================================
+#========================BATCH PLOTTING REGIONS============================
+#==========================================================================
+
+def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True):
+
+    '''
+    batch plots all regions in a gff
+    '''
+
+    dataDict = loadDataTable(dataFile)
+
+    if len(namesList) == 0:
+        namesList = dataDict.keys()
+    
+    #we now need to generate all the arguments for bamPlot_turbo.py
+
+    genomeList = [lower(dataDict[x]['genome']) for x in namesList]
+    if len(uniquify(genomeList)) != 1:
+        print "ERROR: CANNOT PLOT DATA FROM MULTIPLE GENOMES"
+        sys.exit()
+    else:
+        genome = genomeList[0]
+
+    #next get the bam string
+    bamList = [dataDict[name]['bam'] for name in namesList]
+    bamString = join(bamList,',')
+    
+    #inputGFF
+    try:
+        foo = open(inputFile,'r')
+        foo.close()
+    except IOError:
+        print "ERROR: INPUT FILE NOT READABLE"
+        sys.exit()
+
+    #establish the output folder
+    outputFolder = formatFolder(outputFolder,True)
+
+    #get the color string
+    colorString = join([dataDict[name]['color'] for name in namesList],':')
+
+    #get the namesList
+    nameString = join(namesList,',')
+    
+    #yScale setting
+    if uniform == True:
+        yScale = 'UNIFORM'
+    else:
+        yScale = 'RELATIVE'
+
+    #get the title
+    title = plotName
+    
+
+    os.chdir(pipelineFolder)
+    cmd = 'python %sbamPlot_turbo.py -g %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r' % (pipelineFolder,genome,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
+
+    print cmd
+    os.system(cmd)
+#==========================================================================
 #=======================PLOTTING GROUPS OF GENES===========================
 #==========================================================================
 
-def plotGeneList(dataFile,annotFile,geneList,namesList,outputFolder,upsearch,downsearch,yScale = 'UNIFORM',byName = True):
+# def plotGeneList(dataFile,annotFile,geneList,namesList,outputFolder,upsearch,downsearch,yScale = 'UNIFORM',byName = True):
 
-    '''
-    plots the txn region for a bunch of genes in a given window. uses either name or ID
-    '''
+#     '''
+#     plots the txn region for a bunch of genes in a given window. uses either name or ID
+#     deprecating this puppy
+#     '''
     
-    startDict = makeStartDict(annotFile)
-    if byName:
-        geneList = [upper(x) for x in geneList]
-        nameDict = defaultdict(list)
+#     startDict = makeStartDict(annotFile)
+#     if byName:
+#         geneList = [upper(x) for x in geneList]
+#         nameDict = defaultdict(list)
         
-        for key in startDict.keys():
-            nameDict[startDict[key]['name']].append(key)
+#         for key in startDict.keys():
+#             nameDict[startDict[key]['name']].append(key)
             
-        refIDList = []
+#         refIDList = []
 
-        for geneName in geneList:
-            mouseName = lower(geneName)
-            mouseName = upper(mouseName[0]) + mouseName[1:]
-            #tries both the human and mouse nomenclature
-            refIDs = nameDict[upper(geneName)] + nameDict[mouseName]
-            if len(refIDs) ==0:
-                print('Gene name %s not in annotation file %s' % (geneName,annotFile))
-                continue
-            refNumbers = [x.split('_')[-1] for x in refIDs]
-            #take the lowest refseq number for the gene name as this is usually the best annotation
-            refIndex = refNumbers.index(min(refNumbers))
-            refIDList.append(refIDs[refIndex])
-            print('Gene %s corresponds to ID %s' % (geneName,refIDs[refIndex]))
+#         for geneName in geneList:
+#             mouseName = lower(geneName)
+#             mouseName = upper(mouseName[0]) + mouseName[1:]
+#             #tries both the human and mouse nomenclature
+#             refIDs = nameDict[upper(geneName)] + nameDict[mouseName]
+#             if len(refIDs) ==0:
+#                 print('Gene name %s not in annotation file %s' % (geneName,annotFile))
+#                 continue
+#             refNumbers = [x.split('_')[-1] for x in refIDs]
+#             #take the lowest refseq number for the gene name as this is usually the best annotation
+#             refIndex = refNumbers.index(min(refNumbers))
+#             refIDList.append(refIDs[refIndex])
+#             print('Gene %s corresponds to ID %s' % (geneName,refIDs[refIndex]))
 
-    else:
-        refIDList = geneList
+#     else:
+#         refIDList = geneList
 
-    for refID in refIDList:
+#     for refID in refIDList:
 
-        chrom = startDict[refID]['chr']
-        sense = startDict[refID]['sense']
-        if sense == '+':
-            start = startDict[refID]['start'][0] - upsearch
-            stop = startDict[refID]['end'][0] + downsearch
-        else:
-            start = startDict[refID]['start'][0] + upsearch
-            stop = startDict[refID]['end'][0] - downsearch
+#         chrom = startDict[refID]['chr']
+#         sense = startDict[refID]['sense']
+#         if sense == '+':
+#             start = startDict[refID]['start'][0] - upsearch
+#             stop = startDict[refID]['end'][0] + downsearch
+#         else:
+#             start = startDict[refID]['start'][0] + upsearch
+#             stop = startDict[refID]['end'][0] - downsearch
 
-        geneName = startDict[refID]['name']
-        plotName = '_-%s_+%s' % (upsearch,downsearch)
-        regionString = '%s:%s:%s-%s' % (chrom,sense,start,stop)
-        print('plotting %s with window %s in region %s to outputfolder %s' % (geneName,plotName,regionString,outputFolder))
-        callGenePlot(dataFile,refID,plotName,annotFile,namesList,outputFolder,regionString,yScale)
+#         geneName = startDict[refID]['name']
+#         plotName = '_-%s_+%s' % (upsearch,downsearch)
+#         regionString = '%s:%s:%s-%s' % (chrom,sense,start,stop)
+#         print('plotting %s with window %s in region %s to outputfolder %s' % (geneName,plotName,regionString,outputFolder))
+#         callGenePlot(dataFile,refID,plotName,annotFile,namesList,outputFolder,regionString,yScale)
 
 
 
@@ -2093,7 +2163,10 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
     '''
 
     dataDict = loadDataTable(dataFile)
-
+    
+    #if a blank geneListFile is given, set it to 'NONE'
+    if geneListFile == '':
+        geneListFile = 'NONE'
 
     if mappedFolder[-1] != '/':
         mappedFolder+='/'
