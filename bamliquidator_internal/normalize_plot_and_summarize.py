@@ -34,8 +34,6 @@ import tables
 import scipy.stats as stats
 import collections
 
-from chromosome_list import chromosomes
-
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
 # -- I should probably look into why flush was necessary and/or file a bug with pytables
@@ -63,6 +61,14 @@ def all_cell_types(counts):
 
     return types 
 
+def all_chromosomes(counts):
+    chromosomes = collections.OrderedDict() 
+
+    for row in counts:
+        chromosomes[row["chromosome"]] = None
+
+    return chromosomes.keys() 
+
 file_names_memo = {}
 def file_names(counts, cell_type):
     if not cell_type in file_names_memo:
@@ -86,7 +92,7 @@ def file_names_in_cell_type(normalized_counts, cell_type):
     return list(file_names)
 
 
-def plot_summaries(output_directory, normalized_counts):
+def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.output_file(output_directory + "/summary.html")
     
     for chromosome in chromosomes:
@@ -325,6 +331,7 @@ def populate_summary(summary, normalized_counts, chromosome):
 
 def normalize_plot_and_summarize(counts, output_directory, bin_size, file_to_count):
     cell_types = all_cell_types(counts)
+    chromosomes = all_chromosomes(counts)
 
     skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
@@ -355,7 +362,7 @@ def normalize_plot_and_summarize(counts, output_directory, bin_size, file_to_cou
         print "Plotting"
         for chromosome in chromosomes:
             plot(output_directory, normalized_counts, chromosome, cell_types)
-        plot_summaries(output_directory, normalized_counts)
+        plot_summaries(output_directory, normalized_counts, chromosomes)
 
     print "Summarizing"
     for chromosome in chromosomes:

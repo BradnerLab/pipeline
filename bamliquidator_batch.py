@@ -118,9 +118,13 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         if bin_size:
             args = [executable_path, cell_type, str(bin_size), bam_file_path, counts_file_path]
 
+            # todo: should we really confine ourselves to the bamliquidator_internal.chromosome_list?
+            #       why not just use all the chromosomes listed in idxstats?
             for chromosome in chromosomes:
-                args.append(chromosome)
-                args.append(str(file_chromosome_tuple_to_length[bam_file_name, chromosome]))
+                length = file_chromosome_tuple_to_length.get((bam_file_name, chromosome))
+                if length is not None:
+                    args.append(chromosome)
+                    args.append(str(length))
         else:
             args = [executable_path, region_file, bam_file_path, counts_file_path]
 
