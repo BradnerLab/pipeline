@@ -12,10 +12,6 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
-#include <tbb/blocked_range.h>
-#include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
-
 struct Region
 {
   char file_name[64];
@@ -146,8 +142,10 @@ void write(hid_t& file, std::vector<Region>& regions)
   }
 }
 
-void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path, size_t region_begin, size_t region_end)
+void liquidate_regions(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
 {
+  // opening the bamfiles once instead of each loop iteration brought the test runtime from 4.129s to 0.244s !
+  
 	samfile_t* fp=NULL;
 	fp=samopen(bam_file_path.c_str(),"rb",0);
 	if(fp == NULL)
@@ -162,7 +160,7 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
 		throw std::runtime_error("bam_index_load() error with " + bam_file_path);
 	}
 
-  for (size_t i=region_begin; i < region_end; ++i)
+  for (size_t i=0; i < regions.size(); ++i)
   {
     try
     {
@@ -187,26 +185,12 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
 
   bam_index_destroy(bamidx);
   samclose(fp);
-}
-
-void liquidate_and_write(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
-{
-  tbb::parallel_for(
-    tbb::blocked_range<int>(0, regions.size(), 1000),
-    [&](const tbb::blocked_range<int>& range)
-    {
-      liquidate_regions(regions, bam_file_path, range.begin(), range.end());
-    },
-    tbb::auto_partitioner());
-  liquidate_regions(regions, bam_file_path, 0, regions.size());
 
   write(file, regions);
 }
 
 int main(int argc, char* argv[])
 {
-  tbb::task_scheduler_init init; 
-
   try
   {
     if (argc != 4)
@@ -234,7 +218,7 @@ int main(int argc, char* argv[])
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 file_name_from_path(bam_file_path));
 
-    liquidate_and_write(h5file, regions, bam_file_path);
+    liquidate_regions(h5file, regions, bam_file_path);
    
     H5Fclose(h5file);
 

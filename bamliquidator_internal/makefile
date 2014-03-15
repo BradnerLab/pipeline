@@ -28,7 +28,7 @@
 CPPFLAGS := -std=c++11 -stdlib=libc++ -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
 LDFLAGS := -stdlib=libc++ -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
-ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
+ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal
 
 all: ../bamliquidator bamliquidator_bins bamliquidator_regions 
 
