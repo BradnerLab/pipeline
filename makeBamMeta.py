@@ -128,9 +128,9 @@ def main():
 
 
         
-        cmd1 = "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,tssBins,sense,bamFile,tssGFF,tssOutfile)
-        cmd2 =  "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -m %s -s %s -b %s -i %s  -o %s &" % (extension,txnBins,sense,bamFile,txnGFF,txnOutfile)
-        cmd3 =  "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,ttrBins,sense,bamFile,ttrGFF,ttrOutfile)
+        cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,tssBins,sense,bamFile,tssGFF,tssOutfile)
+        cmd2 =  "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -m %s -s %s -b %s -i %s  -o %s &" % (extension,txnBins,sense,bamFile,txnGFF,txnOutfile)
+        cmd3 =  "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,ttrBins,sense,bamFile,ttrGFF,ttrOutfile)
 
         for cmd in [cmd1,cmd2,cmd3]:
             bashFile.write(cmd)
@@ -150,9 +150,9 @@ def main():
         job6ID = jobIDRoot + '_6'
 
 
-        cmd4 = "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,tssBins,sense,bamFile,tssGFF,tssOutfile)
-        cmd5 =  "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -m %s -s %s -b %s -i %s  -o %s &" % (extension,txnBins,sense,bamFile,txnGFF,txnOutfile)
-        cmd6 =  "#python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,ttrBins,sense,bamFile,ttrGFF,ttrOutfile)
+        cmd4 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,tssBins,sense,bamFile,tssGFF,tssOutfile)
+        cmd5 =  "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -m %s -s %s -b %s -i %s  -o %s &" % (extension,txnBins,sense,bamFile,txnGFF,txnOutfile)
+        cmd6 =  "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -r -e %s -c %s -s %s -b %s -i %s  -o %s &" % (extension,ttrBins,sense,bamFile,ttrGFF,ttrOutfile)
 
 
 
