@@ -43,7 +43,7 @@ import sys
 import subprocess
 import string
 
-print "Using python version %s" % sys.version
+#print "Using python version %s" % sys.version
 
 
 #importing utils package
