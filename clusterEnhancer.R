@@ -39,7 +39,7 @@
 #===================================================================
 
 args <- commandArgs()
-print(args[3:5])
+print(args[3:6])
 
 
 genome = args[3]
@@ -99,7 +99,7 @@ seOrder = seHC$order
 #===================================================================
 
 #establishing individual clusters
-seClusterOrder = cutree(seHC,k=5)
+seClusterOrder = cutree(seHC,k=10)
 
 # #try to guess the distance cutoff
 # seDistRange = range(seDist)
@@ -157,7 +157,7 @@ write.table(clusterOrderTable,file= clusterTableFile,quote=FALSE,sep='\t',col.na
 exemplarPDFFile = paste(outputFolder,genome,'_',analysisName,"_exemplarPlots.pdf",sep='')
 pdf(exemplarPDFFile,width=5,height=5)
 
-exemplarMatrix = matrix(nrow=10,ncol = ncol(enhancerMatrix))
+exemplarMatrix = matrix(nrow=max(seClusterOrder),ncol = ncol(enhancerMatrix))
 #Plot the examplars
 for(i in 1:max(seClusterOrder)){
 	
@@ -171,7 +171,7 @@ for(i in 1:max(seClusterOrder)){
 	lines(1:ncol(enhancerMatrix),apply(cluster,2,median)[sampleOrder],col='red',lwd=4)
 	legend(1,quantile(cluster,.95),paste("n =",nrow(cluster)))
 	if(nrow(cluster) == 1){
-		exemplarMatrix[i,] = cluster[,exemplarOrder]
+		exemplarMatrix[i,] = cluster[1,sampleOrder]
 	}else{
 		exemplarMatrix[i,] = apply(cluster[,sampleOrder],2,median)
 	}

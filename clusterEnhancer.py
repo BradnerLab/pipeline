@@ -247,8 +247,13 @@ def mergeCollections(nameDict,analysisName,output='',superOnly=True):
     allLoci = []
     namesList = nameDict.keys()
     for name in namesList:
-
-        allLoci += makeSECollection(nameDict[name]['enhancerFile'],name,superOnly).getLoci()
+        
+        seCollection =makeSECollection(nameDict[name]['enhancerFile'],name,superOnly)
+        if superOnly:
+            print "DATASET: %s HAS %s SUPERENHANCERS" % (name,len(seCollection))
+        else:
+            print "DATASET: %s HAS %s ENHANCERS" % (name,len(seCollection))
+        allLoci += seCollection.getLoci()
 
     print len(allLoci)
     mergedCollection = utils.LocusCollection(allLoci,50)
@@ -257,7 +262,7 @@ def mergeCollections(nameDict,analysisName,output='',superOnly=True):
     stitchedCollection = mergedCollection.stitchCollection()
 
     stitchedLoci = stitchedCollection.getLoci()
-
+    print "IDENTIFIED %s CONSENSUS ENHANCER REGIONS" % (len(stitchedLoci))
     #sort by size and provide a unique ID
 
     sizeList = [locus.len() for locus in stitchedLoci]
@@ -305,9 +310,13 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder):
     extraMap = []
     for name in namesList[1:]:
         
-        backgroundName = dataDict[name]['background']
-        if dataDict.has_key(backgroundName):
-            extraMap+=[name,backgroundName]
+        if nameDict[name]['background']:
+            backgroundName = dataDict[name]['background']
+            if dataDict.has_key(backgroundName):
+                extraMap+=[name,backgroundName]
+            else:
+                print "ERROR: UNABLE TO FIND LISTED BACKGROUND DATASET %s FOR %s" % (backgroundName,name)
+                sys.exit()
         else:
             extraMap+=[name]
 
@@ -399,7 +408,7 @@ def callRScript(genome,outputFolder,analysisName,signalTableFile):
     os.system(rCmd)
 
     print "Checking for cluster table output at %s" % (clusterTable)
-    if utils.checkOutput(clusterTable,1,5):
+    if utils.checkOutput(clusterTable,1,30):
 
         return clusterTable
     else:
@@ -504,7 +513,7 @@ def main():
 
         print "STARTING ANALYSIS ON THE FOLLOWING DATASETS:"
         print nameDict.keys()
-
+        
 
         #=====================================================
         #==============LAUNCH ENHANCER MAPPING================
@@ -515,6 +524,7 @@ def main():
         print nameDict
 
 
+
         #=====================================================
         #====================GET MEDIAN SIGNAL================
         #=====================================================
@@ -523,7 +533,7 @@ def main():
         medianDict = makeMedianDict(nameDict)
 
         print medianDict
-        
+
         #=====================================================
         #====================MERGING ENHANCERS================
         #=====================================================
@@ -533,14 +543,13 @@ def main():
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
         mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
-        #sys.exit()
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
         #=====================================================
 
         print "\n\n\nMAPPING DATA TO CONSENSUS ENHANCER REGIONS"
         mergedRegionMap = mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder)
-        
+
         #=====================================================
         #==============CORRECT FOR MEDIAN SIGNAL==============
         #=====================================================
