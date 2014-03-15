@@ -230,7 +230,7 @@ def checkOutput(fileName,waitTime = 1,timeOut = 30):
        if fileExists:
               return True
        else:
-              print('ERROR: OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
+              print('OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
               return False
 
 def getParentFolder(inputFile):
