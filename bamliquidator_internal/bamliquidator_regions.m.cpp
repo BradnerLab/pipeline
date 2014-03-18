@@ -151,19 +151,22 @@ class Liquidator
 {
 public:
   Liquidator(const std::string& bam_file_path):
-    fp(samopen(bam_file_path.c_str(),"rb",0)),
-    bamidx(bam_index_load(bam_file_path.c_str()))
+    bam_file_path(bam_file_path),
+    fp(nullptr),
+    bamidx(nullptr)
   {
-    if(fp == NULL)
-    {
-      throw std::runtime_error("samopen() error with " + bam_file_path);
-    }
-
-    if (bamidx == NULL)
-    {
-      throw std::runtime_error("bam_index_load() error with " + bam_file_path);
-    }
+    init();
   }
+
+  Liquidator(const Liquidator& other):
+    bam_file_path(other.bam_file_path),
+    fp(nullptr),
+    bamidx(nullptr)
+  {
+    init();
+  }
+
+  Liquidator& operator=(const Liquidator& other) = delete;
 
   ~Liquidator()
   {
@@ -183,13 +186,33 @@ public:
   }
 
 private:
+  std::string bam_file_path;
   samfile_t* fp;
   bam_index_t* bamidx;
+
+  void init()
+  {
+    fp = samopen(bam_file_path.c_str(),"rb",0);
+    if(fp == NULL)
+    {
+      throw std::runtime_error("samopen() error with " + bam_file_path);
+    }
+
+    bamidx = bam_index_load(bam_file_path.c_str());
+    if (bamidx == NULL)
+    {
+      throw std::runtime_error("bam_index_load() error with " + bam_file_path);
+    }
+  }
 };
 
-void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path, size_t region_begin, size_t region_end)
+typedef tbb::enumerable_thread_specific<Liquidator> Liquidators;
+
+void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path,
+                       size_t region_begin, size_t region_end,
+                       Liquidators& liquidators)
 {
-  Liquidator liquidator(bam_file_path);
+  Liquidator& liquidator = liquidators.local();
 
   for (size_t i=region_begin; i < region_end; ++i)
   {
@@ -209,14 +232,15 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
 
 void liquidate_and_write(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
 {
+  Liquidators liquidators((Liquidator(bam_file_path))); 
+
   tbb::parallel_for(
-    tbb::blocked_range<int>(0, regions.size(), 1000),
+    tbb::blocked_range<int>(0, regions.size(), 1),
     [&](const tbb::blocked_range<int>& range)
     {
-      liquidate_regions(regions, bam_file_path, range.begin(), range.end());
+      liquidate_regions(regions, bam_file_path, range.begin(), range.end(), liquidators);
     },
     tbb::auto_partitioner());
-  liquidate_regions(regions, bam_file_path, 0, regions.size());
 
   write(file, regions);
 }
