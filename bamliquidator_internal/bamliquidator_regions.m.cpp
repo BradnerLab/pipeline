@@ -13,6 +13,7 @@
 #include <hdf5_hl.h>
 
 #include <tbb/blocked_range.h>
+#include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
@@ -146,47 +147,64 @@ void write(hid_t& file, std::vector<Region>& regions)
   }
 }
 
+class Liquidator 
+{
+public:
+  Liquidator(const std::string& bam_file_path):
+    fp(samopen(bam_file_path.c_str(),"rb",0)),
+    bamidx(bam_index_load(bam_file_path.c_str()))
+  {
+    if(fp == NULL)
+    {
+      throw std::runtime_error("samopen() error with " + bam_file_path);
+    }
+
+    if (bamidx == NULL)
+    {
+      throw std::runtime_error("bam_index_load() error with " + bam_file_path);
+    }
+  }
+
+  ~Liquidator()
+  {
+    bam_index_destroy(bamidx);
+    samclose(fp);
+  }
+
+  double liquidate(const std::string& chromosome, int start, int stop, char strand)
+  {
+    std::vector<double> counts = ::liquidate(fp, bamidx, chromosome, start, stop, strand, 1, 0);
+    if (counts.size() != 1)
+    {
+      throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
+        boost::lexical_cast<std::string>(counts.size()) + ")");
+    }
+    return counts[0];
+  }
+
+private:
+  samfile_t* fp;
+  bam_index_t* bamidx;
+};
+
 void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path, size_t region_begin, size_t region_end)
 {
-	samfile_t* fp=NULL;
-	fp=samopen(bam_file_path.c_str(),"rb",0);
-	if(fp == NULL)
-	{
-		throw std::runtime_error("samopen() error with " + bam_file_path);
-	}
-
-  bam_index_t* bamidx=NULL;
-  bamidx=bam_index_load(bam_file_path.c_str());
-	if (bamidx == NULL)
-	{
-		throw std::runtime_error("bam_index_load() error with " + bam_file_path);
-	}
+  Liquidator liquidator(bam_file_path);
 
   for (size_t i=region_begin; i < region_end; ++i)
   {
     try
     {
-      std::vector<double> counts = liquidate(fp, bamidx,
-                                             regions[i].chromosome,
-                                             regions[i].start, 
-                                             regions[i].stop, 
-                                             regions[i].strand, 
-                                             1, 0);
-      if (counts.size() != 1)
-      {
-        throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
-          boost::lexical_cast<std::string>(counts.size()) + ")");
-      }
-      regions[i].count = counts[0];
+      regions[i].count = liquidator.liquidate(regions[i].chromosome,
+                                              regions[i].start, 
+                                              regions[i].stop, 
+                                              regions[i].strand);
     } catch(const std::exception& e)
     {
       std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
                 << e.what() << std::endl;
     }
   }
-
-  bam_index_destroy(bamidx);
-  samclose(fp);
 }
 
 void liquidate_and_write(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
