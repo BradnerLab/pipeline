@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import bamliquidator_internal.normalize_plot_and_summarize as npt 
+import bamliquidator_internal.normalize_plot_and_summarize as nps 
 from bamliquidator_internal.chromosome_list import chromosomes
 
 import argparse
@@ -132,11 +132,11 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
             exit(return_code)
 
     if bin_size:
-        counts_file = tables.open_file(counts_file_path, mode = "r")
-        npt.normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
+        counts_file = tables.open_file(counts_file_path, mode = "r+")
+        nps.normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_to_count) 
     else:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
-        npt.normalize(counts_file.root.region_counts, file_to_count) 
+        nps.normalize(counts_file.root.region_counts, file_to_count) 
     counts_file.close()
 
 def main():
