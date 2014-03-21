@@ -349,7 +349,7 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_t
 
     skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
 
-    print "cell_types: %s" % ", ".join(cell_types)
+    print "Cell Types: %s" % ", ".join(cell_types)
 
     for cell_type in cell_types:
         print "Normalizing and calculating percentiles for cell type " + cell_type 
