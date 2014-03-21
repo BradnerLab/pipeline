@@ -26,8 +26,6 @@
 
 from __future__ import division
 
-# todo: rename summarizer.py, and move normalize(region... logic into multi-threaded bamliquidator_regions.m.cpp
-
 import sys
 import os
 import argparse
@@ -47,12 +45,12 @@ def delete_all_but_bin_counts_table(h5file):
                 index.column.remove_index()
             table.remove()
 
-# todo: rename percentile table
 def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
         bin_number = tables.UInt32Col(    pos=0)
         cell_type  = tables.StringCol(16, pos=1)
         chromosome = tables.StringCol(16, pos=2)
+        count      = tables.Float64Col(   pos=3)
         percentile = tables.Float64Col(   pos=4)
         file_name  = tables.StringCol(64, pos=5)
 
@@ -101,30 +99,30 @@ def file_names_in_cell_type(normalized_counts, cell_type):
     return list(file_names)
 
 
-def plot_summaries(output_directory, counts, chromosomes):
+def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.output_file(output_directory + "/summary.html")
     
     for chromosome in chromosomes:
-        plot_summary(counts, chromosome)
+        plot_summary(normalized_counts, chromosome)
 
     bp.save()
 
-def plot_summary(counts, chromosome):
+def plot_summary(normalized_counts, chromosome):
     #print " - plotting " + chromosome + " summary"
 
     condition = "(file_name == '*') & (chromosome == '%s')" % chromosome
 
     chromosome_count_by_bin = collections.defaultdict(int) 
-    for row in counts.where(condition):
-        chromosome_count_by_bin[row["bin_number"]] += row["normalized_count"]
+    for row in normalized_counts.where(condition):
+        chromosome_count_by_bin[row["bin_number"]] += row["count"]
     
     overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
     overall.title = chromosome + " counts per bin across all bam files"
 
-def plot(output_directory, counts, chromosome, cell_types):
+def plot(output_directory, normalized_counts, chromosome, cell_types):
     bp.output_file(output_directory + "/" + chromosome + ".html")
 
-    plot_summary(counts, chromosome)
+    plot_summary(normalized_counts, chromosome)
 
     for cell_type in cell_types:
         #print " - plotting " + cell_type
@@ -134,15 +132,42 @@ def plot(output_directory, counts, chromosome, cell_types):
         
         condition = "(file_name == '*') & (chromosome == '%s') & (cell_type == '%s')" % (chromosome, cell_type)
 
-        for row in counts.where(condition):
+        for row in normalized_counts.where(condition):
             bin_number.append(row["bin_number"])
-            count.append(row["normalized_count"])
+            count.append(row["count"])
 
         cell_type_plot = bp.scatter(bin_number, count)
         cell_type_plot.title = "%s counts per bin" % cell_type 
 
     bp.save()
 
+def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, total_count):
+    '''
+    Excerpt from Feb 13, 2014 email from Charles Lin:
+
+    We typically report read density in units of reads per million per basepair
+
+    bamliquidator reports counts back in total read positions per bin.  To convert that 
+    into reads per million per basepair, we first need to divide by the total million 
+    number of reads in the bam.  Then we need to divide by the size of the bin
+
+    So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
+    reads you would calculate density as 2500/1000/30 = 0.083rpm/bp
+    '''
+    factor = (1 / bin_size) * (1 / (total_count / 10**6))
+
+    for count_row in counts.where("file_name == '%s'" % file_name):
+        normalized_counts.row["bin_number"] = count_row["bin_number"]
+        normalized_counts.row["cell_type"] = count_row["cell_type"] 
+        normalized_counts.row["chromosome"] = count_row["chromosome"] 
+        assert file_name == count_row["file_name"]
+        normalized_counts.row["file_name"] = file_name 
+        normalized_counts.row["count"] = count_row["count"] * factor 
+        normalized_counts.row["percentile"] = -1
+        normalized_counts.row.append()
+
+    normalized_counts.flush()
+   
 def normalize(region_counts, file_to_count):
     print "Normalizing"
      
@@ -162,15 +187,15 @@ def normalize(region_counts, file_to_count):
     region_counts.flush()
 
 # leave off file_name argument to calculate percentiles for the cell_type averaged normalized counts
-def populate_percentiles(normalized_counts, counts, cell_type, file_name = "*"):
+def populate_percentiles(normalized_counts, cell_type, file_name = "*"):
     bin_numbers = []
     normalized_count_list = []
 
     condition = "(cell_type == '%s') & (file_name == '%s')" % (cell_type, file_name)
 
-    for row in counts.where(condition):
+    for row in normalized_counts.where(condition):
         bin_numbers.append(row["bin_number"])
-        normalized_count_list.append(row["normalized_count"])
+        normalized_count_list.append(row["count"])
 
     percentiles = (stats.rankdata(normalized_count_list) - 1) / (len(normalized_count_list)-1) * 100
     # percentiles calculated in bulk as suggested at 
@@ -330,9 +355,10 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_t
         print "Normalizing and calculating percentiles for cell type " + cell_type 
         current_file_names = file_names(counts, cell_type)
         for file_name in current_file_names:
-           populate_percentiles(normalized_counts, counts, cell_type, file_name)
+           populate_normalized_counts(normalized_counts, counts, file_name, bin_size, file_to_count[file_name]) 
+           populate_percentiles(normalized_counts, cell_type, file_name)
         populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_names) 
-        populate_percentiles(normalized_counts, counts, cell_type)
+        populate_percentiles(normalized_counts, cell_type)
 
     print "Indexing normalized counts"
     normalized_counts.cols.bin_number.create_index()
@@ -343,8 +369,8 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_t
     if not skip_plots:
         print "Plotting"
         for chromosome in chromosomes:
-            plot(output_directory, counts, chromosome, cell_types)
-        plot_summaries(output_directory, counts, chromosomes)
+            plot(output_directory, normalized_counts, chromosome, cell_types)
+        plot_summaries(output_directory, normalized_counts, chromosomes)
 
     print "Summarizing"
     for chromosome in chromosomes:

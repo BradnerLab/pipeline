@@ -13,12 +13,11 @@ from time import time
 
 def create_count_table(h5file):
     class BinCount(tables.IsDescription):
-        cell_type        = tables.StringCol(16, pos=0)
-        file_name        = tables.StringCol(64, pos=1)
-        chromosome       = tables.StringCol(16, pos=2)
-        bin_number       = tables.UInt32Col(    pos=3)
-        count            = tables.UInt64Col(    pos=4)
-        normalized_count = tables.Float64Col(   pos=5) 
+        bin_number = tables.UInt32Col(    pos=0)
+        cell_type  = tables.StringCol(16, pos=1)
+        chromosome = tables.StringCol(16, pos=2)
+        count      = tables.UInt64Col(    pos=3)
+        file_name  = tables.StringCol(64, pos=4)
 
     table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
 
@@ -133,8 +132,8 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
             exit(return_code)
 
     if bin_size:
-        counts_file = tables.open_file(counts_file_path, mode = "r+")
-        npt.normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_to_count) 
+        counts_file = tables.open_file(counts_file_path, mode = "r")
+        npt.normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
     else:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
         npt.normalize(counts_file.root.region_counts, file_to_count) 

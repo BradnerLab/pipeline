@@ -18,12 +18,11 @@
 // -- see bamliquidator_batch.py function create_count_table
 struct CountH5Record
 {
-  char cell_type[16];
-  char file_name[64];
-  char chromosome[16];
   uint32_t bin_number;
+  char cell_type[16];
+  char chromosome[16];
   uint64_t count;
-  double normalized_count;
+  char file_name[64];
 };
 
 std::vector<CountH5Record> count(const std::string chr,
@@ -40,33 +39,16 @@ std::vector<CountH5Record> count(const std::string chr,
   const std::vector<double> bin_counts = liquidate(bam_file, chr, 0, max_base_pair, '.', bins, 0);
 
   CountH5Record record;
-  strncpy(record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-  strncpy(record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
-  strncpy(record.chromosome, chr.c_str(),           sizeof(CountH5Record::chromosome));
   record.bin_number = 0;
-  record.count = 0;
-  record.normalized_count = 0;
-
-  /* Excerpt from Feb 13, 2014 email from Charles Lin:
-
-  We typically report read density in units of reads per million per basepair
-
-  bamliquidator reports counts back in total read positions per bin.  To convert that 
-  into reads per million per basepair, we first need to divide by the total million 
-  number of reads in the bam.  Then we need to divide by the size of the bin
-
-  So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
-  reads you would calculate density as 2500/1000/30 = 0.083rpm/bp */
-
-  const double normalization_factor =
-    (1 / (double) bin_size) * (1 / (length / (double) std::pow(10,6)));
+  strncpy(record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
+  strncpy(record.chromosome, chr.c_str(),           sizeof(CountH5Record::chromosome));
+  strncpy(record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
 
   std::vector<CountH5Record> records(bin_counts.size(), record);
   for (size_t bin=0; bin < bin_counts.size(); ++bin)
   {
     records[bin].bin_number = bin;
     records[bin].count = bin_counts[bin];
-    records[bin].normalized_count = bin_counts[bin] * normalization_factor;
   }
 
   return records;
@@ -92,19 +74,17 @@ void batch(hid_t& file,
 
   const size_t record_size = sizeof(CountH5Record);
 
-  size_t record_offset[] = { HOFFSET(CountH5Record, cell_type),
-                             HOFFSET(CountH5Record, file_name),
+  size_t record_offset[] = { HOFFSET(CountH5Record, bin_number),
+                             HOFFSET(CountH5Record, cell_type),
                              HOFFSET(CountH5Record, chromosome),
-                             HOFFSET(CountH5Record, bin_number),
                              HOFFSET(CountH5Record, count),
-                             HOFFSET(CountH5Record, normalized_count) };
+                             HOFFSET(CountH5Record, file_name) };
 
-  size_t field_sizes[] = { sizeof(CountH5Record::cell_type),
-                           sizeof(CountH5Record::file_name),
+  size_t field_sizes[] = { sizeof(CountH5Record::bin_number),
+                           sizeof(CountH5Record::cell_type),
                            sizeof(CountH5Record::chromosome),
-                           sizeof(CountH5Record::bin_number),
                            sizeof(CountH5Record::count),
-                           sizeof(CountH5Record::normalized_count) };
+                           sizeof(CountH5Record::file_name) };
 
   for (auto& future_count : future_counts)
   {
