@@ -2,6 +2,7 @@
 
 import bamliquidator_internal.normalize_plot_and_summarize as nps 
 from bamliquidator_internal.chromosome_list import chromosomes
+from bamliquidator_internal.flattener import write_tab_for_all 
 
 import argparse
 import os
@@ -91,7 +92,7 @@ def lengths_and_total_counts(bam_file_paths):
     return file_chromosome_tuple_to_length, file_to_count
 
 def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length, file_to_count, 
-              counts_file_path, executable_path, bin_size = None, region_file = None):
+              counts_file_path, executable_path, bin_size = None, region_file = None, flatten = False):
 
     if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
         sys.exit("either bin_size or region_file must be provided, but not both")
@@ -137,6 +138,14 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
     else:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
         nps.normalize(counts_file.root.region_counts, file_to_count) 
+
+    if flatten:
+        print "Flattening efficient HDF5 tables into inefficient text files"
+        start = time()
+        write_tab_for_all(counts_file, output_directory)
+        duration = time() - end
+        print "Flattening took %f seconds" % duration
+
     counts_file.close()
 
 def main():
@@ -155,6 +164,12 @@ def main():
                              "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
     parser.add_argument('-r', '--regions_file',
                         help='a region file in either .gff or .bed format')
+    parser.add_argument('-f', '--flatten', action='store_true',
+                        help='flatten all HDF5 tables into tab delimited text files in the output directory, one for each '
+                              'chromosome (note that HDF5 files can be efficiently queried and used directly -- e.g. please '
+                              'see http://www.pytables.org/ for easy to use Python APIs and '
+                              'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for '
+                              'browsing HDF5 files')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -191,6 +206,8 @@ def main():
         counts_file = tables.open_file(args.counts_file, mode = "w",
                                        title = "bam liquidator genome bin read counts")
     else:
+        print "appending to a pre-existing counts file is currently broken"
+        exit(-1)
         counts_file = tables.open_file(args.counts_file, "r+")
 
     try: 
@@ -211,7 +228,7 @@ def main():
     file_chromosome_tuple_to_length, file_to_count = lengths_and_total_counts(bam_file_paths)
 
     liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, file_to_count, 
-              args.counts_file, executable_path, args.bin_size, args.regions_file)
+              args.counts_file, executable_path, args.bin_size, args.regions_file, args.flatten)
 
 if __name__ == "__main__":
     main()
