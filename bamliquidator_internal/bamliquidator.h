@@ -26,6 +26,7 @@
  * 
  * @return the read counts for the range [start, stop], split into spnum pieces
  */
+// todo: why is this a vector of doubles instead of a vector of integers?
 std::vector<double> liquidate(const std::string& bamfile, const std::string& chromosome,
                               unsigned int start, unsigned int stop,
                               char strand, unsigned int spnum,

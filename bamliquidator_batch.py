@@ -1,15 +1,5 @@
 #!/usr/bin/env python
 
-'''
-todo
-
- * testing
-     * check why top couple bins don't match in plot
-     * check some unnormalized count rows
-     * check some normalized count rows
-     * check some summary table rows
-'''
-
 import bamliquidator_internal.normalize_plot_and_summarize as npt 
 from bamliquidator_internal.chromosome_list import chromosomes
 
@@ -21,15 +11,14 @@ import datetime
 import csv
 from time import time 
 
-# creates empty file, overwriting any prior existing files
 def create_count_table(h5file):
     class BinCount(tables.IsDescription):
-        bin_number = tables.UInt32Col(    pos=0)
-        cell_type  = tables.StringCol(16, pos=1)
-        chromosome = tables.StringCol(16, pos=2)
-        count      = tables.UInt64Col(    pos=3)
-        # todo: rename file_name to genome or line
-        file_name  = tables.StringCol(64, pos=4)
+        cell_type        = tables.StringCol(16, pos=0)
+        file_name        = tables.StringCol(64, pos=1)
+        chromosome       = tables.StringCol(16, pos=2)
+        bin_number       = tables.UInt32Col(    pos=3)
+        count            = tables.UInt64Col(    pos=4)
+        normalized_count = tables.Float64Col(   pos=5) 
 
     table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
 
@@ -144,8 +133,8 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
             exit(return_code)
 
     if bin_size:
-        counts_file = tables.open_file(counts_file_path, mode = "r")
-        npt.normalize_plot_and_summarize(counts_file.root.bin_counts, output_directory, bin_size, file_to_count) 
+        counts_file = tables.open_file(counts_file_path, mode = "r+")
+        npt.normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_to_count) 
     else:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
         npt.normalize(counts_file.root.region_counts, file_to_count) 
@@ -217,8 +206,8 @@ def main():
    
     bam_file_paths = bam_file_paths_with_no_counts(counts, bam_file_paths)
 
-    counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and 
-                        # modify it, so it is best that we not hold an out of sync reference
+    counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
+                        # it, so it is probably best that we not hold an out of sync reference
 
     file_chromosome_tuple_to_length, file_to_count = lengths_and_total_counts(bam_file_paths)
 

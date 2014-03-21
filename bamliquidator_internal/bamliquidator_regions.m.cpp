@@ -17,6 +17,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
+// this Region must match exactly the structure in HDF5
+// -- see bamliquidator_batch.py function create_regions_table
 struct Region
 {
   char file_name[64];
