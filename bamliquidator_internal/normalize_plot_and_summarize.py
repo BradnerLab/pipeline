@@ -91,14 +91,6 @@ def file_names(counts, cell_type):
         
     return file_names_memo[cell_type] 
 
-# todo: delete one of these functions (above and below)/
-def file_names_in_cell_type(normalized_counts, cell_type):
-    file_names = set()
-    for row in normalized_counts.where("(file_name != '*') & (cell_type == '%s')" % cell_type):
-        file_names.add(row["file_name"])
-    return list(file_names)
-
-
 def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.output_file(output_directory + "/summary.html")
     
@@ -389,8 +381,8 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_t
                                   title="Summary table sorted in decreasing percentile order")
     sorted_summary.cols.bin_number.create_csindex()
 
-def main():
-    # todo: get this to work again
+def broken_old_main():
+    # todo: get this to work again, and delete the other main 
     parser = argparse.ArgumentParser(description='Calculate and plot normalized bin counts and percentiles. '
         'Normalized counts, percentiles, and summaries are stored in hdf5 tables in the file "normalized_counts.h5". '
         'Plots are stored in .html files.  The hdf5 and html files are stored by default in a new directory "output" '
@@ -411,6 +403,38 @@ def main():
     counts = counts_file.root.counts
 
     normalize_plot_and_summarize(counts, args.output_directory, args.bin_size)
+
+    counts_file.close()
+
+def validate(counts_file):
+    def verify_equal(a, b):
+        if a != b:
+            print a, "!=", b
+            return False
+        return True
+
+    counts = counts_file.root.bin_counts
+    cell_types = all_cell_types(counts)
+    num_cell_types = len(cell_types)
+    num_files = 0
+    for cell_type in cell_types:
+        num_files += len(file_names(counts, cell_type))
+    
+    for row in counts_file.root.summary:
+        assert verify_equal(num_cell_types, row["cell_types_gte_95th_percentile"] + row["cell_types_lt_95th_percentile"])
+        assert verify_equal(num_cell_types, row["cell_types_gte_5th_percentile"] + row["cell_types_lt_5th_percentile"])
+        assert verify_equal(num_files, row["lines_gte_95th_percentile"] + row["lines_lt_95th_percentile"])
+        assert verify_equal(num_files, row["lines_gte_5th_percentile"] + row["lines_lt_5th_percentile"])
+        
+
+def main():
+    parser = argparse.ArgumentParser(description='Validate the normalized tables, returning 0 if valid')
+    parser.add_argument('h5_file', help='the hdf5 file with the normalization tables to validate')
+    args = parser.parse_args()
+
+    counts_file = tables.open_file(args.h5_file, "r")
+
+    validate(counts_file)
 
     counts_file.close()
 
