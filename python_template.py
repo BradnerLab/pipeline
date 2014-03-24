@@ -45,7 +45,7 @@ print "Using python version %s" % sys.version
 
 
 #importing utils package
-sys.path.append('/home/cl512/src/pipeline/')
+sys.path.append('/ark/home/cl512/src/pipeline/')
 import utils
 
 
@@ -101,9 +101,7 @@ def main():
     all of the work should occur here, but no functions should be defined here
     '''
 
-
     returnGenome(genome)
-
 
 
 
