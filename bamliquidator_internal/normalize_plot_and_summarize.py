@@ -407,11 +407,7 @@ def broken_old_main():
     counts_file.close()
 
 def validate(counts_file):
-    def verify_equal(a, b):
-        if a != b:
-            print a, "!=", b
-            return False
-        return True
+    error_count = 0
 
     counts = counts_file.root.bin_counts
     cell_types = all_cell_types(counts)
@@ -419,12 +415,18 @@ def validate(counts_file):
     num_files = 0
     for cell_type in cell_types:
         num_files += len(file_names(counts, cell_type))
+
+    print "Verifying that summary files add up to %d and cell types add up to %d" % (num_files, num_cell_types)
     
     for row in counts_file.root.summary:
-        assert verify_equal(num_cell_types, row["cell_types_gte_95th_percentile"] + row["cell_types_lt_95th_percentile"])
-        assert verify_equal(num_cell_types, row["cell_types_gte_5th_percentile"] + row["cell_types_lt_5th_percentile"])
-        assert verify_equal(num_files, row["lines_gte_95th_percentile"] + row["lines_lt_95th_percentile"])
-        assert verify_equal(num_files, row["lines_gte_5th_percentile"] + row["lines_lt_5th_percentile"])
+        if (num_cell_types != (row["cell_types_gte_95th_percentile"] + row["cell_types_lt_95th_percentile"])
+         or num_cell_types != (row["cell_types_gte_5th_percentile"] + row["cell_types_lt_5th_percentile"])
+         or num_files      != (row["lines_gte_95th_percentile"] + row["lines_lt_95th_percentile"])
+         or num_files      != (row["lines_gte_5th_percentile"] + row["lines_lt_5th_percentile"])):
+            error_count += 1
+            print "Summary row doesn't add up:", row[:]
+
+    return error_count
         
 
 def main():
@@ -434,9 +436,13 @@ def main():
 
     counts_file = tables.open_file(args.h5_file, "r")
 
-    validate(counts_file)
+    error_count = validate(counts_file)
 
     counts_file.close()
+
+    if error_count != 0:
+        print error_count, "validation errors"
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
