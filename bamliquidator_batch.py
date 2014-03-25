@@ -43,6 +43,18 @@ def create_regions_table(h5file):
 
     return table
 
+def create_lengths_table(h5file):
+    class Length(tables.IsDescription):
+        file_name = tables.StringCol(64, pos=0)
+        length    = tables.UInt64Col(    pos=1)
+
+    table = h5file.create_table("/", "lengths", Length, "reference sequence length")
+
+    table.flush()
+
+    return table
+    
+
 def all_bam_file_paths_in_directory(bam_directory):
     bam_file_paths = []
     for dirpath, _, files in os.walk(bam_directory, followlinks=True):
@@ -66,12 +78,9 @@ def bam_file_paths_with_no_counts(counts, bam_file_paths):
 
     return with_no_counts
 
-# returns a tuple of two dictionaries:
-# 1) (bam_file_name, chromosome) -> sequence length
-# 2) base_bam_file_name -> total mapped count
-def lengths_and_total_counts(bam_file_paths):
+# populates the lengths table and returns a dictionary (bam_file_name, chromosome) -> sequence length
+def populate_lengths(lengths, bam_file_paths):
     file_chromosome_tuple_to_length = {}
-    file_to_count = {}
 
     chr_col         = 0
     length_col      = 1
@@ -87,11 +96,18 @@ def lengths_and_total_counts(bam_file_paths):
         for row in reader:
             file_count += int(row[mapped_read_col])
             file_chromosome_tuple_to_length[file_name, row[chr_col]] = int(row[length_col])
-        file_to_count[file_name] = file_count
+        
+        file_chromosome_tuple_to_length[file_name, "*"] = file_count 
 
-    return file_chromosome_tuple_to_length, file_to_count
+        lengths.row["file_name"] = file_name
+        lengths.row["length"] = file_count
+        lengths.row.append()
 
-def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length, file_to_count, 
+    lengths.flush()
+
+    return file_chromosome_tuple_to_length
+
+def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
               counts_file_path, executable_path, bin_size = None, region_file = None, flatten = False):
 
     if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
@@ -122,7 +138,7 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         end = time()
         duration = end - start
         if bin_size:
-            reads = file_to_count[bam_file_name]
+            reads = file_chromosome_tuple_to_length.get((bam_file_name, "*"))
             rate = reads / (10**6) / duration
             print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
         else:
@@ -134,10 +150,10 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
 
     if bin_size:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
-        nps.normalize_plot_and_summarize(counts_file, output_directory, bin_size, file_to_count) 
+        nps.normalize_plot_and_summarize(counts_file, output_directory, bin_size) 
     else:
         counts_file = tables.open_file(counts_file_path, mode = "r+")
-        nps.normalize(counts_file.root.region_counts, file_to_count) 
+        nps.normalize(counts_file.root.region_counts, file_to_count)
 
     if flatten:
         print "Flattening efficient HDF5 tables into inefficient text files"
@@ -212,8 +228,10 @@ def main():
 
     try: 
         counts = counts_file.root.region_counts if region_mode else counts_file.root.bin_counts
+        lengths = counts_file.root.lengths
     except:
         counts = create_regions_table(counts_file) if region_mode else create_count_table(counts_file)
+        lengths = create_lengths_table(counts_file)
 
     if os.path.isdir(args.bam_file_path):
         bam_file_paths = all_bam_file_paths_in_directory(args.bam_file_path)
@@ -222,12 +240,12 @@ def main():
    
     bam_file_paths = bam_file_paths_with_no_counts(counts, bam_file_paths)
 
+    file_chromosome_tuple_to_length = populate_lengths(lengths, bam_file_paths)
+
     counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
                         # it, so it is probably best that we not hold an out of sync reference
 
-    file_chromosome_tuple_to_length, file_to_count = lengths_and_total_counts(bam_file_paths)
-
-    liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, file_to_count, 
+    liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, 
               args.counts_file, executable_path, args.bin_size, args.regions_file, args.flatten)
 
 if __name__ == "__main__":
