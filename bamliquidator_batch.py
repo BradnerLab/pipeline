@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import bamliquidator_internal.normalize_plot_and_summarize as nps 
-from bamliquidator_internal.chromosome_list import chromosomes
 from bamliquidator_internal.flattener import write_tab_for_all 
 
 import argparse
@@ -78,13 +77,19 @@ def bam_file_paths_with_no_counts(counts, bam_file_paths):
 
     return with_no_counts
 
-# populates the lengths table and returns a dictionary (bam_file_name, chromosome) -> sequence length
+# populates the lengths table and returns returns a tuple of two dictionaries:
+# 1) bam_file_name -> [(chromosome, sequence length), ...] 
+# 2) base_bam_file_name -> total mapped count
 def populate_lengths(lengths, bam_file_paths):
-    file_chromosome_tuple_to_length = {}
+    file_to_chromosome_length_pairs = {} 
+    file_to_count = {} 
 
     chr_col         = 0
     length_col      = 1
     mapped_read_col = 2
+
+    # this skip list is somewhat arbitrary and can be emptied/removed if desired
+    chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
 
     for bam_file_path in bam_file_paths:
         args = ["samtools", "idxstats", bam_file_path]
@@ -93,21 +98,26 @@ def populate_lengths(lengths, bam_file_paths):
         reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
         file_name = os.path.basename(bam_file_path)
         file_count = 0
-        for row in reader:
-            file_count += int(row[mapped_read_col])
-            file_chromosome_tuple_to_length[file_name, row[chr_col]] = int(row[length_col])
         
-        file_chromosome_tuple_to_length[file_name, "*"] = file_count 
-
+        chromosome_length_pairs = []
+        for row in reader:
+            chromosome = row[chr_col]
+            if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
+                continue
+            file_count += int(row[mapped_read_col])
+            chromosome_length_pairs.append((chromosome, int(row[length_col])))
+        file_to_chromosome_length_pairs[file_name] = chromosome_length_pairs
+        file_to_count[file_name] = file_count
+        
         lengths.row["file_name"] = file_name
         lengths.row["length"] = file_count
         lengths.row.append()
 
     lengths.flush()
 
-    return file_chromosome_tuple_to_length
+    return file_to_chromosome_length_pairs, file_to_count
 
-def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
+def liquidate(bam_file_paths, output_directory, file_to_chromosome_length_pairs, file_to_count,
               counts_file_path, executable_path, bin_size = None, region_file = None, flatten = False):
 
     if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
@@ -123,13 +133,9 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         if bin_size:
             args = [executable_path, cell_type, str(bin_size), bam_file_path, counts_file_path]
 
-            # todo: should we really confine ourselves to the bamliquidator_internal.chromosome_list?
-            #       why not just use all the chromosomes listed in idxstats?
-            for chromosome in chromosomes:
-                length = file_chromosome_tuple_to_length.get((bam_file_name, chromosome))
-                if length is not None:
-                    args.append(chromosome)
-                    args.append(str(length))
+            for chromosome, length in file_to_chromosome_length_pairs[bam_file_name]:
+                args.append(chromosome)
+                args.append(str(length))
         else:
             args = [executable_path, region_file, bam_file_path, counts_file_path]
 
@@ -138,7 +144,7 @@ def liquidate(bam_file_paths, output_directory, file_chromosome_tuple_to_length,
         end = time()
         duration = end - start
         if bin_size:
-            reads = file_chromosome_tuple_to_length.get((bam_file_name, "*"))
+            reads = file_to_count[bam_file_name]
             rate = reads / (10**6) / duration
             print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
         else:
@@ -240,12 +246,12 @@ def main():
    
     bam_file_paths = bam_file_paths_with_no_counts(counts, bam_file_paths)
 
-    file_chromosome_tuple_to_length = populate_lengths(lengths, bam_file_paths)
+    file_to_chromosome_length_pairs, file_to_count = populate_lengths(lengths, bam_file_paths)
 
     counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
                         # it, so it is probably best that we not hold an out of sync reference
 
-    liquidate(bam_file_paths, args.output_directory, file_chromosome_tuple_to_length, 
+    liquidate(bam_file_paths, args.output_directory, file_to_chromosome_length_pairs, file_to_count,
               args.counts_file, executable_path, args.bin_size, args.regions_file, args.flatten)
 
 if __name__ == "__main__":

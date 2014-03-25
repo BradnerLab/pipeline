@@ -4,26 +4,35 @@ import argparse
 import csv
 import os
 import tables
-from chromosome_list import chromosomes
 
 def write_tab(table, output_directory, log=False):
-    for chromosome in chromosomes:
-        tab_file_path = os.path.join(output_directory, table.name + "_" + chromosome + ".tab")
+    chromosome_to_file_writer_pair = {}
 
-        if log:
-            print "Writing", tab_file_path
+    columns = [col for col in table.colnames if col != "chromosome"]
 
-        with open(tab_file_path, 'wb') as tab_file:
+    for row in table:
+        chromosome = row["chromosome"]
+        if chromosome not in chromosome_to_file_writer_pair:
+            tab_file_path = os.path.join(output_directory, table.name + "_" + chromosome + ".tab")
+            if log:
+                print "Writing", tab_file_path
+
+            tab_file = open(tab_file_path, 'wb')
             writer = csv.writer(tab_file, delimiter='\t')
-            columns = [col for col in table.colnames if col != "chromosome"]
             writer.writerow(columns)
-            
-            for row in table.read_where("chromosome == '%s'" % chromosome):
-                writer.writerow([row[col] for col in columns])
+            chromosome_to_file_writer_pair[chromosome] = (tab_file, writer)
+        else:
+            _, writer = chromosome_to_file_writer_pair[chromosome]
+
+        writer.writerow([row[col] for col in columns])
+
+    for tab_file, _ in chromosome_to_file_writer_pair.values():
+        tab_file.close()
 
 def write_tab_for_all(h5_file, output_directory, log=False):
     for table in h5_file.root:
-        write_tab(table, output_directory, log)
+        if table.name != "lengths":
+            write_tab(table, output_directory, log)
 
 def main():
     parser = argparse.ArgumentParser(description='Writes bamliquidator_batch.py hdf5 tables into tab delimited '
