@@ -107,7 +107,12 @@ def plot_summary(normalized_counts, chromosome):
     chromosome_count_by_bin = collections.defaultdict(int) 
     for row in normalized_counts.where(condition):
         chromosome_count_by_bin[row["bin_number"]] += row["count"]
-    
+  
+    num_bins = len(chromosome_count_by_bin)
+    if num_bins < 2:
+        print "-- skipping plotting %s because not enough bins (only %d)" % (chromosome, num_bins)
+        return
+
     overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
     overall.title = chromosome + " counts per bin across all bam files"
 
