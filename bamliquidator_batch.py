@@ -2,6 +2,7 @@
 
 import bamliquidator_internal.normalize_plot_and_summarize as nps 
 from bamliquidator_internal.flattener import write_tab_for_all 
+from bamliquidator_internal.performance_tracker import share 
 
 import argparse
 import os
@@ -10,6 +11,8 @@ import tables
 import datetime
 import csv
 from time import time 
+
+version = 0.1 # should idealy be updated before each significant git push
 
 def create_count_table(h5file):
     class BinCount(tables.IsDescription):
@@ -118,10 +121,12 @@ def populate_lengths(lengths, bam_file_paths):
     return file_to_chromosome_length_pairs, file_to_count
 
 def liquidate(bam_file_paths, output_directory, file_to_chromosome_length_pairs, file_to_count,
-              counts_file_path, executable_path, bin_size = None, region_file = None, flatten = False):
+              counts_file_path, executable_path, email, bin_size = None, region_file = None, flatten = False):
 
     if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
         sys.exit("either bin_size or region_file must be provided, but not both")
+
+    log = "bin_size=%s\n" % bin_size
 
     for i, bam_file_path in enumerate(bam_file_paths):
         print "Liquidating %s (file %d of %d, %s)" % (
@@ -141,34 +146,47 @@ def liquidate(bam_file_paths, output_directory, file_to_chromosome_length_pairs,
 
         start = time()
         return_code = subprocess.call(args)
-        end = time()
-        duration = end - start
+        duration = time() - start
         if bin_size:
             reads = file_to_count[bam_file_name]
             rate = reads / (10**6) / duration
             print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
+            log += "bin_seconds=%s,reads=%s,mrps=%s\n" % (duration, reads, rate)
         else:
             print "Liquidation completed: %f seconds" % (duration)
+            log += "region_seconds=%s\n" % duration # todo: maybe include the line count of the region file?
 
         if return_code != 0:
             print "%s failed with exit code %d" % (executable_path, return_code)
             exit(return_code)
 
+    counts_file = tables.open_file(counts_file_path, mode = "r+")
+
+    start = time()
     if bin_size:
-        counts_file = tables.open_file(counts_file_path, mode = "r+")
         nps.normalize_plot_and_summarize(counts_file, output_directory, bin_size) 
     else:
-        counts_file = tables.open_file(counts_file_path, mode = "r+")
         nps.normalize(counts_file.root.region_counts, file_to_count)
+    duration = time() - start
+    log += "nps_seconds=%s\n" % duration
 
     if flatten:
         print "Flattening efficient HDF5 tables into inefficient text files"
         start = time()
         write_tab_for_all(counts_file, output_directory)
-        duration = time() - end
+        duration = time() - start 
         print "Flattening took %f seconds" % duration
+        log += "flatten_seconds=%s\n" % duration
 
     counts_file.close()
+
+    if email:
+        start = time()
+        print "Emailing hardware info and performance measurements for tracking" 
+        share("bamliquidator_batch", version, log)
+        duration = time() - start
+        print "Emailing took %f seconds" % duration
+        
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
@@ -192,6 +210,9 @@ def main():
                               'see http://www.pytables.org/ for easy to use Python APIs and '
                               'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for '
                               'browsing HDF5 files')
+    parser.add_argument('-s', '--skip_email', default=False, action='store_true', 
+                        help='skip sending performance tracking email -- these emails are sent by default during beta testing, '
+                             'and will be removed (or at least not be the default when this app leaves beta')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -252,7 +273,7 @@ def main():
                         # it, so it is probably best that we not hold an out of sync reference
 
     liquidate(bam_file_paths, args.output_directory, file_to_chromosome_length_pairs, file_to_count,
-              args.counts_file, executable_path, args.bin_size, args.regions_file, args.flatten)
+              args.counts_file, executable_path, not args.skip_email, args.bin_size, args.regions_file, args.flatten)
 
 if __name__ == "__main__":
     main()
