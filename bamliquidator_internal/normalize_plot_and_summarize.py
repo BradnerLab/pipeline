@@ -35,8 +35,11 @@ import scipy.stats as stats
 import collections
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
-# to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right)
+# to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right).
 # -- I should probably look into why flush was necessary and/or file a bug with pytables
+
+# I also found that create_index doesn't always work (this was causing where statements to not work)
+# -- I don't know if this was my fault or a bug in pytables, but I just always use create_csindex instead
 
 def delete_all_but_bin_counts_and_lengths_table(h5file):
     for table in h5file.root:
@@ -363,10 +366,10 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
         populate_percentiles(normalized_counts, cell_type)
 
     print "Indexing normalized counts"
-    normalized_counts.cols.bin_number.create_index()
-    normalized_counts.cols.percentile.create_index()
-    normalized_counts.cols.file_name.create_index()
-    normalized_counts.cols.chromosome.create_index()
+    normalized_counts.cols.bin_number.create_csindex()
+    normalized_counts.cols.percentile.create_csindex()
+    normalized_counts.cols.file_name.create_csindex()
+    normalized_counts.cols.chromosome.create_csindex()
 
     if not skip_plots:
         print "Plotting"
