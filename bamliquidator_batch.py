@@ -212,7 +212,7 @@ def main():
                               'browsing HDF5 files')
     parser.add_argument('-s', '--skip_email', default=False, action='store_true', 
                         help='skip sending performance tracking email -- these emails are sent by default during beta testing, '
-                             'and will be removed (or at least not be the default when this app leaves beta')
+                             'and will be removed (or at least not be the default) when this app leaves beta')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
