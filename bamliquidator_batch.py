@@ -12,38 +12,7 @@ import datetime
 import csv
 from time import time 
 
-version = 0.1 # should idealy be updated before each significant git push
-
-def create_count_table(h5file):
-    class BinCount(tables.IsDescription):
-        bin_number = tables.UInt32Col(    pos=0)
-        cell_type  = tables.StringCol(16, pos=1)
-        chromosome = tables.StringCol(16, pos=2)
-        count      = tables.UInt64Col(    pos=3)
-        file_name  = tables.StringCol(64, pos=4)
-
-    table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
-
-    table.flush()
-
-    return table
-
-def create_regions_table(h5file):
-    class Region(tables.IsDescription):
-        file_name        = tables.StringCol(64, pos=0)
-        chromosome       = tables.StringCol(16, pos=1)
-        region_name      = tables.StringCol(64, pos=2)
-        start            = tables.UInt64Col(    pos=3)
-        stop             = tables.UInt64Col(    pos=4)
-        strand           = tables.StringCol(1,  pos=5)
-        count            = tables.UInt64Col(    pos=6)
-        normalized_count = tables.Float64Col(   pos=7)
-
-    table = h5file.create_table("/", "region_counts", Region, "region counts")
-
-    table.flush()
-
-    return table
+version = "0.2" # should idealy be updated before each significant git push
 
 def create_lengths_table(h5file):
     class Length(tables.IsDescription):
@@ -55,7 +24,6 @@ def create_lengths_table(h5file):
     table.flush()
 
     return table
-    
 
 def all_bam_file_paths_in_directory(bam_directory):
     bam_file_paths = []
@@ -120,83 +88,174 @@ def populate_lengths(lengths, bam_file_paths):
 
     return file_to_chromosome_length_pairs, file_to_count
 
-def liquidate(bam_file_paths, output_directory, file_to_chromosome_length_pairs, file_to_count,
-              counts_file_path, executable_path, email, bin_size = None, region_file = None, flatten = False):
+# BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
+# The concrete classes must define the methods liquidate, normalize, and create_counts_table
+class BaseLiquidator(object):
+    def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
+        self.log = "" 
+        self.output_directory = output_directory
+        self.counts_file_path = counts_file_path
 
-    if (bin_size is not None and region_file is not None) or (bin_size is None and region_file is None):
-        sys.exit("either bin_size or region_file must be provided, but not both")
+        self.executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                            "bamliquidator_internal", executable)
+        if not os.path.isfile(self.executable_path):
+            sys.exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
 
-    log = "bin_size=%s\n" % bin_size
+        os.mkdir(output_directory)
 
-    for i, bam_file_path in enumerate(bam_file_paths):
-        print "Liquidating %s (file %d of %d, %s)" % (
-            bam_file_path, i+1, len(bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
-        cell_type = os.path.basename(os.path.dirname(bam_file_path))
-
-        bam_file_name = os.path.basename(bam_file_path)
-
-        if bin_size:
-            args = [executable_path, cell_type, str(bin_size), bam_file_path, counts_file_path]
-
-            for chromosome, length in file_to_chromosome_length_pairs[bam_file_name]:
-                args.append(chromosome)
-                args.append(str(length))
+        if self.counts_file_path is None:
+            self.counts_file_path = os.path.join(output_directory, "counts.h5")
+        
+            counts_file = tables.open_file(self.counts_file_path, mode = "w",
+                                           title = "bam liquidator genome bin read counts")
         else:
-            args = [executable_path, region_file, bam_file_path, counts_file_path]
+            counts_file = tables.open_file(self.counts_file_path, "r+")
+
+        try: 
+            counts = counts_file.get_node("/", counts_table_name)
+            lengths = counts_file.root.lengths
+        except:
+            counts = self.create_counts_table(counts_file)
+            lengths = create_lengths_table(counts_file)
+
+        if os.path.isdir(bam_file_path):
+            self.bam_file_paths = all_bam_file_paths_in_directory(bam_file_path)
+        else:
+            self.bam_file_paths = [bam_file_path]
+       
+        self.bam_file_paths = bam_file_paths_with_no_counts(counts, self.bam_file_paths)
+
+        self.file_to_chromosome_length_pairs, self.file_to_count = populate_lengths(lengths, self.bam_file_paths)
+
+        counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
+                            # it, so it is probably best that we not hold an out of sync reference
+
+    def batch(self):
+        for i, bam_file_path in enumerate(self.bam_file_paths):
+            print "Liquidating %s (file %d of %d, %s)" % (
+                bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
+
+            return_code = self.liquidate(bam_file_path)
+            if return_code != 0:
+                print "%s failed with exit code %d" % (self.executable_path, return_code)
+                exit(return_code)
+
+        start = time()
+        self.normalize()
+        duration = time() - start
+        self.log += "nps_seconds=%s\n" % duration
+
+    def flatten(self):
+        print "Flattening efficient HDF5 tables into inefficient text files"
+        start = time()
+
+        with tables.open_file(self.counts_file_path, mode = "r") as counts_file:
+            write_tab_for_all(counts_file, self.output_directory)
+
+        duration = time() - start
+        print "Flattening took %f seconds" % duration
+        self.log += "flatten_seconds=%s\n" % duration
+
+    def email(self): 
+        start = time()
+        print "Emailing hardware info and performance measurements for tracking" 
+        share("bamliquidator_batch", version, self.log)
+        duration = time() - start
+        print "Emailing took %f seconds" % duration
+        
+
+class BinLiquidator(BaseLiquidator):
+    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None):
+        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
+
+        self.bin_size = bin_size
+        self.log += "bin_size=%s\n" % self.bin_size
+
+    def liquidate(self, bam_file_path):
+        cell_type = os.path.basename(os.path.dirname(bam_file_path))
+        bam_file_name = os.path.basename(bam_file_path)
+        args = [self.executable_path, cell_type, str(self.bin_size), bam_file_path, self.counts_file_path]
+
+        for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
+            args.append(chromosome)
+            args.append(str(length))
 
         start = time()
         return_code = subprocess.call(args)
         duration = time() - start
-        if bin_size:
-            reads = file_to_count[bam_file_name]
-            rate = reads / (10**6) / duration
-            print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
-            log += "bin_seconds=%s,reads=%s,mrps=%s\n" % (duration, reads, rate)
-        else:
-            print "Liquidation completed: %f seconds" % (duration)
-            log += "region_seconds=%s\n" % duration # todo: maybe include the line count of the region file?
 
-        if return_code != 0:
-            print "%s failed with exit code %d" % (executable_path, return_code)
-            exit(return_code)
+        reads = self.file_to_count[bam_file_name]
+        rate = reads / (10**6) / duration
+        print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
+        self.log += "bin_seconds=%s,reads=%s,mrps=%s\n" % (duration, reads, rate)
 
-    counts_file = tables.open_file(counts_file_path, mode = "r+")
+        return return_code
+       
+    def normalize(self):
+        with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
+            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size) 
 
-    start = time()
-    if bin_size:
-        nps.normalize_plot_and_summarize(counts_file, output_directory, bin_size) 
-    else:
-        nps.normalize(counts_file.root.region_counts, file_to_count)
-    duration = time() - start
-    log += "nps_seconds=%s\n" % duration
+    def create_counts_table(self, h5file):
+        class BinCount(tables.IsDescription):
+            bin_number = tables.UInt32Col(    pos=0)
+            cell_type  = tables.StringCol(16, pos=1)
+            chromosome = tables.StringCol(16, pos=2)
+            count      = tables.UInt64Col(    pos=3)
+            file_name  = tables.StringCol(64, pos=4)
 
-    if flatten:
-        print "Flattening efficient HDF5 tables into inefficient text files"
+        table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
+        table.flush()
+        return table
+
+class RegionLiquidator(BaseLiquidator):
+    def __init__(self, regions_file, output_directory, bam_file_path, counts_file_path = None):
+        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
+
+        self.regions_file = regions_file
+        self.log += "bin_size=None\n" # just to be consistent with logging from version 1.0
+
+    def liquidate(self, bam_file_path):
+        args = [self.executable_path, self.regions_file, bam_file_path, self.counts_file_path]
+
         start = time()
-        write_tab_for_all(counts_file, output_directory)
-        duration = time() - start 
-        print "Flattening took %f seconds" % duration
-        log += "flatten_seconds=%s\n" % duration
-
-    counts_file.close()
-
-    if email:
-        start = time()
-        print "Emailing hardware info and performance measurements for tracking" 
-        share("bamliquidator_batch", version, log)
+        return_code = subprocess.call(args)
         duration = time() - start
-        print "Emailing took %f seconds" % duration
-        
+
+        print "Liquidation completed: %f seconds" % (duration)
+        self.log += "region_seconds=%s\n" % duration # todo: maybe include the line count of the region file?
+
+        return return_code
+
+    def normalize(self):
+        with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
+            nps.normalize(counts_file.root.region_counts, self.file_to_count)
+
+    def create_counts_table(self, h5file):
+        class Region(tables.IsDescription):
+            file_name        = tables.StringCol(64, pos=0)
+            chromosome       = tables.StringCol(16, pos=1)
+            region_name      = tables.StringCol(64, pos=2)
+            start            = tables.UInt64Col(    pos=3)
+            stop             = tables.UInt64Col(    pos=4)
+            strand           = tables.StringCol(1,  pos=5)
+            count            = tables.UInt64Col(    pos=6)
+            normalized_count = tables.Float64Col(   pos=7)
+
+        table = h5file.create_table("/", "region_counts", Region, "region counts")
+        table.flush()
+        return table
+
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
                                                  'in the bam file(s) at the given directory, and then normalize, plot bins, '
                                                  'and summarize the counts in the output directory.  For additional '
-                                                 'help, please see https://github.com/BradnerLab/pipeline/wiki')
+                                                 'help, please see https://github.com/BradnerLab/pipeline/wiki',
+                                     version=version)
     parser.add_argument('-o', '--output_directory', default='output',
                         help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
                              'Default is "./output".')
-    parser.add_argument('-c', '--counts_file',
+    parser.add_argument('-c', '--counts_file', default=None,
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "counts.h5" in the output directory.')
     parser.add_argument('-b', '--bin_size', type=int, default=100000,
@@ -230,50 +289,20 @@ def main():
     assert(tables.__version__ >= '3.0.0')
 
     if args.regions_file is None:
-        region_mode = False 
+        liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path, args.counts_file)
     else:
-        region_mode = True
-        args.bin_size = None
+        if args.counts_file:
+            print "Appending to a prior regions counts.h5 file is not supported"
+            exit(1)
+        liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
 
-    executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                   "bamliquidator_internal",
-                                   "bamliquidator_regions" if region_mode else "bamliquidator_bins")
-    if not os.path.isfile(executable_path):
-        sys.exit("%s is missing -- try cd'ing into the directory and running 'make'" % executable_path)
+    liquidator.batch()
 
-    os.mkdir(args.output_directory)
+    if args.flatten:
+        liquidator.flatten()
 
-    if args.counts_file is None:
-        args.counts_file = os.path.join(args.output_directory, "counts.h5")
-    
-        counts_file = tables.open_file(args.counts_file, mode = "w",
-                                       title = "bam liquidator genome bin read counts")
-    else:
-        print "appending to a pre-existing counts file is currently broken"
-        exit(-1)
-        counts_file = tables.open_file(args.counts_file, "r+")
-
-    try: 
-        counts = counts_file.root.region_counts if region_mode else counts_file.root.bin_counts
-        lengths = counts_file.root.lengths
-    except:
-        counts = create_regions_table(counts_file) if region_mode else create_count_table(counts_file)
-        lengths = create_lengths_table(counts_file)
-
-    if os.path.isdir(args.bam_file_path):
-        bam_file_paths = all_bam_file_paths_in_directory(args.bam_file_path)
-    else:
-        bam_file_paths = [args.bam_file_path]
-   
-    bam_file_paths = bam_file_paths_with_no_counts(counts, bam_file_paths)
-
-    file_to_chromosome_length_pairs, file_to_count = populate_lengths(lengths, bam_file_paths)
-
-    counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
-                        # it, so it is probably best that we not hold an out of sync reference
-
-    liquidate(bam_file_paths, args.output_directory, file_to_chromosome_length_pairs, file_to_count,
-              args.counts_file, executable_path, not args.skip_email, args.bin_size, args.regions_file, args.flatten)
+    if not args.skip_email:
+        liquidator.email()
 
 if __name__ == "__main__":
     main()
