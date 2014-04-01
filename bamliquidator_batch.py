@@ -130,12 +130,12 @@ class BaseLiquidator(object):
         counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
                             # it, so it is probably best that we not hold an out of sync reference
 
-    def batch(self):
+    def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
             print "Liquidating %s (file %d of %d, %s)" % (
                 bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
 
-            return_code = self.liquidate(bam_file_path)
+            return_code = self.liquidate(bam_file_path, extension, sense)
             if return_code != 0:
                 print "%s failed with exit code %d" % (self.executable_path, return_code)
                 exit(return_code)
@@ -171,10 +171,10 @@ class BinLiquidator(BaseLiquidator):
         self.bin_size = bin_size
         self.log += "bin_size=%s\n" % self.bin_size
 
-    def liquidate(self, bam_file_path):
+    def liquidate(self, bam_file_path, extension, sense):
         cell_type = os.path.basename(os.path.dirname(bam_file_path))
         bam_file_name = os.path.basename(bam_file_path)
-        args = [self.executable_path, cell_type, str(self.bin_size), bam_file_path, self.counts_file_path]
+        args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, self.counts_file_path]
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
             args.append(chromosome)
@@ -214,8 +214,8 @@ class RegionLiquidator(BaseLiquidator):
         self.regions_file = regions_file
         self.log += "bin_size=None\n" # just to be consistent with logging from version 1.0
 
-    def liquidate(self, bam_file_path):
-        args = [self.executable_path, self.regions_file, bam_file_path, self.counts_file_path]
+    def liquidate(self, bam_file_path, extension, sense):
+        args = [self.executable_path, self.regions_file, str(extension), sense, bam_file_path, self.counts_file_path]
 
         start = time()
         return_code = subprocess.call(args)
@@ -252,17 +252,20 @@ def main():
                                                  'and summarize the counts in the output directory.  For additional '
                                                  'help, please see https://github.com/BradnerLab/pipeline/wiki',
                                      version=version)
+
+    mut_exclusive_group = parser.add_mutually_exclusive_group()
+    mut_exclusive_group.add_argument('-b', '--bin_size', type=int, default=100000,
+                        help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
+                             "the larger the data files (default is 100000)")
+    mut_exclusive_group.add_argument('-r', '--regions_file',
+                        help='a region file in either .gff or .bed format')
+
     parser.add_argument('-o', '--output_directory', default='output',
                         help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
                              'Default is "./output".')
     parser.add_argument('-c', '--counts_file', default=None,
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "counts.h5" in the output directory.')
-    parser.add_argument('-b', '--bin_size', type=int, default=100000,
-                        help="Number of base pairs in each bin -- the smaller the bin size the longer the runtime and "
-                             "the larger the data files (default is 100000). This argument is ignored if regions are provided.")
-    parser.add_argument('-r', '--regions_file',
-                        help='a region file in either .gff or .bed format')
     parser.add_argument('-f', '--flatten', action='store_true',
                         help='flatten all HDF5 tables into tab delimited text files in the output directory, one for each '
                               'chromosome (note that HDF5 files can be efficiently queried and used directly -- e.g. please '
@@ -272,6 +275,10 @@ def main():
     parser.add_argument('-s', '--skip_email', default=False, action='store_true', 
                         help='skip sending performance tracking email -- these emails are sent by default during beta testing, '
                              'and will be removed (or at least not be the default) when this app leaves beta')
+    parser.add_argument('-e', '--extension', type=int, default=0,
+                        help='Extends reads by n bp (default is 0)')
+    parser.add_argument('--sense', default='.', choices=['+', '-', '.'],
+                        help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. Default maps to both.")
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -284,6 +291,7 @@ def main():
                              '.bam and .bai files. If the .bam file already has 1 or more reads in the HDF5 counts file, '
                              'then that .bam file is skipped from liquidation, but is still included in normalization, '
                              'plotting, and summaries.')
+
     args = parser.parse_args()
 
     assert(tables.__version__ >= '3.0.0')
@@ -292,11 +300,12 @@ def main():
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path, args.counts_file)
     else:
         if args.counts_file:
-            print "Appending to a prior regions counts.h5 file is not supported"
+            print ("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
+                  " if you need this feature")
             exit(1)
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
 
-    liquidator.batch()
+    liquidator.batch(args.extension, args.sense)
 
     if args.flatten:
         liquidator.flatten()

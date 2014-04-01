@@ -39,7 +39,8 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 }
 
 std::vector<Region> parse_regions(const std::string& region_file_path,
-                                  const std::string& file_name)
+                                  const std::string& file_name,
+                                  const char default_strand)
 {
   const std::string extension = extension_from_file_name(region_file_path);
 
@@ -102,7 +103,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
 
     if (strand_column == -1)
     {
-      region.strand = '.';
+      region.strand = default_strand; 
     }
     else
     {
@@ -176,9 +177,9 @@ public:
     samclose(fp);
   }
 
-  double liquidate(const std::string& chromosome, int start, int stop, char strand)
+  double liquidate(const std::string& chromosome, int start, int stop, char strand, unsigned int extension)
   {
-    std::vector<double> counts = ::liquidate(fp, bamidx, chromosome, start, stop, strand, 1, 0);
+    std::vector<double> counts = ::liquidate(fp, bamidx, chromosome, start, stop, strand, 1, extension);
     if (counts.size() != 1)
     {
       throw std::runtime_error("liquidate failed to provide exactly one count (count is " +
@@ -211,7 +212,7 @@ private:
 typedef tbb::enumerable_thread_specific<Liquidator> Liquidators;
 
 void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path,
-                       size_t region_begin, size_t region_end,
+                       size_t region_begin, size_t region_end, unsigned int extension,
                        Liquidators& liquidators)
 {
   Liquidator& liquidator = liquidators.local();
@@ -223,7 +224,8 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
       regions[i].count = liquidator.liquidate(regions[i].chromosome,
                                               regions[i].start, 
                                               regions[i].stop, 
-                                              regions[i].strand);
+                                              regions[i].strand,
+                                              extension);
     } catch(const std::exception& e)
     {
       std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
@@ -232,7 +234,8 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
   }
 }
 
-void liquidate_and_write(hid_t& file, std::vector<Region>& regions, const std::string& bam_file_path)
+void liquidate_and_write(hid_t& file, std::vector<Region>& regions,
+                         unsigned int extension, const std::string& bam_file_path)
 {
   Liquidators liquidators((Liquidator(bam_file_path))); 
 
@@ -240,7 +243,7 @@ void liquidate_and_write(hid_t& file, std::vector<Region>& regions, const std::s
     tbb::blocked_range<int>(0, regions.size(), 1),
     [&](const tbb::blocked_range<int>& range)
     {
-      liquidate_regions(regions, bam_file_path, range.begin(), range.end(), liquidators);
+      liquidate_regions(regions, bam_file_path, range.begin(), range.end(), extension, liquidators);
     },
     tbb::auto_partitioner());
 
@@ -253,9 +256,9 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 4)
+    if (argc != 6)
     {
-      std::cerr << "usage: " << argv[0] << " gff_or_bed_file bam_file hdf5_file\n"
+      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension strand bam_file hdf5_file\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
@@ -265,8 +268,10 @@ int main(int argc, char* argv[])
     }
 
     const std::string region_file_path = argv[1];
-    const std::string bam_file_path = argv[2];
-    const std::string hdf5_file_path = argv[3];
+    const unsigned int extension = boost::lexical_cast<unsigned int>(argv[2]);
+    const char strand = boost::lexical_cast<char>(argv[3]);
+    const std::string bam_file_path = argv[4];
+    const std::string hdf5_file_path = argv[5];
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
@@ -276,9 +281,10 @@ int main(int argc, char* argv[])
     }
 
     std::vector<Region> regions = parse_regions(region_file_path,
-                                                file_name_from_path(bam_file_path));
+                                                file_name_from_path(bam_file_path),
+                                                strand);
 
-    liquidate_and_write(h5file, regions, bam_file_path);
+    liquidate_and_write(h5file, regions, extension, bam_file_path);
    
     H5Fclose(h5file);
 
