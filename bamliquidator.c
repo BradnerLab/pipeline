@@ -298,7 +298,10 @@ bamidx=bam_index_load(bamfile);
 only deal with coord, so use generic item
 */
 int startArr[spnum], stopArr[spnum];
-float pieceLength = (float)(stop-start) / spnum;
+ int pieceLength = (int)(stop-start) / spnum;
+
+
+
 for(i=0; i<spnum; i++)
 	{
 	startArr[i] = (int)(start + pieceLength*i);
@@ -331,6 +334,7 @@ for(item=itemsl; item!=NULL; item=item->next)
 			data[i] += stop-start;
 			}
 		}
+
 	}
 
 for(i=0; i<spnum; i++)
