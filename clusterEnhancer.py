@@ -108,7 +108,8 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
         
         #assumes standard folder structure for enriched file
         enrichedFile = "%smacsEnriched/%s" % (parentFolder,dataDict[name]['enrichedMacs'])
-
+        
+        print "Looking for macs output at %s" % (enrichedFile)
 
         try:
             foo = open(enrichedFile,'r')
@@ -130,6 +131,8 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
                     nameDict[name]['enhancerFile'] = ''
             except OSError:
                 nameDict[name]['enhancerFile']=''
+        else:
+            nameDict[name]['enhancerFile'] = ''
         
         if nameDict[name]['enhancerFile'] == '' and nameDict[name]['enrichedFile'] =='':
             print "INSUFFICIENT DATA TO RUN ENAHNCER ANALYSIS ON %s. PLEASE MAKE SURE ROSE OUTPUT OR MACS ENRICHED REGION PEAKS FILE EXISTS" % (name)
@@ -513,7 +516,7 @@ def main():
 
         print "STARTING ANALYSIS ON THE FOLLOWING DATASETS:"
         print nameDict.keys()
-        
+
 
         #=====================================================
         #==============LAUNCH ENHANCER MAPPING================

@@ -45,12 +45,12 @@ import string
 #============================PARAMETERS====================================
 #==========================================================================
 
-dataFile = '/grail/projects/medullobalstoma_inputless/datatables/MEDULLO_TABLE.txt'
+dataFile = '/grail/projects/neuroblastoma/NEURO_TABLE_hg19.txt'
 genome ='hg19'
 annotFile = '/ark/home/cl512/src/pipeline/annotation/hg19_refseq.ucsc'
 
 #project folders
-projectFolder = '/grail/projects/medullobalstoma_inputless/' #PATH TO YOUR PROJECT FOLDER
+projectFolder = '/grail/projects/neuroblastoma/' #PATH TO YOUR PROJECT FOLDER
 
 #standard folder names
 gffFolder ='%sgff/' % (projectFolder)

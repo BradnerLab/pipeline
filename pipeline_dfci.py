@@ -404,7 +404,7 @@ def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True,overwrite=False):
     #hardCoded seed lengths and index locations
 
 
-    seedLength = 50
+    seedLength = 40
     
 
     dataDict = loadDataTable(pipelineFile)
@@ -892,7 +892,7 @@ def callMacs2(dataFile,macsFolder,namesList = [],broad=True,noBackground = False
 #===================FORMAT MACS OUTPUT=====================================
 #==========================================================================
 
-def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink=''):
+def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink='',useBackground=True):
 
     dataDict = loadDataTable(dataFile)
 
@@ -942,7 +942,7 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
         print('looking for macs output for %s' % (name))
         i = dataTableRows.index(name)
         #skip if a background set
-        if upper(dataDict[name]['background']) == 'NONE':
+        if useBackground and upper(dataDict[name]['background']) == 'NONE':
             newLine = list(dataTable[i])
             newLine[6] = 'NONE'
             newDataTable.append(newLine)
@@ -1320,7 +1320,7 @@ def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,w
 #===================MAP ENRICHED REGIONS TO GFF============================
 #==========================================================================
 
-def mapEnrichedToGFF(dataFile,setName,gffList,cellTypeList,enrichedFolder,mappedFolder,macs=True,namesList=[]):
+def mapEnrichedToGFF(dataFile,setName,gffList,cellTypeList,enrichedFolder,mappedFolder,macs=True,namesList=[],useBackground=True):
 
     '''
     maps enriched regions from a set of cell types to a set of gffs
@@ -1363,7 +1363,7 @@ def mapEnrichedToGFF(dataFile,setName,gffList,cellTypeList,enrichedFolder,mapped
 
             #check to make sure in the right celltype
             #also make sure to not process WCEs
-            if dataDict[name]['background'] == 'NONE':
+            if useBackground and dataDict[name]['background'] == 'NONE':
                 continue
             cellName = name.split('_')[0]
             if macs == True:
@@ -1939,7 +1939,7 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     
 
     os.chdir(pipelineFolder)
-    cmd = 'python %sbamPlot_turbo.py -g %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r' % (pipelineFolder,genome,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
+    cmd = 'python %sbamPlot_turbo.py -g %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r --save-temp' % (pipelineFolder,genome,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
 
     print cmd
     os.system(cmd)

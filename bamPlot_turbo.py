@@ -254,12 +254,24 @@ def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm
     mmrDict = {}
     for bamFile in bamFileList:
         #millionMappedReads
-        bam = Bam(bamFile)
-        if rpm:    
-            MMR= round(float(bam.getTotalReads('mapped'))/1000000,4)
+        idxCmd = 'samtools idxstats %s' % (bamFile)
+        idxPipe =subprocess.Popen(idxCmd,stdin = subprocess.PIPE,stderr=subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
+        idxStats = idxPipe.communicate()
+        idxStats = idxStats[0].split('\n')
+        idxStats = [line.split('\t') for line in idxStats]
+
+        rawCount = sum([int(line[2]) for line in idxStats[:-1]])
+        if rpm:
+            MMR= round(float(rawCount)/1000000,4)
         else:
             MMR = 1
         mmrDict[bamFile] = MMR
+        # bam = Bam(bamFile)
+        # if rpm:    
+        #     MMR= round(float(bam.getTotalReads('mapped'))/1000000,4)
+        # else:
+        #     MMR = 1
+        # mmrDict[bamFile] = MMR
         #mmrDict[bamFile] = 21.5377
         
     ticker = 1

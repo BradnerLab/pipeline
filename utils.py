@@ -106,12 +106,12 @@ from collections import defaultdict
 #==================================================================
 
 bopen=open
-def open(file,mode='r'):
+def open(fileName,mode='r'):
 
-       if file[-3:]=='.gz':
-               return gzip.open(file,mode+'b')
+       if fileName.split('.')[-1]=='gz':
+               return gzip.open(fileName,mode+'b')
        else:
-               return bopen(file,mode)
+               return bopen(fileName,mode)
 
 #parseTable 4/14/08
 #takes in a table where columns are separated by a given symbol and outputs
@@ -216,10 +216,15 @@ def checkOutput(fileName,waitTime = 1,timeOut = 30):
        while not fileExists:
 
               try:
-                     foo = open(fileName,'r')
-                     foo.close()
-                     fileExists = True
-              except IOError:
+                     size1 = os.stat(fileName).st_size
+                     time.sleep(2)
+                     size2 = os.stat(fileName).st_size
+                     if size1 == size2:
+                            fileExists = True
+                     else:
+                            time.sleep(waitTime)
+                            ticker+=1
+              except OSError:
                      time.sleep(waitTime)
                      ticker+=1
               if ticker == maxTicker:
@@ -562,6 +567,54 @@ class Locus:
     def checkRep(self):
         pass
     def gffLine(self): return [self.chr(),self.ID(),'',self.start(),self.end(),'',self.sense(),'',self.ID()]
+    def getConservation(self,phastConFolder):
+           '''
+           uses tabix to get a per base conservation score from an indexed conservation bedgraph
+           '''
+           tabixString = 'tabix' #set the path/location of tabix
+
+           #figure out which file is the correct one
+           chrom = self.chr()
+
+           phastFile = [phastConFolder + x for x in os.listdir(phastConFolder) if x.count('bg.gz') == 1 and x.count('tbi') == 0 and x.split('.')[0] == chrom][0]
+
+           tabixCmd = '%s %s %s:%s-%s' % (tabixString,phastFile,self.chr(),self.start(),self.end())
+
+           phast = subprocess.Popen(tabixCmd,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
+
+           phastLines = phast.stdout.readlines()
+           phast.stdout.close()
+
+           phastTable = [x.rstrip().split('\t') for x in phastLines]
+
+           #print phastTable
+           #set up a conservation sum
+           phastSum = 0.0
+           #and number of bases w/ conservation data
+           phastBases = 0
+
+           for line in phastTable:
+               if int(line[1]) < self.start():
+                   lineLen = min(int(line[2]),self.end()) - self.start() +1
+                   phastSum += lineLen*float(line[3])
+                   phastBases += lineLen
+               elif int(line[2]) > self.end():
+                   lineLen = self.end() - max(int(line[1]),self.start())
+                   phastSum += lineLen*float(line[3])
+                   phastBases += lineLen
+               else:
+                   lineLen = int(line[2]) - int(line[1])
+                   phastSum += lineLen*float(line[3])
+                   phastBases += lineLen
+
+           if phastBases > self.len():
+               print "this locus is sad %s. please debug me" % (self.__str__())
+               print "locus length is %s" % (self.len())
+               print "phastBases are %s" % (phastBases)
+
+               
+           return phastSum/self.len()
+
 
 
 class LocusCollection:

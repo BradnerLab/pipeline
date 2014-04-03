@@ -40,7 +40,7 @@ import random
 #===================================================================
 
 #command arguments
-bowtieString = 'bowtie'
+bowtieString = 'bowtie2'
 samtoolsString = 'samtools'
 tempParentFolder = '/raider/BOWTIE_TEMP/'
 fastqcString = '/usr/local/FastQC/fastqc'
@@ -162,8 +162,8 @@ def bowtieCmd(bowtieString,seedLength,bowtieIndex,fileNameDict):
     #calling bowtie
     tempFastqFile = fileNameDict['tempFastqFile']
     tempSamFile = fileNameDict['tempSamFile']
-    
-    cmd = "%s -e 70 -k 1 -m1 -n 2 -p 4 -l %s --best --sam %s %s > %s" % (bowtieString,seedLength,bowtieIndex,tempFastqFile,tempSamFile)
+
+    cmd = "%s -p 4 -k 1 %s -U %s -S %s" % (bowtieString,bowtieIndex,tempFastqFile,tempSamFile)
     return cmd
 
 
@@ -302,7 +302,8 @@ def main():
         'hg18':'/mnt/d0-0/share/bradnerlab/genomes/human_gp_mar_06_no_random/bowtie/hg18',
         'mm9':'/mnt/d0-0/share/bradnerlab/genomes/mouse_gp_jul_07_no_random/bowtie/mm9',
         'HG18':'/mnt/d0-0/share/bradnerlab/genomes/human_gp_mar_06_no_random/bowtie/hg18',
-        'MM9':'/mnt/d0-0/share/bradnerlab/genomes/mouse_gp_jul_07_no_random/bowtie/mm9'
+        'MM9':'/mnt/d0-0/share/bradnerlab/genomes/mouse_gp_jul_07_no_random/bowtie/mm9',
+        'hg19':'/grail/genomes/Homo_sapiens/UCSC/hg19/Sequence/BowtieIndex/genome'
         }
 
     bowtieIndex = bowtieDict[string.lower(genome)]
