@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
     if (argc <= 9 || argc % 2 != 1)
     {
       std::cerr << "usage: " << argv[0] << " cell_type bin_size extension strand bam_file hdf5_file chr1 length1 ... \n"
-        << "\ne.g. " << argv[0] << " mm1s 100000 /ifs/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam "
+        << "\ne.g. " << argv[0] << " mm1s 100000 0 . /ifs/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam "
         << "chr1 247249719 chr2 242951149 chr3 199501827"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"

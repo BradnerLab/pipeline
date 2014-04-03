@@ -172,6 +172,8 @@ class BinLiquidator(BaseLiquidator):
         self.log += "bin_size=%s\n" % self.bin_size
 
     def liquidate(self, bam_file_path, extension, sense):
+        if sense is None: sense = '.'
+
         cell_type = os.path.basename(os.path.dirname(bam_file_path))
         bam_file_name = os.path.basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, self.counts_file_path]
@@ -214,8 +216,10 @@ class RegionLiquidator(BaseLiquidator):
         self.regions_file = regions_file
         self.log += "bin_size=None\n" # just to be consistent with logging from version 1.0
 
-    def liquidate(self, bam_file_path, extension, sense):
-        args = [self.executable_path, self.regions_file, str(extension), sense, bam_file_path, self.counts_file_path]
+    def liquidate(self, bam_file_path, extension, sense = None):
+        args = [self.executable_path, self.regions_file, str(extension), bam_file_path, self.counts_file_path]
+        if sense is not None:
+            args.append(sense)
 
         start = time()
         return_code = subprocess.call(args)
@@ -277,8 +281,8 @@ def main():
                              'and will be removed (or at least not be the default) when this app leaves beta')
     parser.add_argument('-e', '--extension', type=int, default=0,
                         help='Extends reads by n bp (default is 0)')
-    parser.add_argument('--sense', default='.', choices=['+', '-', '.'],
-                        help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. Default maps to both.")
+    parser.add_argument('--sense', default=None, choices=['+', '-', '.'],
+                        help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. For gff regions, default is to use the sense specified by the gff file; otherwise, default maps to both.")
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '

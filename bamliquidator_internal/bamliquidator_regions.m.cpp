@@ -38,9 +38,11 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
   return os;
 }
 
+// default_strand: optional argument, default (space) indicates to use 
+//                 gff strand column or . (both) for .bed region file
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& file_name,
-                                  const char default_strand)
+                                  const char default_strand = ' ') 
 {
   const std::string extension = extension_from_file_name(region_file_path);
 
@@ -103,7 +105,9 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
 
     if (strand_column == -1)
     {
-      region.strand = default_strand; 
+      region.strand = default_strand == ' '
+                    ? '.'
+                    : default_strand; 
     }
     else
     {
@@ -111,7 +115,9 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       {
         throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
       }
-      region.strand = columns[strand_column][0];
+      region.strand = default_strand == ' '
+                    ? columns[strand_column][0]
+                    : default_strand;
     }
 
     regions.push_back(region);
@@ -256,9 +262,9 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 6)
+    if (argc != 5 && argc != 6)
     {
-      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension strand bam_file hdf5_file\n"
+      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension bam_file hdf5_file [strand]\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
@@ -269,9 +275,11 @@ int main(int argc, char* argv[])
 
     const std::string region_file_path = argv[1];
     const unsigned int extension = boost::lexical_cast<unsigned int>(argv[2]);
-    const char strand = boost::lexical_cast<char>(argv[3]);
-    const std::string bam_file_path = argv[4];
-    const std::string hdf5_file_path = argv[5];
+    const std::string bam_file_path = argv[3];
+    const std::string hdf5_file_path = argv[4];
+    const char strand = argc == 6
+                      ? boost::lexical_cast<char>(argv[5])
+                      : ' ';
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
