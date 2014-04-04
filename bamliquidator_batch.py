@@ -146,7 +146,7 @@ class BaseLiquidator(object):
         self.log += "nps_seconds=%s\n" % duration
 
     def flatten(self):
-        print "Flattening efficient HDF5 tables into inefficient text files"
+        print "Flattening HDF5 tables into text files"
         start = time()
 
         with tables.open_file(self.counts_file_path, mode = "r") as counts_file:
@@ -249,6 +249,14 @@ class RegionLiquidator(BaseLiquidator):
         table.flush()
         return table
 
+def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
+    print "Writing bamToGff style matrix.gff file"
+    with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
+        with open(output_file_path, "w") as output:
+            for row in counts_file.root.region_counts:
+                output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
+                    row["strand"], row["start"], row["stop"], round(row["normalized_count"], 4)))
+                
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
@@ -282,7 +290,10 @@ def main():
     parser.add_argument('-e', '--extension', type=int, default=0,
                         help='Extends reads by n bp (default is 0)')
     parser.add_argument('--sense', default=None, choices=['+', '-', '.'],
-                        help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. For gff regions, default is to use the sense specified by the gff file; otherwise, default maps to both.")
+                        help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. For gff regions, default is to use "
+                             "the sense specified by the gff file; otherwise, default maps to both.")
+    parser.add_argument('-m', '--match_bamToGFF', default=False, action='store_true',
+                        help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -313,6 +324,12 @@ def main():
 
     if args.flatten:
         liquidator.flatten()
+
+    if args.match_bamToGFF:
+        if args.regions_file is None:
+            print "Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)"
+        else:
+            write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
 
     if not args.skip_email:
         liquidator.email()
