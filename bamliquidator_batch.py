@@ -253,7 +253,12 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
     print "Writing bamToGff style matrix.gff file"
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
         with open(output_file_path, "w") as output:
+            file_name = ""
             for row in counts_file.root.region_counts:
+                if file_name != row["file_name"]:
+                    file_name = row["file_name"]
+                    output.write("GENE_ID\tlocusLine\tbin_1_%s\n" % file_name)
+
                 output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
                     row["strand"], row["start"], row["stop"], round(row["normalized_count"], 4)))
                 
