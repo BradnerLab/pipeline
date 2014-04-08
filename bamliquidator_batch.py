@@ -12,7 +12,7 @@ import datetime
 import csv
 from time import time 
 
-version = "0.3" # should idealy be updated before each significant git push
+version = "0.4" # should idealy be updated before each significant git push
 
 def create_lengths_table(h5file):
     class Length(tables.IsDescription):
