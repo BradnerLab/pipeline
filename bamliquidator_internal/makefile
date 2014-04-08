@@ -24,7 +24,7 @@
 ###############################################################################
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
-
+# test
 CPPFLAGS := -std=c++11 -stdlib=libc++ -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
 LDFLAGS := -stdlib=libc++ -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
