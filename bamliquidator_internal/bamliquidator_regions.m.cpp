@@ -215,7 +215,10 @@ private:
   }
 };
 
-typedef tbb::enumerable_thread_specific<Liquidator> Liquidators;
+typedef tbb::enumerable_thread_specific<Liquidator,
+                                        tbb::cache_aligned_allocator<Liquidator>,
+                                        tbb::ets_key_per_instance>
+        Liquidators;
 
 void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file_path,
                        size_t region_begin, size_t region_end, unsigned int extension,
