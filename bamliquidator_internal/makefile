@@ -24,36 +24,40 @@
 ###############################################################################
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
-# test
-CPPFLAGS := -std=c++11 -stdlib=libc++ -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
-LDFLAGS := -stdlib=libc++ -O3 -g -Wall -march=native
+
+# I prefer clang++, but g++ is more easily available, so using that instead
+#CC=clang++
+CC=g++
+
+CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
+LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
 all: ../bamliquidator bamliquidator_bins bamliquidator_regions 
 
 ../bamliquidator: bamliquidator.m.o bamliquidator.o
-	clang++ $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
+	$(CC) $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
 bamliquidator_bins: bamliquidator_bins.m.o
-	clang++ $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o \
+	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS)
 
 bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o
-	clang++ $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
+	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
 bamliquidator.m.o: bamliquidator.m.cpp
-	clang++ $(CPPFLAGS) -c bamliquidator.m.cpp
+	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
 
 bamliquidator_bins.m.o: bamliquidator_bins.m.cpp
-	clang++ $(CPPFLAGS) -c bamliquidator_bins.m.cpp
+	$(CC) $(CPPFLAGS) -c bamliquidator_bins.m.cpp
 
 bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
-	clang++ $(CPPFLAGS) -c bamliquidator_regions.m.cpp
+	$(CC) $(CPPFLAGS) -c bamliquidator_regions.m.cpp
   
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
-	clang++ $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
+	$(CC) $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
 clean:
 	rm -f ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions *.o 
