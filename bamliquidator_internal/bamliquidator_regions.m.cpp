@@ -77,7 +77,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
                              + "), please supply a .gff or .bed file");
   }
 
-  std::ifstream region_file(region_file_path);
+  std::ifstream region_file(region_file_path.c_str());
   if (!region_file.is_open())
   {
     throw std::runtime_error("failed to open region_file " + region_file_path);
