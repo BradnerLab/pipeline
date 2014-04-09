@@ -198,7 +198,7 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
   only deal with coord, so use generic item
   */
   int startArr[spnum], stopArr[spnum];
-  float pieceLength = (float)(stop-start) / spnum;
+  int pieceLength = (int)(stop-start) / spnum;
   for(int i=0; i<spnum; i++)
   {
     startArr[i] = (int)(start + pieceLength*i);
