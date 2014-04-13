@@ -181,6 +181,8 @@ def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder):
 
         #check for the AllEnhancers table
         enhancerFile = "%s%s_ROSE/%s_peaks_AllEnhancers.table.txt" % (roseOutputFolder,name,name)
+        
+
         print "CHECKING FOR %s ROSE OUTPUT IN %s" % (name,enhancerFile)
         if utils.checkOutput(enhancerFile,5,60):
             
