@@ -116,7 +116,7 @@ for(i in 1:nrow(summaryTable)){
 		}
 		layout(m)
 		#plotting the diagram
-		par(mai=c(0,0.5412,0,0.2772))
+		par(mai=c(0,0.5412,0.2,0.2772))
 		plot(0,0,xlim = c(0,nBins),ylim = c(yMinDiagram,2),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
 		for(i in 2:nrow(diagramTable)){
 			rect(diagramTable[i,1],diagramTable[i,2],diagramTable[i,3],diagramTable[i,4],col='black')
@@ -125,18 +125,18 @@ for(i in 1:nrow(summaryTable)){
 		for(i in 2:nrow(nameTable)){
 			text(nameTable[i,2],nameTable[i,3],nameTable[i,1],cex=1)
 		}
-		
-		#plotting the beds
-		par(mai=c(0,0.5412,.3,0.2772))
-		plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
-		for(i in 2:nrow(bedDiagramTable)){
-			rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+		if(hasBed){
+			#plotting the beds
+			par(mai=c(0,0.5412,.2,0.2772))
+			plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+			for(i in 2:nrow(bedDiagramTable)){
+				rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+			}
+			
+			#the bed names		
+			axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
 		}
 		
-		#the bed names		
-		axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
-
-	
 		#for all on the same plot
 		yMax = 	1.2*max(plotTable[1,(8:(nBins+7))])
 		par(mai=c(0.1,0.5412,0.1,0.2772))	
@@ -164,6 +164,10 @@ for(i in 1:nrow(summaryTable)){
 			color = colorVector[1]  ## BJA tweaked to style of RELATIVE
 
 			#establish a blank plot
+			plotSpline = spline(1:nBins,as.numeric(plotTable[1,(8:(nBins+7))]),n=2*nBins)
+			xVector = c(1,plotSpline$x,max(plotSpline$x))
+			yVector = c(0,plotSpline$y,0)			
+
 			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Relative peak heights',xaxt = 'n',main=name)
 
 			if(sense =='-'){
@@ -173,7 +177,7 @@ for(i in 1:nrow(summaryTable)){
 				}
 			legend(0,yMax,as.vector(plotTable[,3]),col=colorVector,lwd=2.5,cex=1.2)
 	
-			for(i in 2:nrow(plotTable)){
+			for(i in 1:nrow(plotTable)){
 				color = colorVector[i] ## BJA tweaked to style of RELATIVE
 	# 			color = rgb(plotTable[i,5],plotTable[i,6],plotTable[i,7],maxColorValue=255)
 				plotSpline = spline(1:nBins,as.numeric(plotTable[i,(8:(nBins+7))]),n=2*nBins)
@@ -189,8 +193,13 @@ for(i in 1:nrow(summaryTable)){
 	
 	#for different plots
 	if(plotStyle == 'MULTIPLE'){
-		par(mfrow = c(nrow(plotTable)+2,1))
-		par(mai=c(0.1,0.5412,0.1,0.2772))	
+		if(hasBed){
+			par(mfrow = c(nrow(plotTable)+2,1))
+		}else{
+			par(mfrow = c(nrow(plotTable)+1,1))
+
+		}
+		par(mai=c(0.2,0.5412,0.2,0.2772))	
 
 		if(yScale == 'UNIFORM'){
 			yMax = 1.2*max(plotTable[,(8:(nBins+7))])
@@ -214,17 +223,18 @@ for(i in 1:nrow(summaryTable)){
 				}
 			}
 		#plotting the beds
-		par(mai=c(0,0.5412,0.3,0.2772))
-		plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
-		for(i in 2:nrow(bedDiagramTable)){
-			rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+		if(hasBed){
+			par(mai=c(0,0.5412,0.2,0.2772))
+			plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+			for(i in 2:nrow(bedDiagramTable)){
+				rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+			}
+			
+			#the bed names		
+			axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
 		}
-		
-		#the bed names		
-		axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
-		
 		#the gene diagram
-		par(mai=c(0,0.5412,0,0.2772))
+		par(mai=c(0,0.5412,0.2,0.2772))
 
 		plot(0,0,xlim = c(0,nBins),ylim = c(yMinDiagram,2),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
 		for(i in 2:nrow(diagramTable)){
