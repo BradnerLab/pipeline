@@ -27,12 +27,26 @@ library(graphics)
 
 args <- commandArgs()
 
+
 print(args[3:6])
 
 summaryFile = args[3]
 outFile = args[4]
 yScale = args[5]
 plotStyle = args[6]
+
+#==========================================================
+#==================DEBUG SECTION===========================
+#==========================================================
+setwd('/Users/charles/Dropbox/src/temp/')
+summaryFile = 'ACTB/ACTB_summary.txt'
+outFile = '/Users/charles/Dropbox/src/temp/ACTB_plots_test.pdf'
+yScale = 'UNIFORM'
+plotStyle = 'MULTIPLE'
+
+#==========================================================
+#==========================================================
+#==========================================================
 
 
 #obtain the outfile name
@@ -44,7 +58,7 @@ summaryTable = read.delim(summaryFile)
 
 
 #establish the plot height from the first entry
-plotFile = as.character(summaryTable[1,3])
+plotFile = as.character(summaryTable$PLOT_TABLE[1])
 plotTable = read.delim(plotFile)
 plotHeight = (nrow(plotTable)+1)*3
 
@@ -54,19 +68,28 @@ pdf(file=outFile,width = 8.5,height =plotHeight)
 #now loop through the summary table
 for(i in 1:nrow(summaryTable)){
 	
-	diagramFile = as.character(summaryTable[i,1])
-	nameFile = as.character(summaryTable[i,2])
-	plotFile = as.character(summaryTable[i,3])
+	diagramFile = as.character(summaryTable$DIAGRAM_TABLE[i])
+	nameFile = as.character(summaryTable$NAME_TABLE[i])
+	bedDiagramFile = as.character(summaryTable$BED_DIAGRAM_TABLE[i])
+	bedNameFile = as.character(summaryTable$BED_NAME_TABLE[i])
+	plotFile = as.character(summaryTable$PLOT_TABLE[i])
 	
 	diagramTable = read.delim(diagramFile,header=FALSE)
 	nameTable = read.delim(nameFile,header=FALSE)
+	bedDiagramTable = read.delim(bedDiagramFile,header=FALSE)
+	bedNameTable = read.delim(bedNameFile,header=FALSE)
 	plotTable = read.delim(plotFile)
 	
-	chrom = summaryTable[i,4]
-	name = summaryTable[i,5]
-	sense = summaryTable[i,6]
-	start = summaryTable[i,7]
-	end = summaryTable[i,8]
+	chrom = as.character(summaryTable$CHROM[i])
+	name = as.character(summaryTable$ID[i])
+	sense = as.character(summaryTable$SENSE[i])
+	start = as.numeric(summaryTable$START[i])
+	end = as.numeric(summaryTable$END[i])
+	
+	#check if the beds have any data
+	if(nrow(bedNameTable) >1){
+		hasBed=TRUE
+	}else{hasBed=FALSE}
 
 	#don't attempt to plot regions w/o data
 	if(is.na(plotTable[1,8])){
@@ -75,7 +98,8 @@ for(i in 1:nrow(summaryTable)){
 
 	nBins = length(plotTable[1,])-7
 	yMinDiagram = min(diagramTable[,2]-3)
-	
+	yMinBedDiagram = min(bedDiagramTable[,2])
+
 	#first bring in the colors
 	colorVector = c()
 	for(i in 1:nrow(plotTable)){
@@ -85,24 +109,37 @@ for(i in 1:nrow(summaryTable)){
 	
 	#now the actual plotting
 	if(plotStyle == 'SINGLE'){
-		m = matrix(c(2,2,2,2,2,2,2,2,1,1,1),nrow=11,ncol=8)	
+		if(hasBed){
+			m = matrix(c(3,3,3,3,3,2,2,1,1),nrow=9,ncol=8)	
+		}else{
+			m = matrix(c(2,2,2,2,2,2,2,2,1,1,1),nrow=11,ncol=8)	
+		}
 		layout(m)
 		#plotting the diagram
+		par(mai=c(0,0.5412,0,0.2772))
 		plot(0,0,xlim = c(0,nBins),ylim = c(yMinDiagram,2),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
 		for(i in 2:nrow(diagramTable)){
 			rect(diagramTable[i,1],diagramTable[i,2],diagramTable[i,3],diagramTable[i,4],col='black')
-		
-		
 		}
-		
 		#plotting the names
 		for(i in 2:nrow(nameTable)){
 			text(nameTable[i,2],nameTable[i,3],nameTable[i,1],cex=1)
 		}
+		
+		#plotting the beds
+		par(mai=c(0,0.5412,.3,0.2772))
+		plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+		for(i in 2:nrow(bedDiagramTable)){
+			rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+		}
+		
+		#the bed names		
+		axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
+
 	
 		#for all on the same plot
 		yMax = 	1.2*max(plotTable[1,(8:(nBins+7))])
-			
+		par(mai=c(0.1,0.5412,0.1,0.2772))	
 		if(yScale =='RELATIVE'){
 			#establish a blank plot			
 			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Relative peak heights',xaxt = 'n',main=name)
@@ -152,7 +189,9 @@ for(i in 1:nrow(summaryTable)){
 	
 	#for different plots
 	if(plotStyle == 'MULTIPLE'){
-		par(mfrow = c(nrow(plotTable)+1,1))
+		par(mfrow = c(nrow(plotTable)+2,1))
+		par(mai=c(0.1,0.5412,0.1,0.2772))	
+
 		if(yScale == 'UNIFORM'){
 			yMax = 1.2*max(plotTable[,(8:(nBins+7))])
 		}
@@ -174,7 +213,19 @@ for(i in 1:nrow(summaryTable)){
 				axis(1,at = c(0,nBins),labels= c(paste(chrom,start,sep=':'),paste(chrom,end,sep=':')))
 				}
 			}
-	
+		#plotting the beds
+		par(mai=c(0,0.5412,0.3,0.2772))
+		plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+		for(i in 2:nrow(bedDiagramTable)){
+			rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+		}
+		
+		#the bed names		
+		axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
+		
+		#the gene diagram
+		par(mai=c(0,0.5412,0,0.2772))
+
 		plot(0,0,xlim = c(0,nBins),ylim = c(yMinDiagram,2),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
 		for(i in 2:nrow(diagramTable)){
 			rect(diagramTable[i,1],diagramTable[i,2],diagramTable[i,3],diagramTable[i,4],col='black')
@@ -182,7 +233,8 @@ for(i in 1:nrow(summaryTable)){
 		for(i in 2:nrow(nameTable)){
 			text(nameTable[i,2],nameTable[i,3],nameTable[i,1],cex=1)
 		}
-		
+
+
 		
 	}
 

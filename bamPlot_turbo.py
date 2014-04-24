@@ -166,6 +166,83 @@ def mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both'
     unParseTable(diagramTable,outFolder+gffString+'_diagramTemp.txt','\t')
     unParseTable(nameTable,outFolder+gffString+'_nameTemp.txt','\t')    
 
+
+def makeBedCollection(bedFileList):
+
+    '''
+    takes in a list of bedFiles and makes a single huge collection
+    each locus has as its ID the name of the bed file
+    '''
+
+    bedLoci = []
+    print "MAKING BED COLLECTION FOR:"
+    for bedFile in bedFileList:
+
+        bedName = bedFile.split('/')[-1].split('.')[0]
+        print bedName
+        bed = parseTable(bedFile,'\t')
+        for line in bed:
+            bedLocus = Locus(line[0],line[1],line[2],'.',bedName)
+            bedLoci.append(bedLocus)
+
+    return LocusCollection(bedLoci,50)
+    
+    
+
+def mapGFFLineToBed(gffLine,outFolder,nBins,bedCollection,header=''):
+
+    '''
+    for every line produces a file with all of the rectangles to draw
+    '''
+
+    if len(header) == 0:
+        gffString = '%s_%s_%s_%s' % (gffLine[0],gffLine[6],gffLine[3],gffLine[4])
+    else:
+        gffString = header
+    diagramTable = [[0,0,0,0]]
+    nameTable = [['',0,0]]
+    gffLocus = Locus(gffLine[0],int(gffLine[3]),int(gffLine[4]),gffLine[6],gffLine[1])    
+
+    scaleFactor = float(nBins)/gffLocus.len()
+    #plotting buffer for diagrams
+    plotBuffer = int(gffLocus.len()/float(nBins)*20)
+
+    overlapLoci = bedCollection.getOverlap(gffLocus,sense='both')
+
+    #since beds come from multiple sources, we want to figure out how to offset them
+    offsetDict ={} # this will store each ID name
+    bedNamesList = uniquify([locus.ID() for locus in overlapLoci])
+    bedNamesList.sort()
+    for i in range(len(bedNamesList)):
+        offsetDict[bedNamesList[i]] = 2*i # offsets different categories of bed regions
+    
+    if gffLine[6] == '-':
+        refPoint = int(gffLine[4])
+    else:
+        refPoint = int(gffLine[3])
+
+
+    #fill out the name table
+    for name in bedNamesList:
+        offset = offsetDict[name]
+        nameTable.append([name,0,0.0-offset])
+
+
+    for bedLocus in overlapLoci:
+
+        offset = offsetDict[bedLocus.ID()]
+
+        [start,stop] = [abs(x-refPoint)*scaleFactor for x in bedLocus.coords()]
+
+        diagramTable.append([start,-0.5-offset,stop,0.5-offset])
+
+    unParseTable(diagramTable,outFolder+gffString+'_bedDiagramTemp.txt','\t')
+    unParseTable(nameTable,outFolder+gffString+'_bedNameTemp.txt','\t')    
+
+
+
+
+
 def mapBamToGFFLine(bamFile,MMR,name,gffLine,color,nBins,sense = 'both',extension = 200):
     '''maps reads from a bam to a gff'''
 
@@ -233,9 +310,7 @@ def callRPlot(summaryFile,outFile,yScale,plotStyle):
     
 
 
-
-
-def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,outFolder,names,title):
+def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,outFolder,names,title,bedCollection):
 
     '''
     makes a plot table for each line of the gff mapped against all the bams in the bamList
@@ -276,13 +351,13 @@ def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm
         
     ticker = 1
     #go line by line in the gff
-    summaryTable = [['DIAGRAM_TABLE','NAME_TABLE','PLOT_TABLE','CHROM','ID','SENSE','START','END']]
+    summaryTable = [['DIAGRAM_TABLE','NAME_TABLE','BED_DIAGRAM_TABLE','BED_NAME_TABLE','PLOT_TABLE','CHROM','ID','SENSE','START','END']]
     for gffLine in gff:
         gffString = 'line_%s_%s_%s_%s_%s_%s' % (ticker,gffLine[0],gffLine[1],gffLine[6],gffLine[3],gffLine[4])
         ticker+=1
         print('writing the gene diagram table for region %s' % (gffLine[1]))
         mapGFFLineToAnnot(gffLine,outFolder,nBins,geneDict,txCollection,sense='both',header=gffString)
-
+        mapGFFLineToBed(gffLine,outFolder,nBins,bedCollection,header=gffString)
         outTable = []
 
         outTable.append(['BAM','GENE_ID','NAME','LOCUSLINE','COLOR1','COLOR2','COLOR3'] + ['bin_'+str(n) for n in range(1,int(nBins)+1,1)])
@@ -308,7 +383,9 @@ def makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm
         diagramTable = outFolder+gffString+'_diagramTemp.txt'
         plotTable = outFolder+gffString+'_plotTemp.txt'
         nameTable = outFolder +gffString+'_nameTemp.txt'
-        summaryTable.append([diagramTable,nameTable,plotTable,gffLine[0],geneName,gffLine[6],gffLine[3],gffLine[4]])
+        bedNameTable =outFolder +gffString+'_bedNameTemp.txt'
+        bedDiagramTable =outFolder +gffString+'_bedDiagramTemp.txt'
+        summaryTable.append([diagramTable,nameTable,bedDiagramTable,bedNameTable,plotTable,gffLine[0],geneName,gffLine[6],gffLine[3],gffLine[4]])
     summaryTableFileName = "%s%s_summary.txt" % (outFolder,title)
     unParseTable(summaryTable,summaryTableFileName,'\t')
     return summaryTableFileName
@@ -361,6 +438,8 @@ def main():
     #DEBUG OPTION TO SAVE TEMP FILES
     parser.add_option("--save-temp",dest ="save",action='store_true',default = False,
                       help = "If flagged will save temporary files made by bamPlot")
+    parser.add_option("--bed",dest ="bed",nargs=1,default=None, 
+                      help = "Add a comma separated list of bam files to plot")
 
 
 
@@ -374,6 +453,14 @@ def main():
 
         #bring in the bams
         bamFileList = options.bam.split(',')
+
+        #bringing in any beds
+        if options.bed:
+
+            bedFileList = options.bed.split(',')
+            bedCollection = makeBedCollection(bedFileList)
+        else:
+            bedCollection = LocusCollection([],50)
         
         #bring in the gff
         try:
@@ -410,7 +497,7 @@ def main():
         try:
             foo = os.listdir(rootFolder)
         except OSError:
-            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %S' % (rootFolder))
+            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %s' % (rootFolder))
             exit()
 
         #Get analysis title
@@ -467,7 +554,7 @@ def main():
 
 
         #now run!
-        summaryTableFileName = makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,tempFolder,names,title)
+        summaryTableFileName = makeBamPlotTables(gff,genome,bamFileList,colorList,nBins,sense,extension,rpm,tempFolder,names,title,bedCollection)
         print ("%s is the summary table" % (summaryTableFileName))
 
 
