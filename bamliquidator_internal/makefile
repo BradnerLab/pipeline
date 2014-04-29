@@ -40,10 +40,10 @@ LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
-all: ../bamliquidator bamliquidator_bins bamliquidator_regions 
+all: bamliquidator bamliquidator_bins bamliquidator_regions 
 
-../bamliquidator: bamliquidator.m.o bamliquidator.o
-	$(CC) $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
+bamliquidator: bamliquidator.m.o bamliquidator.o
+	$(CC) $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
 bamliquidator_bins: bamliquidator_bins.m.o
 	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o \
@@ -65,17 +65,23 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
 	$(CC) $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
-EXECUTABLES = ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions
+EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
 
 archive:
-	mkdir bamliquidator
-	cp *.h *.cpp makefile bamliquidator
-	tar -czf bamliquidator.tar.gz bamliquidator
-	rm -rf bamliquidator
+	mkdir bamliquidator-1.0
+	cp *.h *.cpp makefile bamliquidator-1.0
+	tar -czf bamliquidator-1.0.tar.gz bamliquidator-1.0
+	rm -rf bamliquidator-1.0
+
+deb: clean archive
+	mv bamliquidator-1.0.tar.gz bamliquidator_1.0.orig.tar.gz 
+	tar xf bamliquidator_1.0.orig.tar.gz
+	cp -R debian bamliquidator-1.0
+	cd bamliquidator-1.0/debian; debuild -us -uc	
 
 clean:
-	rm -f $(EXECUTABLES) *.o bamliquidator.tar.gz
+	rm -f $(EXECUTABLES) *.o
+	rm -rf bamliquidator_1.0* bamliquidator-1.0*
 
 install: all
-	install $(EXECUTABLES) $(bindir)
-
+	install $(EXECUTABLES) $(DESTDIR)$(bindir)
