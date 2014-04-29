@@ -68,7 +68,10 @@ bamliquidator.o: bamliquidator.cpp bamliquidator.h
 EXECUTABLES = ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions
 
 archive:
-	tar -czf bamliquidator.tar.gz *.h *.cpp makefile
+	mkdir bamliquidator
+	cp *.h *.cpp makefile bamliquidator
+	tar -czf bamliquidator.tar.gz bamliquidator
+	rm -rf bamliquidator
 
 clean:
 	rm -f $(EXECUTABLES) *.o bamliquidator.tar.gz
