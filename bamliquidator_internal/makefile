@@ -25,11 +25,17 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
+# The directory to install in:
+prefix = /usr/local
+bindir = $(prefix)/bin
+
 # I prefer clang++, but g++ is more easily available, so using that instead
 #CC=clang++
 CC=g++
 
-CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
+# CPPFLAGS used to include march=native, but was removed so executables would 
+# work on platforms besides the one used for the build
+CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
@@ -59,5 +65,14 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
 	$(CC) $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
 
+EXECUTABLES = ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions
+
+archive: all
+	tar -czf bamliquidator.tar.gz *.h *.cpp makefile
+
 clean:
-	rm -f ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions *.o 
+	rm -f $(EXECUTABLES) *.o bamliquidator.tar.gz
+
+install: all
+	install $(EXECUTABLES) $(bindir)
+
