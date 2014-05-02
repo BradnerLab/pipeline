@@ -22,7 +22,7 @@ import os
 import numpy
 import subprocess
 
-from string import upper,join
+from string import upper
 
 from collections import defaultdict
 

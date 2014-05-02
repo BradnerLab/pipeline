@@ -27,9 +27,6 @@ THE SOFTWARE.
 
 
 #script to grab reads from a bam that align to a .gff file
-import sys
-
-
 
 from utils import *
 
