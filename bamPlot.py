@@ -1,6 +1,4 @@
 #bamPlot.py
-import sys
-
 
 from utils import *
 
@@ -386,7 +384,7 @@ def main():
         try:
             foo = os.listdir(outFolder)
         except OSError:
-            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %S' % (outFolder))
+            print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %s' % (outFolder))
             exit()
 
                  
