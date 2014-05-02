@@ -405,13 +405,15 @@ def main():
 
     usage = "usage: %prog [options] -g [GENOME] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
     parser = OptionParser(usage = usage)
+
+
     #required flags
     parser.add_option("-b","--bam", dest="bam",nargs = 1, default=None,
                       help = "Enter a comma separated list of .bam files to be processed.")
     parser.add_option("-i","--input", dest="input",nargs = 1, default=None,
                       help = "Enter .gff or genomic region e.g. chr1:+:1-1000.")
     parser.add_option("-g","--genome",dest="genome",nargs =1, default = None,
-                      help = "specify a genome, options are hg18 or mm9 right now")
+                      help = "specify a genome, HG18,HG19,MM8,MM9 are currently supported")
 
 
     #output flag
@@ -425,13 +427,13 @@ def main():
     parser.add_option("-e","--extension", dest="extension",nargs = 1, default=200,
                       help = "Extends reads by n bp. Default value is 200bp")
     parser.add_option("-r","--rpm", dest="rpm",action = 'store_true', default=False,
-                      help = "Normalizes density to reads per million (rpm) Default is True")
+                      help = "Normalizes density to reads per million (rpm) Default is False")
     parser.add_option("-y","--yScale",dest="yScale",nargs =1, default = "relative",
                       help = "Choose either relative or uniform y axis scaling. options = 'relative,uniform' Default is relative scaling")
     parser.add_option("-n","--names",dest="names",nargs =1, default = None,
                       help = "Enter a comma separated list of names for your bams")
-    parser.add_option("-p","--plot",dest="plot",nargs =1, default = "multiple",
-                      help = "Choose either all lines on a single plot or multiple plots. options = 'single,multiple'")
+    parser.add_option("-p","--plot",dest="plot",nargs =1, default = "MULTIPLE",
+                      help = "Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE'")
     parser.add_option("-t","--title",dest ="title",nargs=1,default = '',
                       help = "Specify a title for the output plot(s), default will be the coordinate region")
 
@@ -448,6 +450,8 @@ def main():
 
     print(options)
     print(args)
+
+        
     
     if options.bam and options.input and options.genome and options.output:
 
@@ -582,7 +586,7 @@ def main():
         
     else:
         parser.print_help()
-        exit()
+        sys.exit()
 
 if __name__ == "__main__":
     main()
