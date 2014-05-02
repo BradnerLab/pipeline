@@ -34,6 +34,9 @@ THE SOFTWARE.
 
 
 
+#==========================================================================
+#==========================DEPENDENCIES====================================
+#==========================================================================
 
 
 
@@ -54,6 +57,312 @@ import time
 import re
 import random
 import string
+
+#==========================================================================
+#===========================TABLE OF CONTENTS==============================
+#==========================================================================
+
+#CODE IN THIS MODULE IS SPLIT UP INTO SEVERAL SECTIONS
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                         FORMATTING AND DATA INPUT                       #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#FORMATTING FOLDERS
+#formatFolder(folderName,create=False)
+
+#FORMATTING THE MASTER DATA TABLE
+#formatDataTable(dataFile):
+
+#FORMATTING FUNCTIONS
+#makePipelineTable(sampleTableFile,dirPath,bamPath,outputFile,overwrite=False):
+
+#LOADING THE MASTER DATA TABLE
+#def loadDataTable(dataFile):
+#def summary(dataFile,outputFile=''):
+#def makeBamTable(dataFile,output):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                          TONY DATABASE TOOLS                            #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+#INTERACTING WITH TONY
+#getTONYInfo(uniqueID,column =''):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                                ALIGNMENT                                #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#CALLING BOWTIE TO MAP DATA
+#def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True,overwrite=False):
+#def callBowtie(dataFile,dataList = [],overwrite = False):
+
+#GETTING MAPPING STATS
+#def bowtieStats(dataFile,namesList=[]):
+
+#MERGING BAMS
+#def mergeBams(dataFile,mergedName,namesList,color='',background =''):
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              PEAK FINDING                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#CALLING MACS
+#def callMacsQsub(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9'):
+#def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',useBackground =True):
+#def callMacs2(dataFile,macsFolder,namesList = [],broad=True,noBackground = False,pairedEnd = False,overwrite=False,pvalue='1e-9'):
+
+#FORMATTING MACS OUTPUT
+#def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink='',useBackground=True):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              GFF TOOLS                                  #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#MAKING GFFS OF TSS REGIONS
+#def makeGeneGFFs(annotFile,gffFolder,species='HG18'):
+
+#MAKING GFFS OF CHROMS
+#def makeChromGFFs(chromLengthFile,gffFolder,chromList = [],genome='HG18',binSize = 100000,singleGFF = True):
+
+#MAKING GFFS OF ENHANCER REGIONS
+#def makeEnhancerGFFs(dataFile,gffName,namesList,annotFile,gffFolder,enrichedFolder,window=2000,macs=True):
+
+#MAKING GFFS OF ENRICHED REGIONS
+#def makeEnrichedGFFs(dataFile,namesList,gffFolder,enrichedFolder,macs=True,window=0):
+
+#MAKING GFFS OF PROMOTER REGIONS
+#def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,window=0,transcribedGeneFile=''):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                             MAPPING TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#MAP ENRICHED REGIONS TO GFF
+#def mapEnrichedToGFF(dataFile,setName,gffList,cellTypeList,enrichedFolder,mappedFolder,macs=True,namesList=[],useBackground=True):
+
+
+#MAPPING BAMS TO GFFS
+#def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
+#def mapBamsQsub(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
+
+#MAKING GFF LISTS
+#def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                            PLOTTING TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#PLOTTING INDIVIDUAL GENES
+#def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,region='TXN',yScale = 'UNIFORM'):
+
+#BATCH PLOTTING REGIONS
+#def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True):
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              META TOOLS                                 #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
+#MAKING META GFFS OF TXN REGIONS
+#def makeMetaGFFs(annotFile,gffFolder,genome,geneListFile =''):
+
+#MAPPING BAMS FOR METAS
+#def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],overwrite=False):
+
+#FINISHING METAS
+#def finishMetas(metaFolder,settingsFileList=[]):
+
+#MAKING ORDERED HEATMAPS
+#def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outputFolder,mappedFolder,relative=False):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              ROSE TOOLS                                 #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
+
+#CALLING ROSE
+#def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500,bashFileName ='',mask=''):
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                          EXPRESSION TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bashFileName = ''):
+
+    '''
+    call cuffquant on each bam individually
+    and then string the cbx files into cuffnorm
+
+    '''
+
+    def long_substr(data):
+        '''
+        helper function to find longest substring for group naming
+        '''
+        substr = ''
+        if len(data) > 1 and len(data[0]) > 0:
+            for i in range(len(data[0])):
+                for j in range(len(data[0])-i+1):
+                    if j > len(substr) and all(data[0][i:i+j] in x for x in data):
+                        substr = data[0][i:i+j]
+        return substr
+    
+    dataDict = loadDataTable(dataFile)
+
+    #if no grouplist is given
+    #run every dataset as a single group
+    #for now assumes that every dataset given is RNA Seq
+    if len(groupList) == 0:
+        namesList = dataDict.keys()
+        namesList.sort()
+        groupList = [[x] for x in namesList]
+        namesString = ','.join(namesList)
+
+    else:
+        #only a single name per group
+        namesList =[]
+        namesStringList = []
+        groupTicker = 1
+        for group in groupList:
+            
+            namesList+=group
+            coreName = long_substr(group)
+            if len(coreName) ==0:
+                coreName = '%s_GROUP_%s' % (analysisName,groupTicker)
+            else:
+                if '-_.'.count(coreName[-1]) == 1:  #get rid of any separators for a core name
+                    coreName = coreName[:-1]
+            namesStringList.append(coreName)
+            groupTicker+=1
+        namesString = ','.join(namesStringList)
+            
+
+
+    #let's do this in bashfile format
+    if len(bashFileName) ==0:
+        bashFileName = '%scuffquant.sh' % (cufflinksFolder)
+        
+    
+    bashFile = open(bashFileName,'w')
+
+    bashFile.write('#!/usr/bin/bash\n')
+
+    bashFile.write('cd %s\n\n' % (cufflinksFolder))
+
+    bashFile.write("echo 'making cuffquant folders'\n")
+
+    for name in namesList:
+        bashFile.write('mkdir %s\n' % (name))
+
+    bashFile.write("\necho 'calling cuffquant'\n")
+
+    cuffquantList = [] # create a list to store cuffquant .cxb outputs so we can check for completeness
+    for name in namesList:
+        bamFileName = dataDict[name]['bam']
+        bashFile.write('cuffquant -p 4 -o %s%s/ %s %s\n' % (cufflinksFolder,name,gtfFile,bamFileName))
+        cuffquantList.append('%s%s/abundances.cxb' % (cufflinksFolder,name))
+
+
+    #if we want to have python run this as opposed to making a bash file
+    # #check for output
+    # for cuffquantFile in cuffquantList:
+
+    #     if checkOutput(cuffquantFile,5,60):
+    #         print "FOUND CUFFQUANT OUTPUT FOR %s" % (cuffquantFile)
+            
+    #     else:
+            
+        
+    #now we want to string together all of the abundances.cxb files to run cuffnorm
+    #cuff norm gives you the opportunity to string together replicates
+    #gotta figure out the right way to designate sample groups
+
+    cxbList = []
+    for group in groupList:
+        
+        groupString = ','.join(['%s%s/abundances.cxb' % (cufflinksFolder,name) for name in group])
+        cxbList.append(groupString)
+
+    cxbString = ' '.join(cxbList)
+
+    #now run the cuffnorm
+
+    bashFile.write("\necho 'making cuffnorm folder'\n")
+    bashFile.write('mkdir %scuffnorm\n' % (cufflinksFolder))
+    
+
+    bashFile.write("\necho 'running cuffnorm command'\n")
+
+    
+    cuffNormCmd = 'cuffnorm -p 4 -o %scuffnorm/ -L %s %s %s\n' % (cufflinksFolder,namesString,gtfFile,cxbString)
+
+    bashFile.write(cuffNormCmd + '\n')
+
+
+    #now we'll want to pipe the output into the R script for RNA_Seq normalization
+
+
+    bashFile.close()
+
+
+
+
+#============================================================================================================
+#============================================================================================================
+#============================================================================================================
+
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                         FORMATTING AND DATA INPUT                       #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+#==========================================================================
+#==========================DATA TABLE FORMAT===============================
+#==========================================================================
+
 #the master data table
 #everything starts with this
 #format is as follows
@@ -68,7 +377,6 @@ import string
 #ENRICHED_REGION = NAME OF THE ERROR MODEL ENRICHED REGION OUTPUT
 #ENRICHED_MACS = NAME OF THE MACS PEAKS BED FILE
 #COLOR = COMMA SEPARATED RGB CODE
-
 
 #==========================================================================
 #===================FORMATTING FOLDERS=====================================
@@ -146,7 +454,7 @@ def formatDataTable(dataFile):
 
 
 #========================================================================
-#================================FUNCTIONS===============================
+#=======================FORAMTTING FUNCTIONS=============================
 #========================================================================
 
 
@@ -266,9 +574,6 @@ def loadDataTable(dataFile):
 
     return dataDict
 
-#==========================================================================
-#===================LOADING THE MASTER DATA TABLE==========================
-#==========================================================================
 
 def summary(dataFile,outputFile=''):
 
@@ -388,7 +693,44 @@ def makeBamTable(dataFile,output):
     unParseTable(sortedTable,output,'\t')
     
 
+
+
 #mapping the data
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                          TONY DATABASE TOOLS                            #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+#==========================================================================
+#=======================INTERACTING WITH TONY==============================
+#==========================================================================
+
+def getTONYInfo(uniqueID,column =''):
+
+    '''
+    returns a TONY db column parameter
+    '''
+
+    if len(column) == 0:
+        cmd = 'perl /ark/tony/admin/getDB_Data.pl -h'
+        os.system(cmd)
+        return
+    else:
+        cmd = 'perl /ark/tony/admin/getDB_Data.pl -i %s -c %s -o TAB' % (uniqueID,column)
+        output = subprocess.Popen(cmd,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
+
+        outputLines = output.stdout.readlines()
+        output.stdout.close()
+    
+        return outputLines[1].rstrip().split('\t')[-1]
+    
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                                ALIGNMENT                                #
+#                                                                         #
+#-------------------------------------------------------------------------#
 
 
 #==========================================================================
@@ -601,6 +943,14 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
     dataTable.append([bamFolder,mergedName,genome,mergedName,background,'','',color])
     unParseTable(dataTable,dataFile,'\t')
     formatDataTable(dataFile)
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              PEAK FINDING                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
 
 
 #==========================================================================
@@ -1021,6 +1371,17 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
 
     unParseTable(newDataTable,dataFile,'\t')
 
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              GFF TOOLS                                  #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
 #==========================================================================
 #===================MAKING GFFS OF TSS REGIONS=============================
 #==========================================================================
@@ -1243,7 +1604,7 @@ def makeEnrichedGFFs(dataFile,namesList,gffFolder,enrichedFolder,macs=True,windo
 
 
 #==========================================================================
-#===================MAKING GFFS OF ENRICHED REGIONS========================
+#===================MAKING GFFS OF PROMOTER REGIONS========================
 #==========================================================================
 
 def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,window=0,transcribedGeneFile=''):
@@ -1316,6 +1677,17 @@ def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,w
                 promoterGFF.append([chrom,locus.ID(),'',start,end,'',strand,'',refseqString])
 
     unParseTable(promoterGFF,output,'\t')
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                             MAPPING TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
 #==========================================================================
 #===================MAP ENRICHED REGIONS TO GFF============================
 #==========================================================================
@@ -1623,205 +1995,12 @@ def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
     print(len(geneListFile))
     unParseTable(geneListFile,output,'\t')
 
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                            PLOTTING TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
 
-#==========================================================================
-#===================MAKE HYPER TABLE=======================================
-#==========================================================================
-
-def hyperOccupancyEnrichment(dataFile,annotFile,namesList,tssGFFFile,transcribedGenesList,enrichedFolder,outputFolder,window=100000,macs=True):
-
-    dataDict = loadDataTable(dataFile)
-        
-    startDict = makeStartDict(annotFile)
-    #making sure output folder exists
-    formatFolder(outputFolder,True)
-
-    #making a transcribed tss collection
-    tssGFF = parseTable(tssGFFFile,'\t')
-    
-    #transcribedGenes
-    print('Loading transcribed genes')
-    transcribedGenesTable = parseTable(transcribedGenesList,'\t')
-    
-    transcribedGenes = [int(line[0])-1 for line in transcribedGenesTable]
-
-    tssLoci = []
-    for i in transcribedGenes:
-        line = tssGFF[i]
-        tssLocus = Locus(line[0],line[3],line[4],line[6],line[1])
-        tssLoci.append(tssLocus)
-    print('making transcribed TSS collection')
-    tssCollection = LocusCollection(tssLoci,500)
-
-    for name in namesList:
-        print('Finding hyperoccupancy for %s' %(name))
-        hyperTable = []
-
-        if name.count('MM1S') == 1:
-            #mycTransLocusSense = Locus('chr14',105130609,105404388,'+','NM_002467')
-            #tssCollection.append(mycTransLocusSense)
-            mycTransLocusAnti = Locus('chr14',105404388-5000,105404388+5000,'-','NM_002467')
-            mycTransLocusSense = Locus('chr14',105130609-5000,105130609+5000,'+','NM_002467')
-
-            tssCollection.append(mycTransLocusAnti)
-            tssCollection.append(mycTransLocusSense)
-
-    
-        peakTable = parseTable(enrichedFolder+dataDict[name]['enrichedMacs'],'\t')
-        ticker = 0
-        for peakLine in peakTable:
-            if ticker%1000 == 0:
-                print(ticker)
-            ticker+=1
-            peakLocus = Locus(peakLine[0],peakLine[1],peakLine[2],'.',peakLine[3])
-            #check tss status
-            signal = float(peakLine[4])
-            proxGenes = []
-            overlappingTSSLoci = tssCollection.getOverlap(peakLocus,'both')
-            if len(overlappingTSSLoci) > 0:
-                #this is a tss peak
-                tss_peak = 1
-                proxGenes+= [locus.ID() for locus in overlappingTSSLoci]
-            else:
-                #this is an enhancer or outside peak
-                tss_peak = 0
-
-                peakCenter = (int(peakLine[1]) + int(peakLine[2]))/2
-                searchLocus = Locus(peakLine[0],peakCenter-window,peakCenter+window,'.',peakLine[3])
-                overlappingProxLoci = tssCollection.getOverlap(searchLocus,'both')
-                proxGenes += [locus.ID() for locus in overlappingProxLoci]
-                if peakLine[3] == 'MACS_peak_10552':
-                    print(overlappingProxLoci)
-                    print([locus.start() for locus in overlappingProxLoci])
-                    print([locus.ID() for locus in overlappingProxLoci])
-            if len(proxGenes) > 0:
-                proxGenes = uniquify(proxGenes)
-
-                proxString = join(proxGenes,',')
-                proxNames = uniquify([startDict[geneID]['name'] for geneID in proxGenes])
-                proxNamesString = join(proxNames,',')
-                newLine = [peakLine[0],peakLine[1],peakLine[2],peakLine[3],signal,tss_peak,proxString,proxNamesString]
-                hyperTable.append(newLine)
-
-        #now sort the hyper table
-        sortedHyperTable = [['CHROM','START','STOP','NAME','SIGNAL','TSS_PEAK','PROXIMAL_GENE_IDS','PROXIMAL_GENE_NAMES']]
-
-        peakOrder = order([float(line[4]) for line in hyperTable],decreasing=True)
-
-        for i in peakOrder:
-            sortedHyperTable.append(hyperTable[i])
-
-        #now do the gene assignment way
-
-        geneDict = {'totalSignal':defaultdict(float),'proximalEvents':defaultdict(int)}
-        for line in sortedHyperTable[1:]:
-            proximalGenes = line[6].split(',')
-            if len(proximalGenes) == 0:
-                continue
-            else:
-                signal = float(line[4])
-
-                for geneID in proximalGenes:
-                    geneDict['proximalEvents'][geneID]+=1
-                    geneDict['totalSignal'][geneID]+=signal
-
-        geneCentricTable = [] 
-        geneList = geneDict['totalSignal'].keys()
-        print(len(geneDict['totalSignal'].keys()))
-        print(len(geneDict['proximalEvents'].keys()))
-        peakOrder = order([geneDict['totalSignal'][geneID] for geneID in geneList],decreasing=True)
-        
-        for i in peakOrder:
-            geneID = geneList[i]
-            geneName = startDict[geneID]['name']
-            geneCentricTable.append([geneID,geneName,geneDict['proximalEvents'][geneID],geneDict['totalSignal'][geneID]])
-        
-        collapsedGeneCentricTable = [['GENE_ID','GENE_NAME','PROXIMAL_EVENTS','SIGNAL']] 
-        
-        usedNames = []
-        for line in geneCentricTable:
-            geneName = line[1]
-            if usedNames.count(geneName) == 0:
-                collapsedGeneCentricTable.append(line)
-                usedNames.append(geneName)
-        
-        unParseTable(sortedHyperTable,'%s%s_hyperPeaks.txt' % (outputFolder,name),'\t')
-        unParseTable(collapsedGeneCentricTable,'%s%s_hyperGenes.txt' % (outputFolder,name),'\t')
-
-
-#==========================================================================
-#===================MAKE HYPER DENISTY=====================================
-#==========================================================================
-                
-def hyperOccupancyDensity(annotFile,hyperPeakFile,namesList,gffName,mappedFolder,outFolder,referenceName=''):
-
-    '''
-    finds the gene assignment of peaks
-    then maps to genes for each datasets in namesList
-    '''
-
-    startDict = makeStartDict(annotFile)
-    assignDict = {'promoter':defaultdict(list),'enhancer':defaultdict(list)}
-
-    hyperPeaks = parseTable(hyperPeakFile,'\t')
-    for line in hyperPeaks[1:]:
-        peakID = int(line[3].split('_')[-1])-1
-        geneList = line[6].split(',')
-        if int(line[5]) == 1:
-            assignDict['promoter'][peakID] += geneList
-        else:
-            assignDict['enhancer'][peakID] += geneList
-
-    if len(referenceName) == 0:
-        referenceName = namesList[0]
-
-    for name in namesList:
-        print('working on %s' % (name))
-        newTable = [['REFSEQ_ID','NAME','PROMOTER_REGIONS','PROMOTER_SIGNAL','DISTAL_REGIONS','DISTAL_SIGNAL']]
-        mappedGFF = parseTable('%s%s/%s_%s.gff' % (mappedFolder,gffName,gffName,name),'\t')
-        geneDict = {'promoter':defaultdict(list),'enhancer':defaultdict(list)}
-        for line in mappedGFF[1:]:
-            peakID = int(line[0].split('_')[-1])
-            regionSize = int(line[1].split(':')[-1].split('-')[1])-int(line[1].split(':')[-1].split('-')[0])
-            if assignDict['promoter'].has_key(peakID):
-                for geneID in assignDict['promoter'][peakID]:
-                    geneDict['promoter'][geneID].append(float(line[2])*regionSize)
-            elif assignDict['enhancer'].has_key(peakID):
-                for geneID in assignDict['enhancer'][peakID]:
-                    geneDict['enhancer'][geneID].append(float(line[2])*regionSize)
-            else:
-                continue
-
-        
-        if name == referenceName:
-            keeperIDs = []
-            allGenes = uniquify(geneDict['promoter'].keys()+geneDict['enhancer'].keys())
-            peakOrder = order([(sum(geneDict['enhancer'][x])+ sum(geneDict['promoter'][x])) for x in allGenes],decreasing=True)
-
-            peakOrderedGenes = [allGenes[x] for x in peakOrder]
-            
-            usedNames =[]
-            for geneID in peakOrderedGenes:
-                geneName = startDict[geneID]['name']
-                if usedNames.count(geneName) == 1:
-                    continue
-                usedNames.append(geneName)
-                keeperIDs.append(geneID)
-
-        
-        #now write the table!
-        for geneID in keeperIDs:
-            geneName = startDict[geneID]['name']
-            promoterRegions = len(geneDict['promoter'][geneID])
-            promoterSignal = sum(geneDict['promoter'][geneID])
-            enhancerRegions = len(geneDict['enhancer'][geneID])
-            enhancerSignal = sum(geneDict['enhancer'][geneID])
-
-
-            newLine = [geneID,geneName,promoterRegions,promoterSignal,enhancerRegions,enhancerSignal]
-            newTable.append(newLine)
-        print('writing table for %s' % (name))
-        unParseTable(newTable,'%s%s_%s_REF_geneMapped.txt' % (outFolder,name,referenceName),'\t')
                 
 
 #==========================================================================
@@ -1943,61 +2122,12 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
 
     print cmd
     os.system(cmd)
-#==========================================================================
-#=======================PLOTTING GROUPS OF GENES===========================
-#==========================================================================
 
-# def plotGeneList(dataFile,annotFile,geneList,namesList,outputFolder,upsearch,downsearch,yScale = 'UNIFORM',byName = True):
-
-#     '''
-#     plots the txn region for a bunch of genes in a given window. uses either name or ID
-#     deprecating this puppy
-#     '''
-    
-#     startDict = makeStartDict(annotFile)
-#     if byName:
-#         geneList = [upper(x) for x in geneList]
-#         nameDict = defaultdict(list)
-        
-#         for key in startDict.keys():
-#             nameDict[startDict[key]['name']].append(key)
-            
-#         refIDList = []
-
-#         for geneName in geneList:
-#             mouseName = lower(geneName)
-#             mouseName = upper(mouseName[0]) + mouseName[1:]
-#             #tries both the human and mouse nomenclature
-#             refIDs = nameDict[upper(geneName)] + nameDict[mouseName]
-#             if len(refIDs) ==0:
-#                 print('Gene name %s not in annotation file %s' % (geneName,annotFile))
-#                 continue
-#             refNumbers = [x.split('_')[-1] for x in refIDs]
-#             #take the lowest refseq number for the gene name as this is usually the best annotation
-#             refIndex = refNumbers.index(min(refNumbers))
-#             refIDList.append(refIDs[refIndex])
-#             print('Gene %s corresponds to ID %s' % (geneName,refIDs[refIndex]))
-
-#     else:
-#         refIDList = geneList
-
-#     for refID in refIDList:
-
-#         chrom = startDict[refID]['chr']
-#         sense = startDict[refID]['sense']
-#         if sense == '+':
-#             start = startDict[refID]['start'][0] - upsearch
-#             stop = startDict[refID]['end'][0] + downsearch
-#         else:
-#             start = startDict[refID]['start'][0] + upsearch
-#             stop = startDict[refID]['end'][0] - downsearch
-
-#         geneName = startDict[refID]['name']
-#         plotName = '_-%s_+%s' % (upsearch,downsearch)
-#         regionString = '%s:%s:%s-%s' % (chrom,sense,start,stop)
-#         print('plotting %s with window %s in region %s to outputfolder %s' % (geneName,plotName,regionString,outputFolder))
-#         callGenePlot(dataFile,refID,plotName,annotFile,namesList,outputFolder,regionString,yScale)
-
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              META TOOLS                                 #
+#                                                                         #
+#-------------------------------------------------------------------------#
 
 
 #==========================================================================
@@ -2051,7 +2181,7 @@ def makeMetaGFFs(annotFile,gffFolder,genome,geneListFile =''):
 
 
 #==========================================================================
-#===================MAPPING BAMS TO METAS==================================
+#=======================MAPPING BAMS FOR METAS=============================
 #==========================================================================
 
 def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],overwrite=False):
@@ -2123,7 +2253,7 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
 
 
 #==========================================================================
-#===================MANUALLY FINISH METAS==================================
+#=========================FINISHING METAS==================================
 #==========================================================================
 
 def finishMetas(metaFolder,settingsFileList=[]):
@@ -2206,7 +2336,7 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
 
 
 
-def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500,bashFileName =''):
+def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500,bashFileName ='',mask=''):
 
     '''
     calls rose w/ standard parameters
@@ -2249,19 +2379,18 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
             macsFile = inputFile
         outputFolder = "%s%s_ROSE" % (parentFolder,name)
 
+        roseCmd = 'python ROSE_main_turbo.py -g %s -i %s -r %s -o %s -t %s -s %s' % (genome,macsFile,bamFile,outputFolder,tss,stitch)
+
         if hasBackground:
-            if len(mapString) == 0:
-                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,outputFolder,tss,stitch)
-            else:
-                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -c %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,backgroundBamFile,mapString,outputFolder,tss,stitch)
-        else:
-            if len(mapString) == 0:
-                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,outputFolder,tss,stitch)
-            else:
-                roseCmd = "python ROSE_main_turbo.py -g %s -i %s -r %s -b %s -o %s -t %s -s %s &" % (genome,macsFile,bamFile,mapString,outputFolder,tss,stitch)
+            roseCmd +=' -c %s' % (backgroundBamFile)
+        if len(mapString) > 0:
+            roseCmd +=' -b %s' % (mapString)
+        if len(mask) >0:
+            roseCmd += ' --mask %s' % (mask)
+
+        roseCmd += ' &'
         bashFile.write(roseCmd)
         bashFile.write('\n')
-
 
 
     bashFile.close()
@@ -2273,7 +2402,265 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
 
 #=========================================================================================================
-#EVERYTHING BELOW HAS NOT BEEN INTEGRATED INTO PIPELINE YET
+#EVERYTHING BELOW IS EITHER DEPRECATED OR HAS NOT BEEN INTEGRATED INTO PIPELINE YET
+
+
+#==========================================================================
+#=======================PLOTTING GROUPS OF GENES===========================
+#==========================================================================
+
+# def plotGeneList(dataFile,annotFile,geneList,namesList,outputFolder,upsearch,downsearch,yScale = 'UNIFORM',byName = True):
+
+#     '''
+#     plots the txn region for a bunch of genes in a given window. uses either name or ID
+#     deprecating this puppy
+#     '''
+    
+#     startDict = makeStartDict(annotFile)
+#     if byName:
+#         geneList = [upper(x) for x in geneList]
+#         nameDict = defaultdict(list)
+        
+#         for key in startDict.keys():
+#             nameDict[startDict[key]['name']].append(key)
+            
+#         refIDList = []
+
+#         for geneName in geneList:
+#             mouseName = lower(geneName)
+#             mouseName = upper(mouseName[0]) + mouseName[1:]
+#             #tries both the human and mouse nomenclature
+#             refIDs = nameDict[upper(geneName)] + nameDict[mouseName]
+#             if len(refIDs) ==0:
+#                 print('Gene name %s not in annotation file %s' % (geneName,annotFile))
+#                 continue
+#             refNumbers = [x.split('_')[-1] for x in refIDs]
+#             #take the lowest refseq number for the gene name as this is usually the best annotation
+#             refIndex = refNumbers.index(min(refNumbers))
+#             refIDList.append(refIDs[refIndex])
+#             print('Gene %s corresponds to ID %s' % (geneName,refIDs[refIndex]))
+
+#     else:
+#         refIDList = geneList
+
+#     for refID in refIDList:
+
+#         chrom = startDict[refID]['chr']
+#         sense = startDict[refID]['sense']
+#         if sense == '+':
+#             start = startDict[refID]['start'][0] - upsearch
+#             stop = startDict[refID]['end'][0] + downsearch
+#         else:
+#             start = startDict[refID]['start'][0] + upsearch
+#             stop = startDict[refID]['end'][0] - downsearch
+
+#         geneName = startDict[refID]['name']
+#         plotName = '_-%s_+%s' % (upsearch,downsearch)
+#         regionString = '%s:%s:%s-%s' % (chrom,sense,start,stop)
+#         print('plotting %s with window %s in region %s to outputfolder %s' % (geneName,plotName,regionString,outputFolder))
+#         callGenePlot(dataFile,refID,plotName,annotFile,namesList,outputFolder,regionString,yScale)
+
+
+
+
+#==========================================================================
+#===================MAKE HYPER TABLE=======================================
+#==========================================================================
+
+# def hyperOccupancyEnrichment(dataFile,annotFile,namesList,tssGFFFile,transcribedGenesList,enrichedFolder,outputFolder,window=100000,macs=True):
+
+#     dataDict = loadDataTable(dataFile)
+        
+#     startDict = makeStartDict(annotFile)
+#     #making sure output folder exists
+#     formatFolder(outputFolder,True)
+
+#     #making a transcribed tss collection
+#     tssGFF = parseTable(tssGFFFile,'\t')
+    
+#     #transcribedGenes
+#     print('Loading transcribed genes')
+#     transcribedGenesTable = parseTable(transcribedGenesList,'\t')
+    
+#     transcribedGenes = [int(line[0])-1 for line in transcribedGenesTable]
+
+#     tssLoci = []
+#     for i in transcribedGenes:
+#         line = tssGFF[i]
+#         tssLocus = Locus(line[0],line[3],line[4],line[6],line[1])
+#         tssLoci.append(tssLocus)
+#     print('making transcribed TSS collection')
+#     tssCollection = LocusCollection(tssLoci,500)
+
+#     for name in namesList:
+#         print('Finding hyperoccupancy for %s' %(name))
+#         hyperTable = []
+
+#         if name.count('MM1S') == 1:
+#             #mycTransLocusSense = Locus('chr14',105130609,105404388,'+','NM_002467')
+#             #tssCollection.append(mycTransLocusSense)
+#             mycTransLocusAnti = Locus('chr14',105404388-5000,105404388+5000,'-','NM_002467')
+#             mycTransLocusSense = Locus('chr14',105130609-5000,105130609+5000,'+','NM_002467')
+
+#             tssCollection.append(mycTransLocusAnti)
+#             tssCollection.append(mycTransLocusSense)
+
+    
+#         peakTable = parseTable(enrichedFolder+dataDict[name]['enrichedMacs'],'\t')
+#         ticker = 0
+#         for peakLine in peakTable:
+#             if ticker%1000 == 0:
+#                 print(ticker)
+#             ticker+=1
+#             peakLocus = Locus(peakLine[0],peakLine[1],peakLine[2],'.',peakLine[3])
+#             #check tss status
+#             signal = float(peakLine[4])
+#             proxGenes = []
+#             overlappingTSSLoci = tssCollection.getOverlap(peakLocus,'both')
+#             if len(overlappingTSSLoci) > 0:
+#                 #this is a tss peak
+#                 tss_peak = 1
+#                 proxGenes+= [locus.ID() for locus in overlappingTSSLoci]
+#             else:
+#                 #this is an enhancer or outside peak
+#                 tss_peak = 0
+
+#                 peakCenter = (int(peakLine[1]) + int(peakLine[2]))/2
+#                 searchLocus = Locus(peakLine[0],peakCenter-window,peakCenter+window,'.',peakLine[3])
+#                 overlappingProxLoci = tssCollection.getOverlap(searchLocus,'both')
+#                 proxGenes += [locus.ID() for locus in overlappingProxLoci]
+#                 if peakLine[3] == 'MACS_peak_10552':
+#                     print(overlappingProxLoci)
+#                     print([locus.start() for locus in overlappingProxLoci])
+#                     print([locus.ID() for locus in overlappingProxLoci])
+#             if len(proxGenes) > 0:
+#                 proxGenes = uniquify(proxGenes)
+
+#                 proxString = join(proxGenes,',')
+#                 proxNames = uniquify([startDict[geneID]['name'] for geneID in proxGenes])
+#                 proxNamesString = join(proxNames,',')
+#                 newLine = [peakLine[0],peakLine[1],peakLine[2],peakLine[3],signal,tss_peak,proxString,proxNamesString]
+#                 hyperTable.append(newLine)
+
+#         #now sort the hyper table
+#         sortedHyperTable = [['CHROM','START','STOP','NAME','SIGNAL','TSS_PEAK','PROXIMAL_GENE_IDS','PROXIMAL_GENE_NAMES']]
+
+#         peakOrder = order([float(line[4]) for line in hyperTable],decreasing=True)
+
+#         for i in peakOrder:
+#             sortedHyperTable.append(hyperTable[i])
+
+#         #now do the gene assignment way
+
+#         geneDict = {'totalSignal':defaultdict(float),'proximalEvents':defaultdict(int)}
+#         for line in sortedHyperTable[1:]:
+#             proximalGenes = line[6].split(',')
+#             if len(proximalGenes) == 0:
+#                 continue
+#             else:
+#                 signal = float(line[4])
+
+#                 for geneID in proximalGenes:
+#                     geneDict['proximalEvents'][geneID]+=1
+#                     geneDict['totalSignal'][geneID]+=signal
+
+#         geneCentricTable = [] 
+#         geneList = geneDict['totalSignal'].keys()
+#         print(len(geneDict['totalSignal'].keys()))
+#         print(len(geneDict['proximalEvents'].keys()))
+#         peakOrder = order([geneDict['totalSignal'][geneID] for geneID in geneList],decreasing=True)
+        
+#         for i in peakOrder:
+#             geneID = geneList[i]
+#             geneName = startDict[geneID]['name']
+#             geneCentricTable.append([geneID,geneName,geneDict['proximalEvents'][geneID],geneDict['totalSignal'][geneID]])
+        
+#         collapsedGeneCentricTable = [['GENE_ID','GENE_NAME','PROXIMAL_EVENTS','SIGNAL']] 
+        
+#         usedNames = []
+#         for line in geneCentricTable:
+#             geneName = line[1]
+#             if usedNames.count(geneName) == 0:
+#                 collapsedGeneCentricTable.append(line)
+#                 usedNames.append(geneName)
+        
+#         unParseTable(sortedHyperTable,'%s%s_hyperPeaks.txt' % (outputFolder,name),'\t')
+#         unParseTable(collapsedGeneCentricTable,'%s%s_hyperGenes.txt' % (outputFolder,name),'\t')
+
+
+#==========================================================================
+#===================MAKE HYPER DENISTY=====================================
+#==========================================================================
+                
+# def hyperOccupancyDensity(annotFile,hyperPeakFile,namesList,gffName,mappedFolder,outFolder,referenceName=''):
+
+#     '''
+#     finds the gene assignment of peaks
+#     then maps to genes for each datasets in namesList
+#     '''
+
+#     startDict = makeStartDict(annotFile)
+#     assignDict = {'promoter':defaultdict(list),'enhancer':defaultdict(list)}
+
+#     hyperPeaks = parseTable(hyperPeakFile,'\t')
+#     for line in hyperPeaks[1:]:
+#         peakID = int(line[3].split('_')[-1])-1
+#         geneList = line[6].split(',')
+#         if int(line[5]) == 1:
+#             assignDict['promoter'][peakID] += geneList
+#         else:
+#             assignDict['enhancer'][peakID] += geneList
+
+#     if len(referenceName) == 0:
+#         referenceName = namesList[0]
+
+#     for name in namesList:
+#         print('working on %s' % (name))
+#         newTable = [['REFSEQ_ID','NAME','PROMOTER_REGIONS','PROMOTER_SIGNAL','DISTAL_REGIONS','DISTAL_SIGNAL']]
+#         mappedGFF = parseTable('%s%s/%s_%s.gff' % (mappedFolder,gffName,gffName,name),'\t')
+#         geneDict = {'promoter':defaultdict(list),'enhancer':defaultdict(list)}
+#         for line in mappedGFF[1:]:
+#             peakID = int(line[0].split('_')[-1])
+#             regionSize = int(line[1].split(':')[-1].split('-')[1])-int(line[1].split(':')[-1].split('-')[0])
+#             if assignDict['promoter'].has_key(peakID):
+#                 for geneID in assignDict['promoter'][peakID]:
+#                     geneDict['promoter'][geneID].append(float(line[2])*regionSize)
+#             elif assignDict['enhancer'].has_key(peakID):
+#                 for geneID in assignDict['enhancer'][peakID]:
+#                     geneDict['enhancer'][geneID].append(float(line[2])*regionSize)
+#             else:
+#                 continue
+
+        
+#         if name == referenceName:
+#             keeperIDs = []
+#             allGenes = uniquify(geneDict['promoter'].keys()+geneDict['enhancer'].keys())
+#             peakOrder = order([(sum(geneDict['enhancer'][x])+ sum(geneDict['promoter'][x])) for x in allGenes],decreasing=True)
+
+#             peakOrderedGenes = [allGenes[x] for x in peakOrder]
+            
+#             usedNames =[]
+#             for geneID in peakOrderedGenes:
+#                 geneName = startDict[geneID]['name']
+#                 if usedNames.count(geneName) == 1:
+#                     continue
+#                 usedNames.append(geneName)
+#                 keeperIDs.append(geneID)
+
+        
+#         #now write the table!
+#         for geneID in keeperIDs:
+#             geneName = startDict[geneID]['name']
+#             promoterRegions = len(geneDict['promoter'][geneID])
+#             promoterSignal = sum(geneDict['promoter'][geneID])
+#             enhancerRegions = len(geneDict['enhancer'][geneID])
+#             enhancerSignal = sum(geneDict['enhancer'][geneID])
+
+
+#             newLine = [geneID,geneName,promoterRegions,promoterSignal,enhancerRegions,enhancerSignal]
+#             newTable.append(newLine)
+#         print('writing table for %s' % (name))
+#         unParseTable(newTable,'%s%s_%s_REF_geneMapped.txt' % (outFolder,name,referenceName),'\t')
 
 
 # #making all of the ylfs

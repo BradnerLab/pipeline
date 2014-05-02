@@ -142,7 +142,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
 
 
 
-def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder):
+def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,maskFile=''):
 
     '''
     launches enhancer mapping if needed from enriched region files
@@ -169,7 +169,7 @@ def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder):
             enrichedFile = nameDict[name]['enrichedFile']
             #call rose
             print "CALLING ROSE FOR %s" % (name)
-            bashFileName = pipeline_dfci.callRose(dataFile,'',roseOutputFolder,[name],[],enrichedFile)
+            bashFileName = pipeline_dfci.callRose(dataFile,'',roseOutputFolder,[name],[],enrichedFile,mask=maskFile)
             print bashFileName
             os.system('bash %s &' % (bashFileName))
             #add name to queue list
@@ -261,6 +261,8 @@ def mergeCollections(nameDict,analysisName,output='',superOnly=True):
         allLoci += seCollection.getLoci()
 
     print len(allLoci)
+
+
     mergedCollection = utils.LocusCollection(allLoci,50)
 
     #stitch the collection together
@@ -452,6 +454,10 @@ def main():
     parser.add_option("-a","--all", dest="all",action = 'store_true', default=False,
                       help = "flag to run analysis on ALL enhancers (this is much slower)")
 
+    parser.add_option("--mask",dest="mask",nargs=1,default=None,
+                      help = 'Create a mask set of regions to filter out of analysis. must be .bed or .gff format')
+
+
     (options,args) = parser.parse_args()
 
     print(options)
@@ -498,6 +504,12 @@ def main():
         else:
             analysisName = "enhancers"
 
+        #see if there's a mask
+        if options.mask:
+            maskFile = options.mask
+        else:
+            maskFile = ''
+
         #=====================================================
         #=================SUMMARIZE INPUTS====================
         #=====================================================
@@ -525,7 +537,7 @@ def main():
         #=====================================================
         
         print "\n\n\nLAUNCHING ENHANCER MAPPING (IF NECESSARY)"
-        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder)
+        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,maskFile)
         print nameDict
 
 
