@@ -61,6 +61,8 @@ from collections import defaultdict
 #def open(file,mode='r'):  <- replaces open with a version that can handle gzipped files
 #def parseTable(fn, sep, header = False,excel = False): <- opens standard delimited files
 #def unParseTable(table, output, sep): <- writes standard delimited files, opposite of parseTable
+#def formatBed(bed,output=''):
+#def bedToGFF(bed,output=''):
 #def gffToBed(gff,output= ''): <- converts standard UCSC gff format files to UCSC bed format files
 #def formatFolder(folderName,create=False): <- checks for the presence of any folder and makes it if create =True
 
@@ -159,6 +161,58 @@ def unParseTable(table, output, sep):
 
 
 
+
+def formatBed(bed,output=''):
+
+    '''
+    formats a bed file from UCSC or MACS into a WUSTL gateway compatible bed
+    '''
+
+
+    newBed = []
+
+    if type(bed) == str:
+        bed = parseTable(bed,'\t')
+
+    indexTicker = 1
+    for line in bed:
+
+        newLine = line[0:4]
+        try:
+            strand = line[5]
+        except IndexError:
+            strand = '.'
+        newLine+= [indexTicker,strand]
+        indexTicker +=1
+        newBed.append(newLine)
+    
+    if len(output) > 0:
+        unParseTable(newBed,output,'\t')
+    else:
+        return newBed
+
+def bedToGFF(bed,output=''):
+
+    '''
+    turns a bed into a gff file
+    '''
+    if type(bed) == str:
+        bed = parseTable(bed,'\t')
+    
+    bed = formatBed(bed)
+
+    gff = []
+    for line in bed:
+        gffLine = [line[0],line[3],'',line[1],line[2],line[4],line[5],'',line[3]]
+        gff.append(gffLine)
+
+    if len(output) > 0:
+        unParseTable(gff,output,'\t')
+    else:
+        return gff
+
+
+
 #100912
 #gffToBed
 
@@ -205,9 +259,9 @@ def checkOutput(fileName,waitTime = 1,timeOut = 30):
        if it exists, returns True
        default is 1 minute with a max timeOut of 30 minutes
        '''       
-       waitTime = int(waitTime) * 60
+       waitTime = int(waitTime * 60)
 
-       timeOut = int(timeOut) * 60
+       timeOut = int(timeOut * 60)
 
        maxTicker = timeOut/waitTime
        ticker = 0
@@ -231,7 +285,7 @@ def checkOutput(fileName,waitTime = 1,timeOut = 30):
                      break
 
               
-       time.sleep(20)
+       time.sleep(10)
        if fileExists:
               return True
        else:
