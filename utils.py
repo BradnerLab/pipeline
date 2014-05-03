@@ -45,10 +45,9 @@ import gzip
 import time
 import re
 
-from string import *
+from string import join
 
 import subprocess
-import datetime
 
 from collections import defaultdict
 
@@ -245,7 +244,7 @@ def formatFolder(folderName, create=False):
     return False
 
 
-def checkOutput(fileName,waitTime = 1,timeOut = 30):
+def checkOutput(fileName, waitTime = 1, timeOut = 30):
 
        '''
        checks for the presence of a file every N minutes
@@ -413,7 +412,7 @@ def makeGenes(annotFile,geneList=[],asDict = False):
         geneList = [line[0] for line in geneList]
 
 
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refTable,refDict = importRefseq(annotFile)
 
 
@@ -448,7 +447,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
     makes a LocusCollection w/ each transcript as a locus
     takes in either a refseqfile or an ensemblGFF
     '''
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         locusList = []
         ticker = 0
@@ -466,7 +465,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
                     print(ticker)
             
 
-    transCollection = LocusCollection(locusList,window)
+    transCollection = LocusCollection(locusList, window)
 
     return transCollection
 
@@ -884,7 +883,6 @@ class Gene:
          self._cdExons = []
          self._introns = []
 
-         cd_exon_count = 0
 
          for n in range(len(exStarts)):
              first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
@@ -1101,7 +1099,7 @@ class Bam:
             reads = filter(lambda x: x[5].count('N') < 1,reads)
 
         #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-'}
-        convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
+        # convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
         
         
         #BJA added 256 and 272, which correspond to 0 and 16 for multi-mapped reads respectively:
@@ -1342,7 +1340,7 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
         if useID:
                name = '>' + line[1]
         else:
-               name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
+               name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'_')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])
