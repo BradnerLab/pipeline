@@ -120,7 +120,7 @@ def open(fileName,mode='r'):
 #a nested list such that list[row][col]
 #example call:
 #table = parseTable('file.txt','\t')
-def parseTable(fn, sep, header = False,excel = False):
+def parseTable(fn, sep, header = False, excel = False):
     fh = open(fn)
     lines = fh.readlines()
     fh.close()
@@ -130,7 +130,7 @@ def parseTable(fn, sep, header = False,excel = False):
         lines = lines[0].split('\r')
     table = []
     if header == True:
-        lines =lines[1:]
+        lines = lines[1:]
     for i in lines:
         table.append(i[:-1].split(sep))
 
@@ -150,9 +150,7 @@ def unParseTable(table, output, sep):
             fh_out.write(str(i) + '\n')
     else:
         for line in table:
-            line = [str(x) for x in line]
-
-            fh_out.write(sep.join(line) + '\n')
+            fh_out.write(sep.join([str(x) for x in line]) + '\n')
 
     fh_out.close()
 
@@ -226,7 +224,7 @@ def gffToBed(gff,output= ''):
     else:
         unParseTable(bed,output,'\t')
 
-def formatFolder(folderName,create=False):
+def formatFolder(folderName, create=False):
 
     '''
     makes sure a folder exists and if not makes it
@@ -237,16 +235,14 @@ def formatFolder(folderName,create=False):
         folderName +='/'
 
     try: 
-        foo = os.listdir(folderName)
+        os.listdir(folderName)
         return folderName
     except OSError:
         print('folder %s does not exist' % (folderName))
         if create:
-            os.system('mkdir %s' % (folderName))
+            os.mkdir(folderName)
             return folderName
-        else:
-                    
-            return False 
+    return False
 
 
 def checkOutput(fileName,waitTime = 1,timeOut = 30):
@@ -307,17 +303,17 @@ def getParentFolder(inputFile):
 #==================================================================
 
 
-def makeStartDict(annotFile,geneList = []):
+def makeStartDict(annotFile, geneList=[]):
     '''
     makes a dictionary keyed by refseq ID that contains information about 
     chrom/start/stop/strand/common name
     '''
 
     if type(geneList) == str:
-        geneList = parseTable(geneList,'\t')
+        geneList = parseTable(geneList, '\t')
         geneList = [line[0] for line in geneList]
             
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         if len(geneList) == 0:
             geneList = refseqDict.keys()
@@ -1012,7 +1008,7 @@ def makeTSSLocus(gene,startDict,upstream,downstream):
     '''
     
     start = startDict[gene]['start'][0]
-    if startDict[gene]['sense'] =='-':
+    if startDict[gene]['sense'] == '-':
         return Locus(startDict[gene]['chr'],start-downstream,start+upstream,'-',gene)
     else:
         return Locus(startDict[gene]['chr'],start-upstream,start+downstream,'+',gene)
