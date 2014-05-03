@@ -107,13 +107,13 @@ from collections import defaultdict
 #==========================I/O FUNCTIONS===========================
 #==================================================================
 
+# TODO: Overriding internal functions is evil!
 bopen=open
 def open(fileName,mode='r'):
-
-       if fileName.split('.')[-1]=='gz':
-               return gzip.open(fileName,mode+'b')
+       if fileName.split('.')[-1] == 'gz':
+               return gzip.open(fileName, mode + 'b')
        else:
-               return bopen(fileName,mode)
+               return bopen(fileName, mode)
 
 #parseTable 4/14/08
 #takes in a table where columns are separated by a given symbol and outputs
@@ -144,18 +144,15 @@ def parseTable(fn, sep, header = False,excel = False):
 #example call unParseTable(table, 'table.txt', '\t') for a tab del file
 
 def unParseTable(table, output, sep):
-    fh_out = open(output,'w')
+    fh_out = open(output, 'w')
     if len(sep) == 0:
         for i in table:
-            fh_out.write(str(i))
-            fh_out.write('\n')
+            fh_out.write(str(i) + '\n')
     else:
         for line in table:
             line = [str(x) for x in line]
-            line = join(line,sep)
 
-            fh_out.write(line)
-            fh_out.write('\n')
+            fh_out.write(sep.join(line) + '\n')
 
     fh_out.close()
 
