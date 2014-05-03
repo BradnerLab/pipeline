@@ -465,11 +465,11 @@ def main():
 
         bamFileName = bamFile.split('/')[-1]
 
-        # MAPPING TO THE STITCHED GFF
-        mappedOut1Folder = '%s%s_%s_MAPPED' % (mappedFolder, stitchedGFFName, bamFileName)
-        mappedOut1File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, stitchedGFFName, bamFileName)
-        if utils.checkOutput(mappedOut1File, 0.2, 0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut1File))
+        #MAPPING TO THE STITCHED GFF
+        mappedOut1Folder ='%s%s_%s_MAPPED' % (mappedFolder,stitchedGFFName,bamFileName)
+        mappedOut1File ='%s%s_%s_MAPPED/matrix.gff' % (mappedFolder,stitchedGFFName,bamFileName)
+        if utils.checkOutput(mappedOut1File,0.2,0.2):
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedOut1File))
         else:
             cmd1 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
             print(cmd1)
@@ -487,7 +487,6 @@ def main():
         mappedOut2File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, inputName, bamFileName)
         if utils.checkOutput(mappedOut2File, 0.2, 0.2):
             print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut2File))
-
         else:
             cmd2 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
             print(cmd2)

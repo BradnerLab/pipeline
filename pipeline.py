@@ -29,7 +29,6 @@ THE SOFTWARE.
 #addapted for general use
 
 
-import sys
 from utils import *
 
 import time
