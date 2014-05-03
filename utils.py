@@ -186,13 +186,13 @@ def formatBed(bed,output=''):
     else:
         return newBed
 
-def bedToGFF(bed,output=''):
+def bedToGFF(bed, output=''):
 
     '''
     turns a bed into a gff file
     '''
-    if type(bed) == str:
-        bed = parseTable(bed,'\t')
+    if isinstance(bed, str):
+        bed = parseTable(bed, '\t')
     
     bed = formatBed(bed)
 
