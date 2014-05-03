@@ -525,9 +525,9 @@ def main():
     time.sleep(20)
     superTableFile = "%s_SuperEnhancers.table.txt" % (inputName)
     if options.control:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankBy, options.control, outFolder, superTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, superTableFile)
     else:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankBy, outFolder, superTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, superTableFile)
     os.system(cmd)
 
 
