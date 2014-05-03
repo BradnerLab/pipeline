@@ -99,7 +99,7 @@ class BaseLiquidator(object):
         self.executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                             "bamliquidator_internal", executable)
         if not os.path.isfile(self.executable_path):
-            sys.exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
+            exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
 
         os.mkdir(output_directory)
 
@@ -132,12 +132,12 @@ class BaseLiquidator(object):
 
     def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
-            print "Liquidating %s (file %d of %d, %s)" % (
-                bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S'))
+            print("Liquidating %s (file %d of %d, %s)" % (
+                bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S')))
 
             return_code = self.liquidate(bam_file_path, extension, sense)
             if return_code != 0:
-                print "%s failed with exit code %d" % (self.executable_path, return_code)
+                print("%s failed with exit code %d" % (self.executable_path, return_code))
                 exit(return_code)
 
         start = time()
@@ -146,22 +146,22 @@ class BaseLiquidator(object):
         self.log += "nps_seconds=%s\n" % duration
 
     def flatten(self):
-        print "Flattening HDF5 tables into text files"
+        print("Flattening HDF5 tables into text files")
         start = time()
 
         with tables.open_file(self.counts_file_path, mode = "r") as counts_file:
             write_tab_for_all(counts_file, self.output_directory)
 
         duration = time() - start
-        print "Flattening took %f seconds" % duration
+        print("Flattening took %f seconds" % duration)
         self.log += "flatten_seconds=%s\n" % duration
 
     def email(self): 
         start = time()
-        print "Emailing hardware info and performance measurements for tracking" 
+        print("Emailing hardware info and performance measurements for tracking")
         share("bamliquidator_batch", version, self.log)
         duration = time() - start
-        print "Emailing took %f seconds" % duration
+        print("Emailing took %f seconds" % duration)
         
 
 class BinLiquidator(BaseLiquidator):
@@ -188,7 +188,7 @@ class BinLiquidator(BaseLiquidator):
 
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
-        print "Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate)
+        print("Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate))
         self.log += "bin_seconds=%s,reads=%s,mrps=%s\n" % (duration, reads, rate)
 
         return return_code
@@ -225,7 +225,7 @@ class RegionLiquidator(BaseLiquidator):
         return_code = subprocess.call(args)
         duration = time() - start
 
-        print "Liquidation completed: %f seconds" % (duration)
+        print("Liquidation completed: %f seconds" % (duration))
         self.log += "region_seconds=%s\n" % duration # todo: maybe include the line count of the region file?
 
         return return_code
@@ -250,7 +250,7 @@ class RegionLiquidator(BaseLiquidator):
         return table
 
 def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
-    print "Writing bamToGff style matrix.gff file"
+    print("Writing bamToGff style matrix.gff file")
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
         with open(output_file_path, "w") as output:
             file_name = ""
@@ -320,7 +320,7 @@ def main():
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path, args.counts_file)
     else:
         if args.counts_file:
-            print ("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
+            print("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
                   " if you need this feature")
             exit(1)
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
@@ -332,7 +332,7 @@ def main():
 
     if args.match_bamToGFF:
         if args.regions_file is None:
-            print "Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)"
+            print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
 
