@@ -7,6 +7,7 @@ VERSION 0.2
 CONTACT: youngcomputation@wi.mit.edu
 '''
 
+from __future__ import absolute_import #, division, print_function, unicode_literals
 import utils
 
 import sys
@@ -37,7 +38,7 @@ def optimizeStitching(locusCollection, name, outFolder, stepSize=500):
     step = 0
     while step <= maxStitch:
 
-        print "Getting stitch stats for %s (bp)" % (step)
+        print("Getting stitch stats for %s (bp)" % (step))
         stitchCollection = locusCollection.stitchCollection(stitchWindow=step)
         num_regions = len(stitchCollection)
         stitchLoci = stitchCollection.getLoci()
@@ -75,7 +76,7 @@ def optimizeStitching(locusCollection, name, outFolder, stepSize=500):
     rOutput = subprocess.Popen(rCmd, stdout=subprocess.PIPE, shell=True)
     rOutputTest = rOutput.communicate()
 
-    print rOutputTest
+    print(rOutputTest)
 
     stitchParam = rOutputTest[0].split('\n')[2]
     try:
@@ -397,14 +398,14 @@ def main():
         elif maskFile.split('.')[-1].upper() == 'GFF':
             maskGFF = utils.parseTable(maskFile, '\t')
         else:
-            print "MASK MUST BE A .gff or .bed FILE"
+            print("MASK MUST BE A .gff or .bed FILE")
             sys.exit()
         maskCollection = utils.gffToLocusCollection(maskGFF)
 
         # now mask the reference loci
         referenceLoci = referenceCollection.getLoci()
         filteredLoci = [locus for locus in referenceLoci if len(maskCollection.getOverlap(locus, 'both')) == 0]
-        print "FILTERED OUT %s LOCI THAT WERE MASKED IN %s" % (len(referenceLoci) - len(filteredLoci), maskFile)
+        print("FILTERED OUT %s LOCI THAT WERE MASKED IN %s" % (len(referenceLoci) - len(filteredLoci), maskFile))
         referenceCollection = utils.LocusCollection(filteredLoci, 50)
 
     # NOW STITCH REGIONS
@@ -452,6 +453,14 @@ def main():
     # MAPPING TO THE NON STITCHED (ORIGINAL GFF)
     # MAPPING TO THE STITCHED GFF
 
+    # Try to use the bamliquidatior_path.py script on cluster, otherwise, failover to local (in path), otherwise fail.
+    bamliquidator_path = '/ark/home/jdm/pipeline/bamliquidator_batch.py'
+    if not os.path.isfile(bamliquidator_path):
+        bamliquidator_path = 'bamliquidator_batch.py'
+        if not os.path.isfile(bamliquidator_path):
+            raise ValueError('bamliquidator_batch.py not found in path')
+
+
     for bamFile in bamFileList:
 
         bamFileName = bamFile.split('/')[-1]
@@ -460,9 +469,9 @@ def main():
         mappedOut1Folder = '%s%s_%s_MAPPED' % (mappedFolder, stitchedGFFName, bamFileName)
         mappedOut1File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, stitchedGFFName, bamFileName)
         if utils.checkOutput(mappedOut1File, 0.2, 0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedout1File))
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut1File))
         else:
-            cmd1 = "python /ark/home/jdm/pipeline/bamliquidator_batch.py --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
+            cmd1 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
             print(cmd1)
 
             output1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, shell=True)
@@ -477,10 +486,10 @@ def main():
         mappedOut2Folder = '%s%s_%s_MAPPED' % (mappedFolder, inputName, bamFileName)
         mappedOut2File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, inputName, bamFileName)
         if utils.checkOutput(mappedOut2File, 0.2, 0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedout2File))
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut2File))
 
         else:
-            cmd2 = "python /ark/home/jdm/pipeline/bamliquidator_batch.py --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
+            cmd2 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
             print(cmd2)
 
             output2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, shell=True)
