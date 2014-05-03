@@ -17,7 +17,6 @@ import os
 import numpy
 import subprocess
 
-from string import upper
 from collections import defaultdict
 
 #==================================================================
@@ -403,7 +402,7 @@ def main():
         'MM10':'%s/annotation/mm10_refseq.ucsc' % (cwd),
         }
 
-    annotFile = genomeDict[upper(genome)]
+    annotFile = genomeDict[genome.upper()]
 
     #MAKING THE START DICT
     print('MAKING START DICT')
@@ -419,9 +418,9 @@ def main():
     if options.mask:
         maskFile = options.mask
         #if it's a bed file
-        if upper(maskFile.split('.')[-1]) == 'BED':
+        if maskFile.split('.')[-1].upper() == 'BED':
             maskGFF = utils.bedToGFF(maskFile)
-        elif upper(maskFile.split('.')[-1]) == 'GFF':
+        elif maskFile.split('.')[-1].upper() == 'GFF':
             maskGFF= utils.parseTable(maskFile,'\t')
         else:
             print "MASK MUST BE A .gff or .bed FILE"
