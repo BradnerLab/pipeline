@@ -344,7 +344,7 @@ def main():
 
     if options.bams:
         bamFileList += options.bams.split(',')
-        bamFileLIst = utils.uniquify(bamFileList)
+        bamFileList = utils.uniquify(bamFileList)
     # optional args
 
     # Stitch parameter
