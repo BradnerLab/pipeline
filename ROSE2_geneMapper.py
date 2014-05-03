@@ -269,40 +269,39 @@ def mapEnhancerToGene(rankByBamFile,controlBamFile,genome,annotFile,enhancerFile
     bamName = rankByBamFile.split('/')[-1]
     mappedRankByFile = "%s%s_%s.gff" % (enhancerFolder,gffRootName,bamName)
     cmd ='python ROSE_bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (rankByBamFile,enhancerGeneGFFFile,mappedRankByFile)
-    print "Mapping rankby bam %s" % (rankByBamFile)
-    print cmd
+    print("Mapping rankby bam %s" % (rankByBamFile))
+    print(cmd)
     os.system(cmd)
 
 
-    #next  on the control bam if it exists
+    #next on the control bam if it exists
     if len(controlBamFile) > 0:
         controlName = controlBamFile.split('/')[-1]
         mappedControlFile = "%s%s/%s_%s.gff" % (enhancerFolder,gffRootName,gffRootName,controlName)
         cmd ='python ROSE_bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (controlBamFile,enhancerGeneGFFFile,mappedControlFile)
-        print "Mapping control bam %s" % (controlBamFile)
-        print cmd
+        print("Mapping control bam %s" % (controlBamFile))
+        print(cmd)
         #os.system(cmd)
 
     
 
     
     #now get the appropriate output files
-
     if len(controlBamFile) > 0:
-        print "CHECKING FOR MAPPED OUTPUT AT %s AND %s" % (mappedRankByFile,mappedControlFile)
+        print("CHECKING FOR MAPPED OUTPUT AT %s AND %s" % (mappedRankByFile,mappedControlFile))
         if utils.checkOutput(mappedRankByFile,1,30) and utils.checkOutput(mappedControlFile,1,30):
             print('MAKING ENHANCER ASSOCIATED GENE TSS SIGNAL DICTIONARIES')
             signalDict = makeSignalDict(mappedRankByFile,mappedControlFile)
         else:
-            print "NO MAPPING OUTPUT DETECTED"
+            print("NO MAPPING OUTPUT DETECTED")
             sys.exit()
     else:
-        print "CHECKING FOR MAPPED OUTPUT AT %s" % (mappedRankByFile)
+        print("CHECKING FOR MAPPED OUTPUT AT %s" % (mappedRankByFile))
         if utils.checkOutput(mappedRankByFile,1,30):
             print('MAKING ENHANCER ASSOCIATED GENE TSS SIGNAL DICTIONARIES')
             signalDict = makeSignalDict(mappedRankByFile)
         else:
-            print "NO MAPPING OUTPUT DETECTED"
+            print("NO MAPPING OUTPUT DETECTED")
             sys.exit()
 
     #use enhancer rank to order
