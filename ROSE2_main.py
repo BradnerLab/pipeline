@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 '''
 PROGRAM TO STITCH TOGETHER REGIONS TO FORM ENHANCERS, MAP READ DENSITY TO STITCHED REGIONS,
 AND RANK ENHANCERS BY READ DENSITY TO DISCOVER SUPER-ENHANCERS
@@ -7,23 +7,17 @@ VERSION 0.2
 CONTACT: youngcomputation@wi.mit.edu
 '''
 
-import sys
-
-
-
-#import ROSE_utils
-
 import utils
 
+import sys
+#import ROSE_utils
 import time
 import copy
 import os
-
 import numpy
 import subprocess
 
-from string import upper,join
-
+from string import upper
 from collections import defaultdict
 
 #==================================================================
@@ -569,9 +563,7 @@ def main():
         cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome,options.rankBy,options.control,outFolder,superTableFile)
     else:
         cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome,options.rankBy,outFolder,superTableFile)
-    os.system(cmd)    
-    bashLog.write(cmd+'\n')
-    bashLog.close()
+    os.system(cmd)
 
 
 
