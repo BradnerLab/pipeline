@@ -22,7 +22,7 @@ import os
 import numpy
 import subprocess
 
-from string import upper,join
+from string import upper
 
 from collections import defaultdict
 
@@ -500,7 +500,7 @@ def main():
         mappedOut1Folder ='%s%s_%s_MAPPED' % (mappedFolder,stitchedGFFName,bamFileName)
         mappedOut1File ='%s%s_%s_MAPPED/matrix.gff' % (mappedFolder,stitchedGFFName,bamFileName)
         if utils.checkOutput(mappedOut1File,0.2,0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedout1File))
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedOut1File))
         else:
             cmd1="python /ark/home/jdm/pipeline/bamliquidator_batch.py --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile,mappedOut1Folder,bamFile)
             print(cmd1)
@@ -518,7 +518,7 @@ def main():
         mappedOut2Folder ='%s%s_%s_MAPPED' % (mappedFolder,inputName,bamFileName)
         mappedOut2File ='%s%s_%s_MAPPED/matrix.gff' % (mappedFolder,inputName,bamFileName)
         if utils.checkOutput(mappedOut2File,0.2,0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedout2File))
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedOut2File))
 
         else:
             cmd2="python /ark/home/jdm/pipeline/bamliquidator_batch.py --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile,mappedOut2Folder,bamFile)
@@ -570,8 +570,7 @@ def main():
     else:
         cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome,options.rankBy,outFolder,superTableFile)
     os.system(cmd)    
-    bashLog.write(cmd+'\n')
-    bashLog.close()
+
 
 
 

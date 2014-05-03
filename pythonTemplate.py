@@ -17,7 +17,7 @@
 
 import sys
 
-print "Using python version %s" % sys.version()
+print "Using python version %s" % sys.version
 
 
 #importing utils package

@@ -37,9 +37,6 @@ import sys
 sys.path.append('/ark/home/cl512/src/pipeline/')
 
 import pipeline_dfci
-import datetime
-import random
-import string
 
 #==========================================================================
 #============================PARAMETERS====================================

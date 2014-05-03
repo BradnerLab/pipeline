@@ -99,7 +99,7 @@ class BaseLiquidator(object):
         self.executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                             "bamliquidator_internal", executable)
         if not os.path.isfile(self.executable_path):
-            sys.exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
+            exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
 
         os.mkdir(output_directory)
 

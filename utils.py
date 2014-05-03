@@ -48,7 +48,6 @@ import re
 from string import *
 
 import subprocess
-import datetime
 
 from collections import defaultdict
 
@@ -1383,7 +1382,7 @@ def revComp(seq,rev = True, RNA=False):
     else:
         revComp = join(map(pair,seq),'')
     if RNA:
-        revComp = revComp.replace('T','U')
+        revComp = revComp.replace('T','U') # Not sure this is defined (!)
         revComp = revComp.replace('t','u')
     else:
         revComp = revComp.replace('U','T')
