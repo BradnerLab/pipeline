@@ -268,7 +268,7 @@ def mapEnhancerToGene(rankByBamFile,controlBamFile,genome,annotFile,enhancerFile
     #first on the rankBy bam
     bamName = rankByBamFile.split('/')[-1]
     mappedRankByFile = "%s%s_%s.gff" % (enhancerFolder,gffRootName,bamName)
-    cmd ='python ROSE_bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (rankByBamFile,enhancerGeneGFFFile,mappedRankByFile)
+    cmd ='python bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (rankByBamFile,enhancerGeneGFFFile,mappedRankByFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
     os.system(cmd)
