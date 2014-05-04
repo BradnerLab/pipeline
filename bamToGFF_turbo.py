@@ -78,6 +78,13 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
         newGFF.append(['GENE_ID','locusLine'] + ['bin_'+str(n)+'_'+bamFile.split('/')[-1] for n in range(1,int(matrix)+1,1)])
         nBin = int(matrix)
 
+    # Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
+    bamliquidatorString = '/usr/bin/bamliquidator'
+    if not os.path.isfile(bamliquidatorString):
+        bamliquidatorString = './bamliquidator'
+        if not os.path.isfile(bamliquidatorString):
+            raise ValueError('bamliquidator not found in path')
+
     #getting and processing reads for gff lines
     ticker = 0
     print('Number lines processed')
@@ -111,13 +118,14 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
             bamSense = '.'
         #using the bamLiquidator to get the readstring            
         #print('using nBin of %s' % nBin)
-        bamliquidatorString = '/usr/bin/bamliquidator'
         bamCommand = "%s %s %s %s %s %s %s %s" % (bamliquidatorString,bamFile,line[0],gffLocus.start(),gffLocus.end(),bamSense,nBin,extension)
         #print(bamCommand)
         getReads = subprocess.Popen(bamCommand,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
-        readString = getReads.communicate()
-        denList = readString[0].split('\n')[:-1]
-        
+        readString, stderr = getReads.communicate()
+        if stderr:
+            print("STDERR out: %s" % (stderr))
+        denList = readString.split('\n')[:-1]
+        #print("denlist is: %s" % denList)
         #flip the denList if the actual gff region is -
         if gffLocus.sense() == '-':
             denList = denList[::-1]
@@ -130,7 +138,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
 
         clusterLine = [gffLocus.ID(),gffLocus.__str__()] + denList
         newGFF.append(clusterLine)
-            
+
     return newGFF
         
 
@@ -229,8 +237,9 @@ def main():
         elif options.matrix:
             print('mapping to GFF and making a matrix with fixed bin number')
             newGFF = mapBamToGFF(bamFile,gffFile,options.sense,int(options.extension),options.rpm,None,int(options.matrix))
-            
+
         utils.unParseTable(newGFF,output,'\t')
+
     else:
         parser.print_help()
         

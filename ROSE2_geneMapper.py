@@ -55,7 +55,7 @@ def makeSignalDict(mappedGFFFile, controlMappedGFFFile=''):
     '''
     makes a signal dict
     '''
-
+    print('\t called makeSignalDict on %s (ctrl: %s)' % (mappedGFFFile, controlMappedGFFFile))
     signalDict = defaultdict(float)
 
     mappedGFF = utils.parseTable(mappedGFFFile, '\t')
@@ -70,12 +70,13 @@ def makeSignalDict(mappedGFFFile, controlMappedGFFFile=''):
             signalDict[mappedGFF[i][0]] = signal
     else:
         for i in range(1, len(mappedGFF)):
-
+            print('mapped GFF is ')
             signal = float(mappedGFF[i][2])
             signalDict[mappedGFF[i][0]] = signal
 
     return signalDict
 
+#makeSignalDict('../sshfs/x_rose/mm9_TSS_ENHANCER_GENES_-5000_+5000_CONV3_CD4.nomito.rmdup.bam.gff')
 
 def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile='', uniqueGenes=True, searchWindow=50000, noFormatTable=False):
     '''
@@ -269,15 +270,16 @@ def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancer
     os.system(cmd)
 
     # next on the control bam if it exists
+
     if len(controlBamFile) > 0:
         controlName = controlBamFile.split('/')[-1]
         mappedControlFile = "%s%s/%s_%s.gff" % (
             enhancerFolder, gffRootName, gffRootName, controlName)
-        cmd = 'python ROSE_bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (
+        cmd = 'python bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (
             controlBamFile, enhancerGeneGFFFile, mappedControlFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
-        # os.system(cmd)
+        os.system(cmd)
 
     # now get the appropriate output files
     if len(controlBamFile) > 0:
