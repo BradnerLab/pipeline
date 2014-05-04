@@ -45,7 +45,7 @@ import gzip
 import time
 import re
 
-from string import *
+from string import join
 
 import subprocess
 
@@ -106,20 +106,20 @@ from collections import defaultdict
 #==========================I/O FUNCTIONS===========================
 #==================================================================
 
+# TODO: Overriding internal functions is evil!
 bopen=open
 def open(fileName,mode='r'):
-
-       if fileName.split('.')[-1]=='gz':
-               return gzip.open(fileName,mode+'b')
+       if fileName.split('.')[-1] == 'gz':
+               return gzip.open(fileName, mode + 'b')
        else:
-               return bopen(fileName,mode)
+               return bopen(fileName, mode)
 
 #parseTable 4/14/08
 #takes in a table where columns are separated by a given symbol and outputs
 #a nested list such that list[row][col]
 #example call:
 #table = parseTable('file.txt','\t')
-def parseTable(fn, sep, header = False,excel = False):
+def parseTable(fn, sep, header = False, excel = False):
     fh = open(fn)
     lines = fh.readlines()
     fh.close()
@@ -129,7 +129,7 @@ def parseTable(fn, sep, header = False,excel = False):
         lines = lines[0].split('\r')
     table = []
     if header == True:
-        lines =lines[1:]
+        lines = lines[1:]
     for i in lines:
         table.append(i[:-1].split(sep))
 
@@ -143,18 +143,13 @@ def parseTable(fn, sep, header = False,excel = False):
 #example call unParseTable(table, 'table.txt', '\t') for a tab del file
 
 def unParseTable(table, output, sep):
-    fh_out = open(output,'w')
+    fh_out = open(output, 'w')
     if len(sep) == 0:
         for i in table:
-            fh_out.write(str(i))
-            fh_out.write('\n')
+            fh_out.write(str(i) + '\n')
     else:
         for line in table:
-            line = [str(x) for x in line]
-            line = join(line,sep)
-
-            fh_out.write(line)
-            fh_out.write('\n')
+            fh_out.write(sep.join([str(x) for x in line]) + '\n')
 
     fh_out.close()
 
@@ -190,13 +185,13 @@ def formatBed(bed,output=''):
     else:
         return newBed
 
-def bedToGFF(bed,output=''):
+def bedToGFF(bed, output=''):
 
     '''
     turns a bed into a gff file
     '''
-    if type(bed) == str:
-        bed = parseTable(bed,'\t')
+    if isinstance(bed, str):
+        bed = parseTable(bed, '\t')
     
     bed = formatBed(bed)
 
@@ -228,7 +223,7 @@ def gffToBed(gff,output= ''):
     else:
         unParseTable(bed,output,'\t')
 
-def formatFolder(folderName,create=False):
+def formatFolder(folderName, create=False):
 
     '''
     makes sure a folder exists and if not makes it
@@ -239,19 +234,17 @@ def formatFolder(folderName,create=False):
         folderName +='/'
 
     try: 
-        foo = os.listdir(folderName)
+        os.listdir(folderName)
         return folderName
     except OSError:
         print('folder %s does not exist' % (folderName))
         if create:
-            os.system('mkdir %s' % (folderName))
+            os.mkdir(folderName)
             return folderName
-        else:
-                    
-            return False 
+    return False
 
 
-def checkOutput(fileName,waitTime = 1,timeOut = 30):
+def checkOutput(fileName, waitTime = 1, timeOut = 30):
 
        '''
        checks for the presence of a file every N minutes
@@ -309,17 +302,17 @@ def getParentFolder(inputFile):
 #==================================================================
 
 
-def makeStartDict(annotFile,geneList = []):
+def makeStartDict(annotFile, geneList=[]):
     '''
     makes a dictionary keyed by refseq ID that contains information about 
     chrom/start/stop/strand/common name
     '''
 
     if type(geneList) == str:
-        geneList = parseTable(geneList,'\t')
+        geneList = parseTable(geneList, '\t')
         geneList = [line[0] for line in geneList]
             
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         if len(geneList) == 0:
             geneList = refseqDict.keys()
@@ -419,7 +412,7 @@ def makeGenes(annotFile,geneList=[],asDict = False):
         geneList = [line[0] for line in geneList]
 
 
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refTable,refDict = importRefseq(annotFile)
 
 
@@ -454,7 +447,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
     makes a LocusCollection w/ each transcript as a locus
     takes in either a refseqfile or an ensemblGFF
     '''
-    if upper(annotFile).count('REFSEQ') == 1:
+    if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         locusList = []
         ticker = 0
@@ -472,7 +465,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
                     print(ticker)
             
 
-    transCollection = LocusCollection(locusList,window)
+    transCollection = LocusCollection(locusList, window)
 
     return transCollection
 
@@ -890,7 +883,6 @@ class Gene:
          self._cdExons = []
          self._introns = []
 
-         cd_exon_count = 0
 
          for n in range(len(exStarts)):
              first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
@@ -1014,7 +1006,7 @@ def makeTSSLocus(gene,startDict,upstream,downstream):
     '''
     
     start = startDict[gene]['start'][0]
-    if startDict[gene]['sense'] =='-':
+    if startDict[gene]['sense'] == '-':
         return Locus(startDict[gene]['chr'],start-downstream,start+upstream,'-',gene)
     else:
         return Locus(startDict[gene]['chr'],start-upstream,start+downstream,'+',gene)
@@ -1107,7 +1099,7 @@ class Bam:
             reads = filter(lambda x: x[5].count('N') < 1,reads)
 
         #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-'}
-        convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
+        # convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
         
         
         #BJA added 256 and 272, which correspond to 0 and 16 for multi-mapped reads respectively:
@@ -1348,7 +1340,7 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
         if useID:
                name = '>' + line[1]
         else:
-               name = '>'+ join([lower(genome),line[0],str(line[3]),str(line[4]),line[6]],'_')
+               name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'_')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])

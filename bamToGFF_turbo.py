@@ -31,17 +31,10 @@ THE SOFTWARE.
 
 #uses the bamliquidator super fast uber thingy written by Xin Zhou
 
-from utils import *
-
-
 import os
 import string
 import subprocess
-
-        
-        
-
-
+import utils
 
 def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram = None,matrix = None):
     '''maps reads from a bam to a gff'''
@@ -49,7 +42,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
     #creating a new gff to output
     newGFF = []
     #reading in the bam
-    bam = Bam(bamFile)
+    bam = utils.Bam(bamFile)
 
     #getting RPM normalization
     if rpm:    
@@ -60,11 +53,11 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
     print('using a MMR value of %s' % (MMR))
 
     #creating a sense trans 
-    senseTrans = maketrans('-+.','+-+')
+    senseTrans = string.maketrans('-+.','+-+')
     
     #reading in the gff
     if type(gff) == str:
-        gff = parseTable(gff,'\t')
+        gff = utils.parseTable(gff,'\t')
 
     #setting up a clustergram table
     if clusterGram:
@@ -73,9 +66,9 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
         #now go through each line of the gff and make sure they're all the same length
         for i in range(0,len(gff),1):
             line = gff[i]
-            gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
+            gffLocus = utils.Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
             binSizeList.append(gffLocus.len()/binSize)
-        binSizeList = uniquify(binSizeList)
+        binSizeList = utils.uniquify(binSizeList)
         if len(binSizeList) > 1: 
             print('WARNING: lines in gff are of different length. Output clustergram will have variable row length')
         newGFF.append(['GENE_ID','locusLine'] + [str(x*binSize)+'_'+bamFile.split('/')[-1] for x in range(1,max(binSizeList)+1,1)])        
@@ -85,15 +78,22 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
         newGFF.append(['GENE_ID','locusLine'] + ['bin_'+str(n)+'_'+bamFile.split('/')[-1] for n in range(1,int(matrix)+1,1)])
         nBin = int(matrix)
 
+    # Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
+    bamliquidatorString = '/usr/bin/bamliquidator'
+    if not os.path.isfile(bamliquidatorString):
+        bamliquidatorString = './bamliquidator'
+        if not os.path.isfile(bamliquidatorString):
+            raise ValueError('bamliquidator not found in path')
+
     #getting and processing reads for gff lines
     ticker = 0
     print('Number lines processed')
     for line in gff:
         line = line[0:9]
         if ticker%100 == 0:
-            print ticker
+            print(ticker)
         ticker+=1
-        gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
+        gffLocus = utils.Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
         
         #get the nBin and binSize
         if clusterGram:
@@ -118,13 +118,14 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
             bamSense = '.'
         #using the bamLiquidator to get the readstring            
         #print('using nBin of %s' % nBin)
-        bamliquidatorString = '/usr/bin/bamliquidator'
         bamCommand = "%s %s %s %s %s %s %s %s" % (bamliquidatorString,bamFile,line[0],gffLocus.start(),gffLocus.end(),bamSense,nBin,extension)
         #print(bamCommand)
         getReads = subprocess.Popen(bamCommand,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
-        readString = getReads.communicate()
-        denList = readString[0].split('\n')[:-1]
-        
+        readString, stderr = getReads.communicate()
+        if stderr:
+            print("STDERR out: %s" % (stderr))
+        denList = readString.split('\n')[:-1]
+        #print("denlist is: %s" % denList)
         #flip the denList if the actual gff region is -
         if gffLocus.sense() == '-':
             denList = denList[::-1]
@@ -137,16 +138,10 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
 
         clusterLine = [gffLocus.ID(),gffLocus.__str__()] + denList
         newGFF.append(clusterLine)
-            
+
     return newGFF
         
-                
-                
-            
 
-
-            
-                
     
 def convertEnrichedRegionsToGFF(enrichedRegionFile):
     '''converts a young lab enriched regions file into a gff'''
@@ -242,8 +237,15 @@ def main():
         elif options.matrix:
             print('mapping to GFF and making a matrix with fixed bin number')
             newGFF = mapBamToGFF(bamFile,gffFile,options.sense,int(options.extension),options.rpm,None,int(options.matrix))
-            
-        unParseTable(newGFF,output,'\t')
+
+        print('bamToGFF_turbo writing output to: %s' % (output))
+        # Hackjob to make subdirectories for ROSE integration
+        try:
+            os.mkdir(os.path.dirname(output))
+        except OSError:
+            pass
+        utils.unParseTable(newGFF,output,'\t')
+
     else:
         parser.print_help()
         
