@@ -31,17 +31,10 @@ THE SOFTWARE.
 
 #uses the bamliquidator super fast uber thingy written by Xin Zhou
 
-from utils import *
-
-
 import os
 import string
 import subprocess
-
-        
-        
-
-
+import utils
 
 def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram = None,matrix = None):
     '''maps reads from a bam to a gff'''
@@ -49,7 +42,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
     #creating a new gff to output
     newGFF = []
     #reading in the bam
-    bam = Bam(bamFile)
+    bam = utils.Bam(bamFile)
 
     #getting RPM normalization
     if rpm:    
@@ -60,11 +53,11 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
     print('using a MMR value of %s' % (MMR))
 
     #creating a sense trans 
-    senseTrans = maketrans('-+.','+-+')
+    senseTrans = string.maketrans('-+.','+-+')
     
     #reading in the gff
     if type(gff) == str:
-        gff = parseTable(gff,'\t')
+        gff = utils.parseTable(gff,'\t')
 
     #setting up a clustergram table
     if clusterGram:
@@ -73,9 +66,9 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
         #now go through each line of the gff and make sure they're all the same length
         for i in range(0,len(gff),1):
             line = gff[i]
-            gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
+            gffLocus = utils.Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
             binSizeList.append(gffLocus.len()/binSize)
-        binSizeList = uniquify(binSizeList)
+        binSizeList = utils.uniquify(binSizeList)
         if len(binSizeList) > 1: 
             print('WARNING: lines in gff are of different length. Output clustergram will have variable row length')
         newGFF.append(['GENE_ID','locusLine'] + [str(x*binSize)+'_'+bamFile.split('/')[-1] for x in range(1,max(binSizeList)+1,1)])        
@@ -91,9 +84,9 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
     for line in gff:
         line = line[0:9]
         if ticker%100 == 0:
-            print ticker
+            print(ticker)
         ticker+=1
-        gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
+        gffLocus = utils.Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
         
         #get the nBin and binSize
         if clusterGram:
@@ -140,13 +133,7 @@ def mapBamToGFF(bamFile,gff,sense = '.',extension = 200,rpm = False,clusterGram 
             
     return newGFF
         
-                
-                
-            
 
-
-            
-                
     
 def convertEnrichedRegionsToGFF(enrichedRegionFile):
     '''converts a young lab enriched regions file into a gff'''
@@ -243,7 +230,7 @@ def main():
             print('mapping to GFF and making a matrix with fixed bin number')
             newGFF = mapBamToGFF(bamFile,gffFile,options.sense,int(options.extension),options.rpm,None,int(options.matrix))
             
-        unParseTable(newGFF,output,'\t')
+        utils.unParseTable(newGFF,output,'\t')
     else:
         parser.print_help()
         
