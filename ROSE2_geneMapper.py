@@ -47,7 +47,7 @@ import utils
 
 import os
 
-from string import upper,join
+from string import join
 
 from collections import defaultdict
 
@@ -357,9 +357,9 @@ def mapEnhancerToGene(rankByBamFile,controlBamFile,genome,annotFile,enhancerFile
             try:
                 sigVector = [max(geneNameSigDict[x]) for x in geneList]
             except ValueError:
-                print geneList
+                print(geneList)
                 for gene in geneList:
-                    print geneNameSigDict[gene]
+                    print(geneNameSigDict[gene])
 
                 sys.exit()
             maxIndex = sigVector.index(max(sigVector))
@@ -437,7 +437,7 @@ def main():
         parser.print_help()
         exit()
 
-    print options
+    print(options)
 
     #GETTING THE GENOME
     genome = options.genome
@@ -455,7 +455,7 @@ def main():
         'MM10':'%s/annotation/mm10_refseq.ucsc' % (cwd),
         }
 
-    annotFile = genomeDict[upper(genome)]
+    annotFile = genomeDict[genome.upper()]
 
     #GETTING THE INPUT
     enhancerFile = options.input
