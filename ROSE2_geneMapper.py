@@ -40,7 +40,7 @@ import utils
 # import pipeline_dfci
 
 import os
-
+import subprocess
 from string import join
 
 from collections import defaultdict
@@ -70,7 +70,6 @@ def makeSignalDict(mappedGFFFile, controlMappedGFFFile=''):
             signalDict[mappedGFF[i][0]] = signal
     else:
         for i in range(1, len(mappedGFF)):
-            print('mapped GFF is ')
             signal = float(mappedGFF[i][2])
             signalDict[mappedGFF[i][0]] = signal
 
@@ -258,34 +257,55 @@ def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancer
     utils.unParseTable(enhancerGeneGFF, enhancerGeneGFFFile, '\t')
 
     # now we need to run bamToGFF
+
+    # Try to use the bamliquidatior_path.py script on cluster, otherwise, failover to local (in path), otherwise fail.
+    bamliquidator_path = '/ark/home/jdm/pipeline/bamliquidator_batch.py'
+    if not os.path.isfile(bamliquidator_path):
+        bamliquidator_path = 'bamliquidator_batch.py'
+        if not os.path.isfile(bamliquidator_path):
+            raise ValueError('bamliquidator_batch.py not found in path')
+
     print('MAPPING SIGNAL AT ENHANCER ASSOCIATED GENE TSS')
     # map density at genes in the +/- 5kb tss region
     # first on the rankBy bam
     bamName = rankByBamFile.split('/')[-1]
-    mappedRankByFile = "%s%s_%s.gff" % (enhancerFolder, gffRootName, bamName)
-    cmd = 'python bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (
-        rankByBamFile, enhancerGeneGFFFile, mappedRankByFile)
+    mappedRankByFolder = "%s%s_%s/" % (enhancerFolder, gffRootName, bamName)
+    mappedRankByFile = "%s%s_%s/matrix.gff" % (enhancerFolder, gffRootName, bamName)
+    cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
-    os.system(cmd)
+
+    outputRank = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+    outputRank = outputRank.communicate()
+    if len(outputRank[0]) > 0:  # test if mapping worked correctly
+        print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (enhancerGeneGFFFile, rankByBamFile))
+    else:
+        print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (enhancerGeneGFFFile, rankByBamFile))
+        sys.exit()
 
     # next on the control bam if it exists
-
     if len(controlBamFile) > 0:
         controlName = controlBamFile.split('/')[-1]
-        mappedControlFile = "%s%s/%s_%s.gff" % (
+        mappedControlFolder = "%s%s/%s_%s/" % (
             enhancerFolder, gffRootName, gffRootName, controlName)
-        cmd = 'python bamToGFF_turbo.py -b %s -i %s -o %s -m 1 -r -e 200 &' % (
-            controlBamFile, enhancerGeneGFFFile, mappedControlFile)
+        mappedControlFile = "%s%s/%s_%s/matrix.gff" % (
+            enhancerFolder, gffRootName, gffRootName, controlName)
+        cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
-        os.system(cmd)
+        outputControl = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        outputControl = outputControl.communicate()
+        if len(outputControl[0]) > 0:  # test if mapping worked correctly
+            print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (enhancerGeneGFFFile, controlBamFile))
+        else:
+            print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (enhancerGeneGFFFile, controlBamFile))
+            sys.exit()
 
     # now get the appropriate output files
     if len(controlBamFile) > 0:
         print("CHECKING FOR MAPPED OUTPUT AT %s AND %s" %
               (mappedRankByFile, mappedControlFile))
-        if utils.checkOutput(mappedRankByFile, 1, 30) and utils.checkOutput(mappedControlFile, 1, 30):
+        if utils.checkOutput(mappedRankByFile, 1, 1) and utils.checkOutput(mappedControlFile, 1, 1):
             print('MAKING ENHANCER ASSOCIATED GENE TSS SIGNAL DICTIONARIES')
             signalDict = makeSignalDict(mappedRankByFile, mappedControlFile)
         else:
@@ -313,7 +333,6 @@ def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancer
         refID = overallGeneList[i]
         geneName = startDict[refID]['name']
         if usedNames.count(geneName) > 0 and uniqueGenes == True:
-
             continue
         else:
             usedNames.append(geneName)
@@ -330,7 +349,7 @@ def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancer
         newLine = [geneName, refID, join(
             proxEnhancers, ','), enhancerRanks, superStatus, enhancerSignal]
         geneToEnhancerTable.append(newLine)
-
+    #utils.unParseTable(geneToEnhancerTable,'/grail/projects/newRose/geneMapper/foo.txt','\t')
     print('MAKING ENHANCER TO TOP GENE TABLE')
 
     if noFormatTable:
@@ -355,18 +374,19 @@ def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancer
         if len(geneList) > 0:
             try:
                 sigVector = [max(geneNameSigDict[x]) for x in geneList]
+                maxIndex = sigVector.index(max(sigVector))
+                maxGene = geneList[maxIndex]
+                maxSig = sigVector[maxIndex]
+                if maxSig == 0.0:
+                    maxGene = 'NONE'
+                    maxSig = 'NONE'
             except ValueError:
-                print(geneList)
-                for gene in geneList:
-                    print(geneNameSigDict[gene])
-
-                sys.exit()
-            maxIndex = sigVector.index(max(sigVector))
-            maxGene = geneList[maxIndex]
-            maxSig = sigVector[maxIndex]
-            if maxSig == 0.0:
-                maxGene = 'NONE'
-                maxSig = 'NONE'
+                if len(geneList) == 1:
+                    maxGene = geneList[0]
+                    maxSig = 'NONE'    
+                else:
+                    maxGene = 'NONE'
+                    maxSig = 'NONE'    
         else:
             maxGene = 'NONE'
             maxSig = 'NONE'
@@ -486,8 +506,10 @@ def main():
 
     if window != 50000:
         # writing the enhancer table
+        
         out1 = '%s%s_ENHANCER_TO_GENE_%sKB.txt' % (
             outFolder, enhancerFileName, window / 1000)
+        print("writing output to %s" % (out1))
         utils.unParseTable(enhancerToGeneTable, out1, '\t')
 
         # writing enhancer top gene table
