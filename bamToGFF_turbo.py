@@ -238,6 +238,12 @@ def main():
             print('mapping to GFF and making a matrix with fixed bin number')
             newGFF = mapBamToGFF(bamFile,gffFile,options.sense,int(options.extension),options.rpm,None,int(options.matrix))
 
+        print('bamToGFF_turbo writing output to: %s' % (output))
+        # Hackjob to make subdirectories for ROSE integration
+        try:
+            os.mkdir(os.path.dirname(output))
+        except OSError:
+            pass
         utils.unParseTable(newGFF,output,'\t')
 
     else:
