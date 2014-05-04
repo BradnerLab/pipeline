@@ -7,7 +7,7 @@ VERSION 0.2
 CONTACT: youngcomputation@wi.mit.edu
 '''
 
-from __future__ import absolute_import #, division, print_function, unicode_literals
+from __future__ import absolute_import  # , division, print_function, unicode_literals
 import utils
 
 import sys
@@ -460,16 +460,15 @@ def main():
         if not os.path.isfile(bamliquidator_path):
             raise ValueError('bamliquidator_batch.py not found in path')
 
-
     for bamFile in bamFileList:
 
         bamFileName = bamFile.split('/')[-1]
 
-        #MAPPING TO THE STITCHED GFF
-        mappedOut1Folder ='%s%s_%s_MAPPED' % (mappedFolder,stitchedGFFName,bamFileName)
-        mappedOut1File ='%s%s_%s_MAPPED/matrix.gff' % (mappedFolder,stitchedGFFName,bamFileName)
-        if utils.checkOutput(mappedOut1File,0.2,0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile,mappedOut1File))
+        # MAPPING TO THE STITCHED GFF
+        mappedOut1Folder = '%s%s_%s_MAPPED' % (mappedFolder, stitchedGFFName, bamFileName)
+        mappedOut1File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, stitchedGFFName, bamFileName)
+        if utils.checkOutput(mappedOut1File, 0.2, 0.2):
+            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut1File))
         else:
             cmd1 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
             print(cmd1)
