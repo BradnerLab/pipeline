@@ -281,6 +281,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     maps genes to enhancers. if uniqueGenes, reduces to gene name only. Otherwise, gives for each refseq
     '''
     startDict = utils.makeStartDict(annotFile)
+    enhancerName = enhancerFile.split('/')[-1].split('.')[0]
     enhancerTable = utils.parseTable(enhancerFile, '\t')
 
     # internal parameter for debugging
@@ -452,7 +453,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # dump the gff to file
     enhancerFolder = utils.getParentFolder(enhancerFile)
     gffRootName = "%s_TSS_ENHANCER_GENES_-5000_+5000" % (genome)
-    enhancerGeneGFFFile = "%s%s.gff" % (enhancerFolder, gffRootName)
+    enhancerGeneGFFFile = "%s%s_%s.gff" % (enhancerFolder, enhancerName,gffRootName)
     utils.unParseTable(enhancerGeneGFF, enhancerGeneGFFFile, '\t')
 
     # now we need to run bamToGFF
@@ -468,8 +469,8 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # map density at genes in the +/- 5kb tss region
     # first on the rankBy bam
     bamName = rankByBamFile.split('/')[-1]
-    mappedRankByFolder = "%s%s_%s/" % (enhancerFolder, gffRootName, bamName)
-    mappedRankByFile = "%s%s_%s/matrix.gff" % (enhancerFolder, gffRootName, bamName)
+    mappedRankByFolder = "%s%s_%s_%s/" % (enhancerFolder, enhancerName,gffRootName, bamName)
+    mappedRankByFile = "%s%s_%s_%s/matrix.gff" % (enhancerFolder,enhancerName, gffRootName, bamName)
     cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
@@ -485,10 +486,10 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # next on the control bam if it exists
     if len(controlBamFile) > 0:
         controlName = controlBamFile.split('/')[-1]
-        mappedControlFolder = "%s%s_%s/" % (
-            enhancerFolder, gffRootName, controlName)
-        mappedControlFile = "%s%s_%s/matrix.gff" % (
-            enhancerFolder, gffRootName, controlName)
+        mappedControlFolder = "%s%s_%s_%s/" % (
+            enhancerFolder, enhancerName,gffRootName, controlName)
+        mappedControlFile = "%s%s_%s_%s/matrix.gff" % (
+            enhancerFolder, enhancerName,gffRootName, controlName)
         cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
