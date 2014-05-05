@@ -47,6 +47,8 @@ if not os.path.isfile(bamliquidatorString):
 # as of now the number of bins to sample the space is hard wired
 nBins = 200
 
+# Get the script's full local path
+whereAmI = os.path.dirname(os.path.realpath(__file__))
 
 # script that takes in a list of bams, makes an intermediate table file, and then calls R to make the plot
 
@@ -71,7 +73,7 @@ def loadAnnotFile(genome):
         'hg19': './annotation/hg19_refseq.ucsc'
     }
 
-    annotFile = genomeDict[genome]
+    annotFile = whereAmI + '/' + genomeDict[genome]
     # geneList =['NM_002460','NM_020185']
     geneList = []
     geneDict = utils.makeGenes(annotFile, geneList, True)
@@ -285,7 +287,7 @@ def callRPlot(summaryFile, outFile, yScale, plotStyle):
     calls the R plotting thingy
     '''
 
-    cmd = 'R --no-save %s %s %s %s < ./bamPlot_turbo.R' % (summaryFile, outFile, yScale, plotStyle)
+    cmd = 'R --no-save %s %s %s %s < %s/bamPlot_turbo.R' % (summaryFile, outFile, yScale, plotStyle, whereAmI)
     print('calling command %s' % (cmd))
     return cmd
 
