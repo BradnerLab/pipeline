@@ -115,6 +115,9 @@ import string
 #MERGING BAMS
 #def mergeBams(dataFile,mergedName,namesList,color='',background =''):
 
+#FILTERING BAMS
+#def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFolder='/grail/bam/filtered/'):
+
 #-------------------------------------------------------------------------#
 #                                                                         #
 #                              PEAK FINDING                               #
@@ -539,7 +542,7 @@ def loadDataTable(dataFile):
 
         dataDict[line[3]]['folder'] = line[0]
         dataDict[line[3]]['uniqueID'] = line[1]
-        dataDict[line[3]]['genome']=upper(line[2])
+        dataDict[line[3]]['genome']=string.upper(line[2])
         genome = line[2]
 
         dataDict[line[3]]['sam'] = line[0]+line[1]+'.'+genome+'.bwt.sam'
@@ -713,6 +716,7 @@ def getTONYInfo(uniqueID,column =''):
     '''
     returns a TONY db column parameter
     '''
+    column = str(column)
 
     if len(column) == 0:
         cmd = 'perl /ark/tony/admin/getDB_Data.pl -h'
@@ -814,9 +818,9 @@ def callBowtie(dataFile,dataList = [],overwrite = False):
             os.system('mkdir %s' % (dataDict[name]['folder']))
 
             
-        if upper(dataDict[name]['genome']) == 'HG18' or upper(dataDict[name]['genome']) == 'MM8':
+        if string.upper(dataDict[name]['genome']) == 'HG18' or string.upper(dataDict[name]['genome']) == 'MM8':
             cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -G -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
-        elif upper(dataDict[name]['genome']) == 'RN5':
+        elif string.upper(dataDict[name]['genome']) == 'RN5':
             cmd = 'perl /nfs/young_ata/CYL_code/generateSam_rat.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
         else:
             cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
@@ -946,6 +950,92 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
     formatDataTable(dataFile)
 
 
+#==========================================================================
+#===============================FILTERING BAMS=============================
+#==========================================================================
+
+
+def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFolder='/grail/bam/filtered/'):
+
+    '''
+    for all datasets, will run the bam filtering, drop the filtered bam into the correct TONY folder
+    and symlink into the bamFolder
+    must run as admin to write to folder
+    '''
+
+    #check that the temp folder and bam folder exist
+    if not formatFolder(tempFolder,False):
+        print("ERROR: UNABLE TO FIND TEMPORARY FOLDER %s" % (tempFolder))
+        sys.exit()
+    else:
+        tempFolder = formatFolder(tempFolder,False)
+    if not formatFolder(bamFolder,False):
+        print("ERROR: UNABLE TO FIND BAM FOLDER %s" % (bamFolder))
+        sys.exit()
+    else:
+        bamFolder = formatFolder(bamFolder,False)
+    
+    dataDict = loadDataTable(dataFile)
+
+    if len(namesList) == 0:
+        namesList = dataDict.keys()
+
+    
+    for name in namesList:
+
+        uniqueID = dataDict[name]['uniqueID']
+        genome = string.lower(dataDict[name]['genome'])
+
+        #get the original bam
+        bamFile = getTONYInfo(uniqueID,column =47)
+
+        #get the parent folde
+        parentFolder = getParentFolder(bamFile)
+
+        #make a temp folder
+        tempOutFolder = tempFolder + uniqueID +'/'
+        tempOutFolder = formatFolder(tempOutFolder,True)
+
+        #set up a bashFile
+        bashFileName = '%sfilterBam.sh' % (tempOutFolder)
+        bashFile = open(bashFileName,'w')
+        bashFile.write('#!usr/bin/bash\n')
+        
+        #cd into temp directory
+        bashFile.write('cd %s\n' % (tempOutFolder))
+        
+        #set up the filter command
+        filterCmd = 'python /ark/home/cl512/src/scripts-for-project/2-mito-filter-sort-dedupe.py -t 4 -i %s -o %s' % (bamFile,tempOutFolder)
+        bashFile.write(filterCmd + '\n')
+
+        #set up the command to move and then sym link
+        #mv command
+        mvBamCommand = 'mv *noChrM.sort.rmdup.bam %s%s_%s.noChrM.fix.rmdup.sorted.bam' % (parentFolder,uniqueID,genome)
+        bashFile.write(mvBamCommand + '\n')
+
+        mvBaiCommand = 'mv *noChrM.sort.rmdup.bam.bai %s%s_%s.noChrM.fix.rmdup.sorted.bam.bai' % (parentFolder,uniqueID,genome)
+        bashFile.write(mvBaiCommand + '\n')
+
+        #now symlink
+        #check to make sure the genome folder exist
+        if not formatFolder(bamFolder+genome,False):
+            print("NO FOLDER EXISTS IN %s FOR BUILD %s" % (bamFolder,genome))
+            print("ATTEMPTING TO CREATE FOLDER %s%s/" % (bamFolder,genome))
+        symFolder = formatFolder(bamFolder+genome,True)
+
+        symBamCommand = 'ln -s %s%s_%s.noChrM.fix.rmdup.sorted.bam %s' % (parentFolder,uniqueID,genome,symFolder)
+        bashFile.write(symBamCommand + '\n')
+
+        symBaiCommand = 'ln -s %s%s_%s.noChrM.fix.rmdup.sorted.bam.bai %s' % (parentFolder,uniqueID,genome,symFolder)
+        bashFile.write(symBaiCommand + '\n')
+
+        #now the cleanup
+        cleanCommand = '#rm -rf %s' % (tempOutFolder)
+        bashFile.write(cleanCommand + '\n')
+
+        #os.system('bash %s' %(bashFile))
+                            
+
 
 #-------------------------------------------------------------------------#
 #                                                                         #
@@ -982,7 +1072,7 @@ def callMacsQsub(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9
     for name in namesList:
         
         #skip if a background set
-        if upper(dataDict[name]['background']) == 'NONE':
+        if string.upper(dataDict[name]['background']) == 'NONE':
             continue
 
         #check for the bam
@@ -1027,11 +1117,11 @@ def callMacsQsub(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9
         backgroundName =  dataDict[name]['background']
         backgroundBamFile = dataDict[backgroundName]['bam']
         macsString = '/usr/local/python-2.7.2/bin/macs14'
-        if upper(genome[0:2]) == 'HG':
+        if string.upper(genome[0:2]) == 'HG':
             cmd = "%s -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
-        elif upper(genome[0:2]) == 'MM':
+        elif string.upper(genome[0:2]) == 'MM':
             cmd = "%s -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
-        elif upper(genome[0:2]) == 'RN':
+        elif string.upper(genome[0:2]) == 'RN':
             cmd = "%s -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50" % (macsString,bamFile,backgroundBamFile,name,pvalue)
         print(cmd)
 
@@ -1068,7 +1158,7 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',us
     for name in namesList:
         
         #skip if a background set
-        if useBackground and upper(dataDict[name]['background']) == 'NONE':
+        if useBackground and string.upper(dataDict[name]['background']) == 'NONE':
             continue
 
         #check for the bam
@@ -1113,22 +1203,22 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',us
             bamFile = dataDict[name]['bam']
             backgroundName =  dataDict[name]['background']
             backgroundBamFile = dataDict[backgroundName]['bam']
-            if upper(genome[0:2]) == 'HG':
+            if string.upper(genome[0:2]) == 'HG':
                 cmd = "macs14 -t %s -c %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
-            elif upper(genome[0:2]) == 'MM':
+            elif string.upper(genome[0:2]) == 'MM':
                 cmd = "macs14 -t %s -c %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
-            elif upper(genome[0:2]) == 'RN':
+            elif string.upper(genome[0:2]) == 'RN':
                 cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
 
         if useBackground == False:
             bamFile = dataDict[name]['bam']
 
 
-            if upper(genome[0:2]) == 'HG':
+            if string.upper(genome[0:2]) == 'HG':
                 cmd = "macs14 -t %s -f BAM -g hs -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
-            elif upper(genome[0:2]) == 'MM':
+            elif string.upper(genome[0:2]) == 'MM':
                 cmd = "macs14 -t %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
-            elif upper(genome[0:2]) == 'RN':
+            elif string.upper(genome[0:2]) == 'RN':
                 cmd = "macs14 -t %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
 
 
@@ -1162,7 +1252,7 @@ def callMacs2(dataFile,macsFolder,namesList = [],broad=True,noBackground = False
     for name in namesList:
         
         #skip if a background set
-        if upper(dataDict[name]['background']) == 'NONE' and noBackground == False:
+        if string.upper(dataDict[name]['background']) == 'NONE' and noBackground == False:
             continue
 
         #check for the bam
@@ -1212,7 +1302,7 @@ def callMacs2(dataFile,macsFolder,namesList = [],broad=True,noBackground = False
         #print('USING %s FOR THE GENOME' % genome)
         
         #setting parameters
-        if upper(genome[0:2]) == 'HG':
+        if string.upper(genome[0:2]) == 'HG':
             genomeString = 'hs'
 
         if pairedEnd == True:
@@ -1293,7 +1383,7 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
         print('looking for macs output for %s' % (name))
         i = dataTableRows.index(name)
         #skip if a background set
-        if useBackground and upper(dataDict[name]['background']) == 'NONE':
+        if useBackground and string.upper(dataDict[name]['background']) == 'NONE':
             newLine = list(dataTable[i])
             newLine[6] = 'NONE'
             newDataTable.append(newLine)
@@ -1470,28 +1560,28 @@ def makeChromGFFs(chromLengthFile,gffFolder,chromList = [],genome='HG18',binSize
     genomesList = uniquify([line[2] for line in chromLengthTable])
 
     for x in genomesList:
-        chromLengthDict[upper(x)] = {}
+        chromLengthDict[string.upper(x)] = {}
 
     for line in chromLengthTable:
-        chromLengthDict[upper(line[2])][line[0]] = int(line[4])
+        chromLengthDict[string.upper(line[2])][line[0]] = int(line[4])
     if len(chromList) ==0:
-        chromList = chromLengthDict[upper(genome)].keys()
+        chromList = chromLengthDict[string.upper(genome)].keys()
         chromList.sort()
     masterGFF = []
     for chrom in chromList:
-        if chromLengthDict[upper(genome)].has_key(chrom):
+        if chromLengthDict[string.upper(genome)].has_key(chrom):
             chromGFF = []
             ticker = 1
             for i in range(1,chromLengthDict[genome][chrom],int(binSize)):
                 chromGFF.append([chrom,'bin_%s' % (str(ticker)),'',i,i+binSize,'','.','',''])
                 ticker+=1
             if not singleGFF:
-                unParseTable(chromGFF,gffFolder+'%s_%s_BIN_%s.gff' % (upper(genome),upper(chrom),str(binSize)),'\t')
+                unParseTable(chromGFF,gffFolder+'%s_%s_BIN_%s.gff' % (string.upper(genome),string.upper(chrom),str(binSize)),'\t')
             if singleGFF:
                 masterGFF+=chromGFF
 
     if singleGFF:
-        unParseTable(masterGFF,gffFolder+'%s_BIN_%s.gff' % (upper(genome),str(binSize)),'\t')
+        unParseTable(masterGFF,gffFolder+'%s_BIN_%s.gff' % (string.upper(genome),str(binSize)),'\t')
 
 
 
@@ -1532,7 +1622,7 @@ def makeEnhancerGFFs(dataFile,gffName,namesList,annotFile,gffFolder,enrichedFold
     enhancerCollection = LocusCollection([],500)
 
     #don't allow overlapping enhancers
-    species = upper(dataDict[namesList[0]]['genome'])
+    species = string.upper(dataDict[namesList[0]]['genome'])
 
 
     for name in namesList:
@@ -1578,7 +1668,7 @@ def makeEnrichedGFFs(dataFile,namesList,gffFolder,enrichedFolder,macs=True,windo
 
     if len(namesList) == 0:
         namesList = dataDict.keys()
-    species = upper(dataDict[namesList[0]]['genome'])
+    species = string.upper(dataDict[namesList[0]]['genome'])
     for name in namesList:
 
         
@@ -1624,7 +1714,7 @@ def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,w
     #establishing the output filename
     genome = dataDict[promoterFactor]['genome']
     
-    output = '%s%s_PROMOTER_%s_-%s_+%s.gff' % (gffFolder,upper(genome),promoterFactor,window,window)
+    output = '%s%s_PROMOTER_%s_-%s_+%s.gff' % (gffFolder,string.upper(genome),promoterFactor,window,window)
 
     #getting the promoter factor
     enrichedCollection = importBoundRegion(enrichedFolder + dataDict[promoterFactor]['enrichedMacs'],promoterFactor)
@@ -1670,7 +1760,7 @@ def makePromoterGFF(dataFile,annotFile,promoterFactor,enrichedFolder,gffFolder,w
             geneNames = uniquify(geneNames)
 
             if len(geneNames) <= 2:
-                refseqString = join([x.ID() for x in overlappingTSSLoci],',')
+                refseqString = string.join([x.ID() for x in overlappingTSSLoci],',')
                 chrom = locus.chr()
                 start = locus.start()-window
                 end = locus.end()+window
@@ -1961,7 +2051,7 @@ def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
     boundGFFTable = parseTable(mappedEnrichedFile,'\t')
     header = boundGFFTable[0]
 
-    outputFolder = join(output.split('/')[0:-1],'/')+'/'
+    outputFolder = string.join(output.split('/')[0:-1],'/')+'/'
     formatFolder(outputFolder,True)
     
     #convert the setList into column numbers
@@ -2046,14 +2136,14 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     else:
         locusString = region
 
-    nameString = join(namesList,',')
+    nameString = string.join(namesList,',')
     if startDict.has_key(geneID):
         titleString = startDict[geneID]['name'] +'_' + plotName + '.pdf'
     else:
         titleString = geneID+'_'+plotName+'.pdf'
-    colorString = join([dataDict[name]['color'] for name in namesList],':')
+    colorString = string.join([dataDict[name]['color'] for name in namesList],':')
     bamList = [dataDict[name]['bam'] for name in namesList]
-    bamString = join(bamList,',')
+    bamString = string.join(bamList,',')
     genome = lower(dataDict[namesList[0]]['genome'])
     os.chdir('/ark/home/cl512/src/pipeline/')
     cmd = "python /ark/home/cl512/src/pipeline/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
@@ -2089,7 +2179,7 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
 
     #next get the bam string
     bamList = [dataDict[name]['bam'] for name in namesList]
-    bamString = join(bamList,',')
+    bamString = string.join(bamList,',')
     
     #inputGFF
     try:
@@ -2103,10 +2193,10 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     outputFolder = formatFolder(outputFolder,True)
 
     #get the color string
-    colorString = join([dataDict[name]['color'] for name in namesList],':')
+    colorString = string.join([dataDict[name]['color'] for name in namesList],':')
 
     #get the namesList
-    nameString = join(namesList,',')
+    nameString = string.join(namesList,',')
     
     #yScale setting
     if uniform == True:
@@ -2141,7 +2231,7 @@ def makeMetaGFFs(annotFile,gffFolder,genome,geneListFile =''):
     '''
     formatFolder(gffFolder,True)
 
-    genome = upper(genome)
+    genome = string.upper(genome)
 
         
     startDict = makeStartDict(annotFile)
@@ -2204,7 +2294,7 @@ def mapMetaBams(dataFile,metaName,gffList,cellTypeList,metaFolder,nameList= [],o
     except OSError:
         os.system('mkdir %s' % (outdir))
     
-    gffString = join(gffList,',')
+    gffString = string.join(gffList,',')
 
     timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     #a random integer ticker to help name files
@@ -2419,7 +2509,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
     
 #     startDict = makeStartDict(annotFile)
 #     if byName:
-#         geneList = [upper(x) for x in geneList]
+#         geneList = [string.upper(x) for x in geneList]
 #         nameDict = defaultdict(list)
         
 #         for key in startDict.keys():
@@ -2429,9 +2519,9 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
 #         for geneName in geneList:
 #             mouseName = lower(geneName)
-#             mouseName = upper(mouseName[0]) + mouseName[1:]
+#             mouseName = string.upper(mouseName[0]) + mouseName[1:]
 #             #tries both the human and mouse nomenclature
-#             refIDs = nameDict[upper(geneName)] + nameDict[mouseName]
+#             refIDs = nameDict[string.upper(geneName)] + nameDict[mouseName]
 #             if len(refIDs) ==0:
 #                 print('Gene name %s not in annotation file %s' % (geneName,annotFile))
 #                 continue
@@ -2537,9 +2627,9 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #             if len(proxGenes) > 0:
 #                 proxGenes = uniquify(proxGenes)
 
-#                 proxString = join(proxGenes,',')
+#                 proxString = string.join(proxGenes,',')
 #                 proxNames = uniquify([startDict[geneID]['name'] for geneID in proxGenes])
-#                 proxNamesString = join(proxNames,',')
+#                 proxNamesString = string.join(proxNames,',')
 #                 newLine = [peakLine[0],peakLine[1],peakLine[2],peakLine[3],signal,tss_peak,proxString,proxNamesString]
 #                 hyperTable.append(newLine)
 
@@ -2818,7 +2908,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #     for output in outputFolders:
 
 #         #get the name of the dataset
-#         name = join(output.split('_')[:-2],'_')
+#         name = string.join(output.split('_')[:-2],'_')
 
 #         #first move the wiggle
 #         cmd = 'mv %s%s/*.WIG.gz %s &' % (errorOutput,output,wiggleFolder)
@@ -3127,7 +3217,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #         sequenceLine = fetchSeq(genomeDirectory,chrom,start,end,True)
         
 #         motifVector = []
-#         matches = re.finditer(motifRegex,upper(sequenceLine))
+#         matches = re.finditer(motifRegex,string.upper(sequenceLine))
 #         if matches:
 #             for match in matches:
 #                 motifVector.append(match.group())
@@ -3305,7 +3395,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #             continue
 
 
-#         matches = re.finditer(motifRegex,upper(line))
+#         matches = re.finditer(motifRegex,string.upper(line))
 #         if matches:
 #             for match in matches:
 #                 occurenceDict[match.group()]+=1
@@ -3463,7 +3553,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #             headerLine = fasta[j][0]
 #             sequenceLine = fasta[j+1][0]
 #             heightVector.append(float(headerLine.split('|')[-1]))
-#             matches = re.finditer(motif,upper(sequenceLine))
+#             matches = re.finditer(motif,string.upper(sequenceLine))
 #             if matches:
 #                 for match in matches:
 #                     motifVector.append(match.group())
@@ -3517,10 +3607,10 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #             sequence = fetchSeq(genomeDirectory,chrom,start,end,True)
 #         except IOError:
 #             continue
-#         motifs = re.finditer(motif,upper(sequence))
+#         motifs = re.finditer(motif,string.upper(sequence))
 #         for match in motifs:
     
-#             newLine = join([chrom,str(start+match.start()),str(start+match.end())],'\t')
+#             newLine = string.join([chrom,str(start+match.start()),str(start+match.end())],'\t')
 #             bed.write(newLine+'\n')
 
 
