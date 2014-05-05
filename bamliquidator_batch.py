@@ -101,7 +101,11 @@ class BaseLiquidator(object):
         if not os.path.isfile(self.executable_path):
             exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
 
-        os.mkdir(output_directory)
+        try:
+            print("Making output directory: %s" % (output_directory))
+            os.mkdir(output_directory)
+        except OSError:
+            print("\tOutput directory already existed. Continuing anyway.")
 
         if self.counts_file_path is None:
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
