@@ -286,10 +286,10 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # next on the control bam if it exists
     if len(controlBamFile) > 0:
         controlName = controlBamFile.split('/')[-1]
-        mappedControlFolder = "%s%s/%s_%s/" % (
-            enhancerFolder, gffRootName, gffRootName, controlName)
-        mappedControlFile = "%s%s/%s_%s/matrix.gff" % (
-            enhancerFolder, gffRootName, gffRootName, controlName)
+        mappedControlFolder = "%s%s_%s/" % (
+            enhancerFolder, gffRootName, controlName)
+        mappedControlFile = "%s%s_%s/matrix.gff" % (
+            enhancerFolder, gffRootName, controlName)
         cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
