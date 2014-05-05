@@ -77,7 +77,7 @@ def makeSignalDict(mappedGFFFile, controlMappedGFFFile=''):
 
 #makeSignalDict('../sshfs/x_rose/mm9_TSS_ENHANCER_GENES_-5000_+5000_CONV3_CD4.nomito.rmdup.bam.gff')
 
-def mapEnhancerToGene(rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile='', uniqueGenes=True, searchWindow=50000, noFormatTable=False):
+def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile='', uniqueGenes=True, searchWindow=50000, noFormatTable=False):
     '''
     maps genes to enhancers. if uniqueGenes, reduces to gene name only. Otherwise, gives for each refseq
     '''
@@ -498,7 +498,7 @@ def main():
     else:
         transcribedFile = ''
 
-    enhancerToGeneTable, enhancerToTopGeneTable, geneToEnhancerTable = mapEnhancerToGene(
+    enhancerToGeneTable, enhancerToTopGeneTable, geneToEnhancerTable = mapEnhancerToGeneTop(
         rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile, True, window, noFormatTable)
 
     # Writing enhancer output
