@@ -529,5 +529,24 @@ def main():
     os.system(cmd)
 
 
+    stretchTableFile = "%s_StretchEnhancers.table.txt" % (inputName)
+    if options.control:
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, stretchTableFile)
+    else:
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, stretchTableFile)
+    os.system(cmd)
+
+
+    superStretchTableFile = "%s_SuperStretchEnhancers.table.txt" % (inputName)
+    if options.control:
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, superStretchTableFile)
+    else:
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, superStretchTableFile)
+    os.system(cmd)
+
+
+
+
+
 if __name__ == "__main__":
     main()

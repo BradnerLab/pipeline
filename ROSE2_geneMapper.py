@@ -35,7 +35,6 @@ THE SOFTWARE.
 # stripped down ROSE_utils module
 import sys
 
-
 import utils
 # import pipeline_dfci
 
@@ -46,8 +45,208 @@ from string import join
 from collections import defaultdict
 
 
+
 #==================================================================
-#====================MAPPING GENES TO ENHANCERS====================
+#===========MAPPING GENES TO ENHANCERS WITHOUT BAM RANKING=========
+#==================================================================
+
+#this is the traditional way of running gene mapper
+
+
+def mapEnhancerToGene(annotFile,enhancerFile,transcribedFile='',uniqueGenes=True,searchWindow =50000,noFormatTable = False):
+    
+    '''
+    maps genes to enhancers. if uniqueGenes, reduces to gene name only. Otherwise, gives for each refseq
+    '''
+    startDict = utils.makeStartDict(annotFile)
+    enhancerTable = utils.parseTable(enhancerFile,'\t')
+
+    #internal parameter for debugging
+    byRefseq = False
+
+
+    if len(transcribedFile) > 0:
+        transcribedTable = utils.parseTable(transcribedFile,'\t')
+        transcribedGenes = [line[1] for line in transcribedTable]
+    else:
+        transcribedGenes = startDict.keys()
+
+    print('MAKING TRANSCRIPT COLLECTION')
+    transcribedCollection = utils.makeTranscriptCollection(annotFile,0,0,500,transcribedGenes)
+
+
+    print('MAKING TSS COLLECTION')
+    tssLoci = []
+    for geneID in transcribedGenes:
+        tssLoci.append(utils.makeTSSLocus(geneID,startDict,0,0))
+
+
+    #this turns the tssLoci list into a LocusCollection
+    #50 is the internal parameter for LocusCollection and doesn't really matter
+    tssCollection = utils.LocusCollection(tssLoci,50)
+
+    
+
+    geneDict = {'overlapping':defaultdict(list),'proximal':defaultdict(list)}
+
+    #dictionaries to hold ranks and superstatus of gene nearby enhancers
+    rankDict = defaultdict(list)
+    superDict= defaultdict(list)
+
+    #list of all genes that appear in this analysis
+    overallGeneList = []
+
+    if noFormatTable:
+        #set up the output tables
+        #first by enhancer
+        enhancerToGeneTable = [enhancerTable[0]+['OVERLAP_GENES','PROXIMAL_GENES','CLOSEST_GENE']]
+
+        
+    else:
+        #set up the output tables
+        #first by enhancer
+        enhancerToGeneTable = [enhancerTable[0][0:9]+['OVERLAP_GENES','PROXIMAL_GENES','CLOSEST_GENE'] + enhancerTable[5][-2:]]
+
+        #next by gene
+        geneToEnhancerTable = [['GENE_NAME','REFSEQ_ID','PROXIMAL_ENHANCERS']]
+
+    #next make the gene to enhancer table
+    geneToEnhancerTable = [['GENE_NAME','REFSEQ_ID','PROXIMAL_ENHANCERS','ENHANCER_RANKS','IS_SUPER']]
+
+        
+
+
+    for line in enhancerTable:
+        if line[0][0] =='#' or line[0][0] == 'R':
+            continue
+
+        enhancerString = '%s:%s-%s' % (line[1],line[2],line[3])
+        
+        enhancerLocus = utils.Locus(line[1],line[2],line[3],'.',line[0])
+
+        #overlapping genes are transcribed genes whose transcript is directly in the stitchedLocus         
+        overlappingLoci = transcribedCollection.getOverlap(enhancerLocus,'both')           
+        overlappingGenes =[]
+        for overlapLocus in overlappingLoci:                
+            overlappingGenes.append(overlapLocus.ID())
+
+        #proximalGenes are transcribed genes where the tss is within 50kb of the boundary of the stitched loci
+        proximalLoci = tssCollection.getOverlap(utils.makeSearchLocus(enhancerLocus,searchWindow,searchWindow),'both')           
+        proximalGenes =[]
+        for proxLocus in proximalLoci:
+            proximalGenes.append(proxLocus.ID())
+
+
+        distalLoci = tssCollection.getOverlap(utils.makeSearchLocus(enhancerLocus,1000000,1000000),'both')           
+        distalGenes =[]
+        for proxLocus in distalLoci:
+            distalGenes.append(proxLocus.ID())
+
+            
+            
+        overlappingGenes = utils.uniquify(overlappingGenes)
+        proximalGenes = utils.uniquify(proximalGenes)
+        distalGenes = utils.uniquify(distalGenes)
+        allEnhancerGenes = overlappingGenes + proximalGenes + distalGenes
+        #these checks make sure each gene list is unique.
+        #technically it is possible for a gene to be overlapping, but not proximal since the
+        #gene could be longer than the 50kb window, but we'll let that slide here
+        for refID in overlappingGenes:
+            if proximalGenes.count(refID) == 1:
+                proximalGenes.remove(refID)
+
+        for refID in proximalGenes:
+            if distalGenes.count(refID) == 1:
+                distalGenes.remove(refID)
+
+
+        #Now find the closest gene
+        if len(allEnhancerGenes) == 0:
+            closestGene = ''
+        else:
+            #get enhancerCenter
+            enhancerCenter = (int(line[2]) + int(line[3]))/2
+
+            #get absolute distance to enhancer center
+            distList = [abs(enhancerCenter - startDict[geneID]['start'][0]) for geneID in allEnhancerGenes]
+            #get the ID and convert to name
+            closestGene = startDict[allEnhancerGenes[distList.index(min(distList))]]['name']
+
+        #NOW WRITE THE ROW FOR THE ENHANCER TABLE
+        if noFormatTable:
+
+            newEnhancerLine = list(line)
+            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]),','))
+            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]),','))
+            newEnhancerLine.append(closestGene)
+
+        else:
+            newEnhancerLine = line[0:9]
+            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]),','))
+            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]),','))
+            newEnhancerLine.append(closestGene)
+            newEnhancerLine += line[-2:]
+
+        enhancerToGeneTable.append(newEnhancerLine)
+        #Now grab all overlapping and proximal genes for the gene ordered table
+
+        overallGeneList +=overlappingGenes
+        for refID in overlappingGenes:
+            geneDict['overlapping'][refID].append(enhancerString)
+            rankDict[refID].append(int(line[-2]))
+            superDict[refID].append(int(line[-1]))
+            
+        overallGeneList+=proximalGenes
+        for refID in proximalGenes:
+            geneDict['proximal'][refID].append(enhancerString)
+            rankDict[refID].append(int(line[-2]))
+            superDict[refID].append(int(line[-1]))
+
+
+
+    #End loop through
+    
+    #Make table by gene
+    overallGeneList = utils.uniquify(overallGeneList)  
+
+    #use enhancer rank to order
+    rankOrder = utils.order([min(rankDict[x]) for x in overallGeneList])
+        
+    usedNames = []
+    for i in rankOrder:
+        refID = overallGeneList[i]
+        geneName = startDict[refID]['name']
+        if usedNames.count(geneName) > 0 and uniqueGenes == True:
+
+            continue
+        else:
+            usedNames.append(geneName)
+        
+        proxEnhancers = geneDict['overlapping'][refID]+geneDict['proximal'][refID]
+        
+        superStatus = max(superDict[refID])
+        enhancerRanks = join([str(x) for x in rankDict[refID]],',')
+    
+        newLine = [geneName,refID,join(proxEnhancers,','),enhancerRanks,superStatus]
+        geneToEnhancerTable.append(newLine)
+
+    #resort enhancerToGeneTable
+    if noFormatTable:
+        return enhancerToGeneTable,geneToEnhancerTable
+    else:
+        enhancerOrder = utils.order([int(line[-2]) for line in enhancerToGeneTable[1:]])
+        sortedTable = [enhancerToGeneTable[0]]
+        for i in enhancerOrder:
+            sortedTable.append(enhancerToGeneTable[(i+1)])
+
+        return sortedTable,geneToEnhancerTable
+
+
+
+
+
+#==================================================================
+#===========MAPPING GENES TO ENHANCERS WITH BAM RANKING============
 #==================================================================
 
 
@@ -420,17 +619,17 @@ def main():
     '''
 
     from optparse import OptionParser
-    usage = "usage: %prog [options] -g [GENOME] -r [RANKBY_BAM] -i [INPUT_ENHANCER_FILE]"
+    usage = "usage: %prog [options] -g [GENOME] -i [INPUT_ENHANCER_FILE]"
     parser = OptionParser(usage=usage)
     # required flags
     parser.add_option("-i", "--i", dest="input", nargs=1, default=None,
                       help="Enter a ROSE ranked enhancer or super-enhancer file")
     parser.add_option("-g", "--genome", dest="genome", nargs=1, default=None,
                       help="Enter the genome build (MM9,MM8,HG18,HG19)")
-    parser.add_option("-r", "--rankby", dest="rankby", nargs=1, default=None,
-                      help="Enter the bam used to rank enhancers")
 
     # optional flags
+    parser.add_option("-r", "--rankby", dest="rankby", nargs=1, default=None,
+                      help="Enter the bam used to rank enhancers")
     parser.add_option("-c", "--control", dest="control", nargs=1, default='',
                       help="Enter a background bam for background correction")
 
@@ -498,41 +697,67 @@ def main():
     else:
         transcribedFile = ''
 
-    enhancerToGeneTable, enhancerToTopGeneTable, geneToEnhancerTable = mapEnhancerToGeneTop(
-        rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile, True, window, noFormatTable)
+    if options.rankby:
+        enhancerToGeneTable, enhancerToTopGeneTable, geneToEnhancerTable = mapEnhancerToGeneTop(
+            rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile, True, window, noFormatTable)
 
-    # Writing enhancer output
-    enhancerFileName = enhancerFile.split('/')[-1].split('.')[0]
+        # Writing enhancer output
+        enhancerFileName = enhancerFile.split('/')[-1].split('.')[0]
 
-    if window != 50000:
-        # writing the enhancer table
-        
-        out1 = '%s%s_ENHANCER_TO_GENE_%sKB.txt' % (
-            outFolder, enhancerFileName, window / 1000)
-        print("writing output to %s" % (out1))
-        utils.unParseTable(enhancerToGeneTable, out1, '\t')
+        if window != 50000:
+            # writing the enhancer table
 
-        # writing enhancer top gene table
-        out2 = '%s%s_ENHANCER_TO_TOP_GENE_%sKB.txt' % (
-            outFolder, enhancerFileName, window / 1000)
-        utils.unParseTable(enhancerToTopGeneTable, out2, '\t')
+            out1 = '%s%s_ENHANCER_TO_GENE_%sKB.txt' % (
+                outFolder, enhancerFileName, window / 1000)
+            print("writing output to %s" % (out1))
+            utils.unParseTable(enhancerToGeneTable, out1, '\t')
 
-        # writing the gene table
-        out3 = '%s%s_GENE_TO_ENHANCER_%sKB.txt' % (
-            outFolder, enhancerFileName, window / 1000)
-        utils.unParseTable(geneToEnhancerTable, out3, '\t')
+            # writing enhancer top gene table
+            out2 = '%s%s_ENHANCER_TO_TOP_GENE_%sKB.txt' % (
+                outFolder, enhancerFileName, window / 1000)
+            utils.unParseTable(enhancerToTopGeneTable, out2, '\t')
+
+            # writing the gene table
+            out3 = '%s%s_GENE_TO_ENHANCER_%sKB.txt' % (
+                outFolder, enhancerFileName, window / 1000)
+            utils.unParseTable(geneToEnhancerTable, out3, '\t')
+        else:
+            # writing the enhancer table
+            out1 = '%s%s_ENHANCER_TO_GENE.txt' % (outFolder, enhancerFileName)
+            utils.unParseTable(enhancerToGeneTable, out1, '\t')
+
+            # writing the enhancer table
+            out2 = '%s%s_ENHANCER_TO_TOP_GENE.txt' % (outFolder, enhancerFileName)
+            utils.unParseTable(enhancerToTopGeneTable, out2, '\t')
+
+            # writing the gene table
+            out3 = '%s%s_GENE_TO_ENHANCER.txt' % (outFolder, enhancerFileName)
+            utils.unParseTable(geneToEnhancerTable, out3, '\t')
     else:
-        # writing the enhancer table
-        out1 = '%s%s_ENHANCER_TO_GENE.txt' % (outFolder, enhancerFileName)
-        utils.unParseTable(enhancerToGeneTable, out1, '\t')
+        #do traditional mapping
+        enhancerToGeneTable,geneToEnhancerTable = mapEnhancerToGene(annotFile,enhancerFile,transcribedFile,True,window,noFormatTable)
 
-        # writing the enhancer table
-        out2 = '%s%s_ENHANCER_TO_TOP_GENE.txt' % (outFolder, enhancerFileName)
-        utils.unParseTable(enhancerToTopGeneTable, out2, '\t')
+        #Writing enhancer output
+        enhancerFileName = enhancerFile.split('/')[-1].split('.')[0]
 
-        # writing the gene table
-        out3 = '%s%s_GENE_TO_ENHANCER.txt' % (outFolder, enhancerFileName)
-        utils.unParseTable(geneToEnhancerTable, out3, '\t')
+        if window != 50000:
+            #writing the enhancer table
+            out1 = '%s%s_ENHANCER_TO_GENE_%sKB.txt' % (outFolder,enhancerFileName,window/1000)
+            utils.unParseTable(enhancerToGeneTable,out1,'\t')
+
+            #writing the gene table
+            out2 = '%s%s_GENE_TO_ENHANCER_%sKB.txt' % (outFolder,enhancerFileName,window/1000)
+            utils.unParseTable(geneToEnhancerTable,out2,'\t')
+        else:
+            #writing the enhancer table
+            out1 = '%s%s_ENHANCER_TO_GENE.txt' % (outFolder,enhancerFileName)
+            utils.unParseTable(enhancerToGeneTable,out1,'\t')
+
+            #writing the gene table
+            out2 = '%s%s_GENE_TO_ENHANCER.txt' % (outFolder,enhancerFileName)
+            utils.unParseTable(geneToEnhancerTable,out2,'\t')
+        
+        
 
 if __name__ == "__main__":
     main()
