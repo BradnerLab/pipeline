@@ -424,26 +424,26 @@ writeSuperEnhancer_table(true_super_enhancers, enhancerDescription,superTableFil
 
 #Writing a bed file
 bedFileName = paste(outFolder,enhancerName,'_Enhancers_withStretch.bed',sep='')
-convert_stitched_to_bed(stitched_regions,paste(rankBy_factor,"Enhancers"), enhancerDescription,bedFileName,score= stretch_vector,splitSuper=TRUE,superRows= superEnhancerRows,baseColor="0,0,0",superColor="255,0,0")
+convert_stitched_to_bed(stitched_regions,paste(rankBy_factor,"Enhancers"), enhancerDescription,bedFileName,score= stretch_vector,splitSuper=TRUE,superRows= stretchEnhancerRows,baseColor="0,0,0",superColor="255,0,0")
 
 
 
 #This matrix is just the super_enhancers
-true_super_enhancers <- stitched_regions[superEnhancerRows,]
+true_stretch_enhancers <- stitched_regions[stretchEnhancerRows,]
 
 additionalTableData <- matrix(data=NA,ncol=2,nrow=nrow(stitched_regions))
 colnames(additionalTableData) <- c("enhancerRank","isStretch")
 additionalTableData[,1] <- nrow(stitched_regions)-rank(stretch_vector,ties.method="first")+1
 additionalTableData[,2] <- 0
-additionalTableData[superEnhancerRows,2] <- 1
+additionalTableData[stretchEnhancerRows,2] <- 1
 
 
-#Writing enhancer and super-enhancer tables with enhancers ranked and super status annotated
+#Writing enhancer and stretch-enhancer tables with enhancers ranked and stretch status annotated
 enhancerTableFile = paste(outFolder,enhancerName,'_AllEnhancers_Length.table.txt',sep='')
 writeSuperEnhancer_table(stitched_regions, enhancerDescription,enhancerTableFile, additionalData= additionalTableData)
 
-superTableFile = paste(outFolder,enhancerName,'_StretchEnhancers.table.txt',sep='')
-writeSuperEnhancer_table(true_super_enhancers, enhancerDescription,superTableFile, additionalData= additionalTableData[superEnhancerRows,])
+stretchTableFile = paste(outFolder,enhancerName,'_StretchEnhancers.table.txt',sep='')
+writeSuperEnhancer_table(true_stretch_enhancers, enhancerDescription,stretchTableFile, additionalData= additionalTableData[stretchEnhancerRows,])
 
 
 
@@ -453,28 +453,30 @@ writeSuperEnhancer_table(true_super_enhancers, enhancerDescription,superTableFil
 
 #Writing a bed file
 bedFileName = paste(outFolder,enhancerName,'_Enhancers_withSuperStretch.bed',sep='')
-convert_stitched_to_bed(stitched_regions,paste(rankBy_factor,"Enhancers"), enhancerDescription,bedFileName,score= stretch_vector,splitSuper=TRUE,superRows= superEnhancerRows,baseColor="0,0,0",superColor="255,0,0")
+convert_stitched_to_bed(stitched_regions,paste(rankBy_factor,"Enhancers"), enhancerDescription,bedFileName,score= stretch_vector,splitSuper=TRUE,superRows= superStretch,baseColor="0,0,0",superColor="255,0,0")
+
+
 
 
 
 #This matrix is just the super_enhancers
-true_super_enhancers <- stitched_regions[superStretch,]
-
+true_superStretch_enhancers <- stitched_regions[superStretch,]
+print(length(superStretch))
+print(dim(true_superStretch_enhancers))
 additionalTableData <- matrix(data=NA,ncol=2,nrow=nrow(stitched_regions))
 colnames(additionalTableData) <- c("enhancerRank","isSuperStretch")
-
 
 
 enhMagnitude = magnitude(stretch_vector/max(stretch_vector),rankBy_vector/max(rankBy_vector))
 additionalTableData[,1] <- nrow(stitched_regions)-rank(enhMagnitude,ties.method="first")+1
 additionalTableData[,2] <- 0
-additionalTableData[superEnhancerRows,2] <- 1
+additionalTableData[superStretch,2] <- 1
 
 
-#Writing enhancer and super-enhancer tables with enhancers ranked and super status annotated
+#Writing enhancer and superStretch-enhancer tables with enhancers ranked and superStretch status annotated
 enhancerTableFile = paste(outFolder,enhancerName,'_AllEnhancers_SuperStretch.table.txt',sep='')
 writeSuperEnhancer_table(stitched_regions, enhancerDescription,enhancerTableFile, additionalData= additionalTableData)
 
-superTableFile = paste(outFolder,enhancerName,'_SuperStretchEnhancers.table.txt',sep='')
-writeSuperEnhancer_table(true_super_enhancers, enhancerDescription,superTableFile, additionalData= additionalTableData[superEnhancerRows,])
+superStretchTableFile = paste(outFolder,enhancerName,'_SuperStretchEnhancers.table.txt',sep='')
+writeSuperEnhancer_table(true_superStretch_enhancers, enhancerDescription,superStretchTableFile, additionalData= additionalTableData[superStretch,])
 
