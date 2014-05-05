@@ -31,19 +31,21 @@ THE SOFTWARE.
 #=======================DEPENDENCIES=======================================
 #==========================================================================
 import sys
-
-
-# MUST SET THIS STRING TO THE PATH OF THE bamliquidator program
-bamliquidatorString = 'bamliquidator'
-
-# as of now the number of bins to sample the space is hard wired
-nBins = 200
-
-from utils import *
+import utils
 import pipeline_dfci
 import subprocess
 import os
 import string
+
+# Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
+bamliquidatorString = '/usr/bin/bamliquidator'
+if not os.path.isfile(bamliquidatorString):
+    bamliquidatorString = './bamliquidator'
+    if not os.path.isfile(bamliquidatorString):
+        raise ValueError('bamliquidator not found in path')
+
+# as of now the number of bins to sample the space is hard wired
+nBins = 200
 
 
 # script that takes in a list of bams, makes an intermediate table file, and then calls R to make the plot
@@ -72,8 +74,8 @@ def loadAnnotFile(genome):
     annotFile = genomeDict[genome]
     # geneList =['NM_002460','NM_020185']
     geneList = []
-    geneDict = makeGenes(annotFile, geneList, True)
-    txCollection = makeTranscriptCollection(annotFile, 0, 0, 500, geneList)
+    geneDict = utils.makeGenes(annotFile, geneList, True)
+    txCollection = utils.makeTranscriptCollection(annotFile, 0, 0, 500, geneList)
 
     return geneDict, txCollection
 
@@ -104,7 +106,7 @@ def mapGFFLineToAnnot(gffLine, outFolder, nBins, geneDict, txCollection, sense='
         gffString = header
     diagramTable = [[0, 0, 0, 0]]
     nameTable = [['', 0, 0]]
-    gffLocus = Locus(gffLine[0], int(gffLine[3]), int(gffLine[4]), gffLine[6], gffLine[1])
+    gffLocus = utils.Locus(gffLine[0], int(gffLine[3]), int(gffLine[4]), gffLine[6], gffLine[1])
 
     scaleFactor = float(nBins) / gffLocus.len()
     # plotting buffer for diagrams
@@ -117,7 +119,7 @@ def mapGFFLineToAnnot(gffLine, outFolder, nBins, geneDict, txCollection, sense='
         refPoint = int(gffLine[4])
     else:
         refPoint = int(gffLine[3])
-    offsetCollection = LocusCollection([], 500)
+    offsetCollection = utils.LocusCollection([], 500)
     for geneID in geneList:
 
         gene = geneDict[geneID]
@@ -128,7 +130,7 @@ def mapGFFLineToAnnot(gffLine, outFolder, nBins, geneDict, txCollection, sense='
         else:
             name = geneID
         offset = 4 * len(offsetCollection.getOverlap(gene.txLocus()))
-        offsetCollection.append(makeSearchLocus(gene.txLocus(), plotBuffer, plotBuffer))
+        offsetCollection.append(utils.makeSearchLocus(gene.txLocus(), plotBuffer, plotBuffer))
         # write the name of the gene down
         if gene.sense() == '+':
             geneStart = gene.txLocus().start()
@@ -157,8 +159,8 @@ def mapGFFLineToAnnot(gffLine, outFolder, nBins, geneDict, txCollection, sense='
 
                 diagramTable.append([start, -1 - offset, stop, 1 - offset])
 
-    unParseTable(diagramTable, outFolder + gffString + '_diagramTemp.txt', '\t')
-    unParseTable(nameTable, outFolder + gffString + '_nameTemp.txt', '\t')
+    utils.unParseTable(diagramTable, outFolder + gffString + '_diagramTemp.txt', '\t')
+    utils.unParseTable(nameTable, outFolder + gffString + '_nameTemp.txt', '\t')
 
 
 def makeBedCollection(bedFileList):
@@ -168,17 +170,17 @@ def makeBedCollection(bedFileList):
     '''
 
     bedLoci = []
-    print "MAKING BED COLLECTION FOR:"
+    print("MAKING BED COLLECTION FOR:")
     for bedFile in bedFileList:
 
         bedName = bedFile.split('/')[-1].split('.')[0]
-        print bedName
-        bed = parseTable(bedFile, '\t')
+        print(bedName)
+        bed = utils.parseTable(bedFile, '\t')
         for line in bed:
-            bedLocus = Locus(line[0], line[1], line[2], '.', bedName)
+            bedLocus = utils.Locus(line[0], line[1], line[2], '.', bedName)
             bedLoci.append(bedLocus)
 
-    return LocusCollection(bedLoci, 50)
+    return utils.LocusCollection(bedLoci, 50)
 
 
 def mapGFFLineToBed(gffLine, outFolder, nBins, bedCollection, header=''):
@@ -192,17 +194,17 @@ def mapGFFLineToBed(gffLine, outFolder, nBins, bedCollection, header=''):
         gffString = header
     diagramTable = [[0, 0, 0, 0]]
     nameTable = [['', 0, 0]]
-    gffLocus = Locus(gffLine[0], int(gffLine[3]), int(gffLine[4]), gffLine[6], gffLine[1])
+    gffLocus = utils.Locus(gffLine[0], int(gffLine[3]), int(gffLine[4]), gffLine[6], gffLine[1])
 
     scaleFactor = float(nBins) / gffLocus.len()
     # plotting buffer for diagrams
-    plotBuffer = int(gffLocus.len() / float(nBins) * 20)
+    # plotBuffer = int(gffLocus.len() / float(nBins) * 20) # UNUSED (?)
 
     overlapLoci = bedCollection.getOverlap(gffLocus, sense='both')
 
     # since beds come from multiple sources, we want to figure out how to offset them
     offsetDict = {}  # this will store each ID name
-    bedNamesList = uniquify([locus.ID() for locus in overlapLoci])
+    bedNamesList = utils.uniquify([locus.ID() for locus in overlapLoci])
     bedNamesList.sort()
     for i in range(len(bedNamesList)):
         offsetDict[bedNamesList[i]] = 2 * i  # offsets different categories of bed regions
@@ -225,8 +227,8 @@ def mapGFFLineToBed(gffLine, outFolder, nBins, bedCollection, header=''):
 
         diagramTable.append([start, -0.5 - offset, stop, 0.5 - offset])
 
-    unParseTable(diagramTable, outFolder + gffString + '_bedDiagramTemp.txt', '\t')
-    unParseTable(nameTable, outFolder + gffString + '_bedNameTemp.txt', '\t')
+    utils.unParseTable(diagramTable, outFolder + gffString + '_bedDiagramTemp.txt', '\t')
+    utils.unParseTable(nameTable, outFolder + gffString + '_bedNameTemp.txt', '\t')
 
 
 def mapBamToGFFLine(bamFile, MMR, name, gffLine, color, nBins, sense='both', extension=200):
@@ -235,7 +237,7 @@ def mapBamToGFFLine(bamFile, MMR, name, gffLine, color, nBins, sense='both', ext
     print('using a MMR value of %s' % (MMR))
 
     line = gffLine[0:9]
-    gffLocus = Locus(line[0], int(line[3]), int(line[4]), line[6], line[1])
+    gffLocus = utils.Locus(line[0], int(line[3]), int(line[4]), line[6], line[1])
 
     # setting up the output clusterline
     colorLine = color
@@ -250,7 +252,7 @@ def mapBamToGFFLine(bamFile, MMR, name, gffLine, color, nBins, sense='both', ext
         return clusterLine
 
     # flippy flip if sense is negative
-    senseTrans = maketrans('-+.', '+-+')
+    senseTrans = string.maketrans('-+.', '+-+')
     if sense == '-':
         bamSense = string.translate(gffLocus.sense(), senseTrans)
     elif sense == '+':
@@ -295,7 +297,7 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
 
     # load in the gff
     if type(gff) == str:
-        gff = parseTable(gff, '\t')
+        gff = utils.parseTable(gff, '\t')
 
     # load in the annotation
     print('loading in annotation for %s' % (genome))
@@ -355,7 +357,7 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
             geneName = geneDict[gffLine[1]].commonName()
         else:
             geneName = gffLine[1]
-        unParseTable(outTable, outFolder + gffString + '_plotTemp.txt', '\t')
+        utils.unParseTable(outTable, outFolder + gffString + '_plotTemp.txt', '\t')
         diagramTable = outFolder + gffString + '_diagramTemp.txt'
         plotTable = outFolder + gffString + '_plotTemp.txt'
         nameTable = outFolder + gffString + '_nameTemp.txt'
@@ -363,7 +365,7 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
         bedDiagramTable = outFolder + gffString + '_bedDiagramTemp.txt'
         summaryTable.append([diagramTable, nameTable, bedDiagramTable, bedNameTable, plotTable, gffLine[0], geneName, gffLine[6], gffLine[3], gffLine[4]])
     summaryTableFileName = "%s%s_summary.txt" % (outFolder, title)
-    unParseTable(summaryTable, summaryTableFileName, '\t')
+    utils.unParseTable(summaryTable, summaryTableFileName, '\t')
     return summaryTableFileName
 
 
@@ -428,11 +430,11 @@ def main():
             bedFileList = options.bed.split(',')
             bedCollection = makeBedCollection(bedFileList)
         else:
-            bedCollection = LocusCollection([], 50)
+            bedCollection = utils.LocusCollection([], 50)
 
         # bring in the gff
         try:
-            gff = parseTable(options.input, '\t')
+            gff = utils.parseTable(options.input, '\t')
             gffName = options.input.split('/')[-1].split('.')[0]
         except IOError:
             # means a coordinate line has been given e.g. chr1:+:1-100
@@ -450,7 +452,7 @@ def main():
             gff = [gffLine]
 
         # bring in the genome
-        genome = upper(options.genome)
+        genome = options.genome.upper()
         if ['HG18', 'HG19', 'MM9', 'RN5'].count(genome) == 0:
             print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN5, OR MM9' % (genome))
             parser.print_help()
@@ -463,7 +465,7 @@ def main():
         if rootFolder[-1] != '/':
             rootFolder += '/'
         try:
-            foo = os.listdir(rootFolder)
+            os.listdir(rootFolder)
         except OSError:
             print('ERROR: UNABLE TO FIND OUTPUT DIRECTORY %s' % (rootFolder))
             exit()
@@ -500,7 +502,7 @@ def main():
 
         rpm = options.rpm
 
-        yScale = upper(options.yScale)
+        yScale = options.yScale.upper()
 
         # names
         if options.names:
@@ -514,7 +516,7 @@ def main():
             names = [x.split('/')[-1] for x in bamFileList]
 
         # plot style
-        plotStyle = upper(options.plot)
+        plotStyle = options.plot.upper()
         if ['SINGLE', 'MULTIPLE'].count(plotStyle) == 0:
             print('ERROR: PLOT STYLE %s NOT AN OPTION' % (plotStyle))
             parser.print_help()
@@ -538,12 +540,12 @@ def main():
 
         # delete temp files
         if not options.save:
-            if checkOutput(outFile, 1, 10):
+            if utils.checkOutput(outFile, 1, 10):
                 removeCommand = "rm -rf %s" % (tempFolder)
-                print removeCommand
+                print(removeCommand)
                 os.system(removeCommand)
             else:
-                print "ERROR: NO OUTPUT FILE %s DETECTED" % (outFile)
+                print("ERROR: NO OUTPUT FILE %s DETECTED" % (outFile))
 
     else:
         parser.print_help()
