@@ -65,12 +65,12 @@ def loadAnnotFile(genome):
     load in the annotation and create a geneDict and transcription collection
     '''
     genomeDict = {
-        'HG18': './annotation/hg18_refseq.ucsc',
-        'MM9': './annotation/mm9_refseq.ucsc',
-        'hg18': './annotation/hg18_refseq.ucsc',
-        'mm9': './annotation/mm9_refseq.ucsc',
-        'HG19': './annotation/hg19_refseq.ucsc',
-        'hg19': './annotation/hg19_refseq.ucsc'
+        'HG18': 'annotation/hg18_refseq.ucsc',
+        'MM9': 'annotation/mm9_refseq.ucsc',
+        'hg18': 'annotation/hg18_refseq.ucsc',
+        'mm9': 'annotation/mm9_refseq.ucsc',
+        'HG19': 'annotation/hg19_refseq.ucsc',
+        'hg19': 'annotation/hg19_refseq.ucsc'
     }
 
     annotFile = whereAmI + '/' + genomeDict[genome]
