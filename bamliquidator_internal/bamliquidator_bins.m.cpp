@@ -238,7 +238,7 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc <= 9 || argc % 2 != 1)
+    if (argc < 9 || argc % 2 != 1)
     {
       std::cerr << "usage: " << argv[0] << " cell_type bin_size extension strand bam_file hdf5_file chr1 length1 ... \n"
         << "\ne.g. " << argv[0] << " mm1s 100000 0 . /ifs/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam "
