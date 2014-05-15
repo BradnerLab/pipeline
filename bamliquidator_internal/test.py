@@ -57,7 +57,7 @@ class SingleFullReadBamTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.dir_path)
 
-    def test_smoke_test_bin_liquidation(self):
+    def test_bin_liquidation(self):
         liquidator = blb.BinLiquidator(bin_size = len(self.sequence),
                                        output_directory = os.path.join(self.dir_path, 'output'),
                                        bam_file_path = self.bam_file_path)
@@ -75,7 +75,7 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(len(self.sequence), record["count"]) # count represents how many base pair reads intersected
                                                                   # the bin
 
-    def test_test_region_liquidation(self):
+    def test_region_liquidation(self):
         start = 1
         stop  = 8
         regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
@@ -96,7 +96,7 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(stop-start, record["count"]) # count represents how many base pair reads intersected
                                                           # the region
 
-    def test_region_with_no_data(self):
+    def test_region_with_no_reads(self):
         start = len(self.sequence) + 10
         stop = start + 10
         regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
