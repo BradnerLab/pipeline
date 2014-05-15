@@ -119,6 +119,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
                     ? columns[strand_column][0]
                     : default_strand;
     }
+    region.count = 0;
+    region.normalized_count = 0.0;
 
     regions.push_back(region);
   }
