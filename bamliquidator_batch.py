@@ -5,11 +5,12 @@ from bamliquidator_internal.flattener import write_tab_for_all
 from bamliquidator_internal.performance_tracker import share 
 
 import argparse
+import csv
+import datetime
+import errno
 import os
 import subprocess
 import tables
-import datetime
-import csv
 from time import time 
 
 version = "0.4" # should idealy be updated before each significant git push
@@ -101,7 +102,11 @@ class BaseLiquidator(object):
         if not os.path.isfile(self.executable_path):
             exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
 
-        os.mkdir(output_directory)
+        try:
+            os.mkdir(output_directory)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
 
         if self.counts_file_path is None:
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
@@ -278,8 +283,8 @@ def main():
                         help='a region file in either .gff or .bed format')
 
     parser.add_argument('-o', '--output_directory', default='output',
-                        help='Directory to create and output the h5 and/or html files to (aborts if already exists). '
-                             'Default is "./output".')
+                        help='Directory to output the h5, gff, tab, and/or html files to.  Creates directory if necessary.  '
+                             'May overwrite prior run results if present. Default is "./output".')
     parser.add_argument('-c', '--counts_file', default=None,
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
                              'creating a new file "counts.h5" in the output directory.')
@@ -288,7 +293,7 @@ def main():
                               'chromosome (note that HDF5 files can be efficiently queried and used directly -- e.g. please '
                               'see http://www.pytables.org/ for easy to use Python APIs and '
                               'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for '
-                              'browsing HDF5 files')
+                              'browsing HDF5 files)')
     parser.add_argument('-s', '--skip_email', default=False, action='store_true', 
                         help='skip sending performance tracking email -- these emails are sent by default during beta testing, '
                              'and will be removed (or at least not be the default) when this app leaves beta')
