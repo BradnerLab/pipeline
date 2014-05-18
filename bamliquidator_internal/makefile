@@ -80,21 +80,6 @@ deb: clean archive
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
 	cp -R debian bamliquidator-$(VERSION)
 	cd bamliquidator-$(VERSION)/debian; debuild -us -uc	
-
-EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
-
-archive:
-	mkdir bamliquidator-1.0
-	cp *.h *.cpp makefile bamliquidator-1.0
-	tar -czf bamliquidator-1.0.tar.gz bamliquidator-1.0
-	rm -rf bamliquidator-1.0
-
-deb: clean archive
-	mv bamliquidator-1.0.tar.gz bamliquidator_1.0.orig.tar.gz 
-	tar xf bamliquidator_1.0.orig.tar.gz
-	cp -R debian bamliquidator-1.0
-	cd bamliquidator-1.0/debian; debuild -us -uc	
-
 clean:
 	rm -f $(EXECUTABLES) *.o
 	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)*
