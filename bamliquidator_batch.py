@@ -2,7 +2,6 @@
 
 import bamliquidator_internal.normalize_plot_and_summarize as nps 
 from bamliquidator_internal.flattener import write_tab_for_all 
-from bamliquidator_internal.performance_tracker import share 
 
 import argparse
 import csv
@@ -12,8 +11,6 @@ import os
 import subprocess
 import tables
 from time import time 
-
-version = "0.4" # should idealy be updated before each significant git push
 
 def create_lengths_table(h5file):
     class Length(tables.IsDescription):
@@ -93,7 +90,6 @@ def populate_lengths(lengths, bam_file_paths):
 # The concrete classes must define the methods liquidate, normalize, and create_counts_table
 class BaseLiquidator(object):
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
-        self.log = "" 
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
 
@@ -148,7 +144,6 @@ class BaseLiquidator(object):
         start = time()
         self.normalize()
         duration = time() - start
-        self.log += "nps_seconds=%s\n" % duration
 
     def flatten(self):
         print("Flattening HDF5 tables into text files")
@@ -159,22 +154,12 @@ class BaseLiquidator(object):
 
         duration = time() - start
         print("Flattening took %f seconds" % duration)
-        self.log += "flatten_seconds=%s\n" % duration
-
-    def email(self): 
-        start = time()
-        print("Emailing hardware info and performance measurements for tracking")
-        share("bamliquidator_batch", version, self.log)
-        duration = time() - start
-        print("Emailing took %f seconds" % duration)
-        
 
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None):
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
 
         self.bin_size = bin_size
-        self.log += "bin_size=%s\n" % self.bin_size
 
     def liquidate(self, bam_file_path, extension, sense):
         if sense is None: sense = '.'
@@ -194,7 +179,6 @@ class BinLiquidator(BaseLiquidator):
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
         print("Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate))
-        self.log += "bin_seconds=%s,reads=%s,mrps=%s\n" % (duration, reads, rate)
 
         return return_code
        
@@ -219,7 +203,6 @@ class RegionLiquidator(BaseLiquidator):
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
 
         self.regions_file = regions_file
-        self.log += "bin_size=None\n" # just to be consistent with logging from version 1.0
 
     def liquidate(self, bam_file_path, extension, sense = None):
         args = [self.executable_path, self.regions_file, str(extension), bam_file_path, self.counts_file_path]
@@ -231,7 +214,6 @@ class RegionLiquidator(BaseLiquidator):
         duration = time() - start
 
         print("Liquidation completed: %f seconds" % (duration))
-        self.log += "region_seconds=%s\n" % duration # todo: maybe include the line count of the region file?
 
         return return_code
 
@@ -294,9 +276,6 @@ def main():
                               'see http://www.pytables.org/ for easy to use Python APIs and '
                               'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for '
                               'browsing HDF5 files)')
-    parser.add_argument('-s', '--skip_email', default=False, action='store_true', 
-                        help='skip sending performance tracking email -- these emails are sent by default during beta testing, '
-                             'and will be removed (or at least not be the default) when this app leaves beta')
     parser.add_argument('-e', '--extension', type=int, default=0,
                         help='Extends reads by n bp (default is 0)')
     parser.add_argument('--sense', default=None, choices=['+', '-', '.'],
@@ -340,9 +319,6 @@ def main():
             print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
-
-    if not args.skip_email:
-        liquidator.email()
 
 if __name__ == "__main__":
     main()

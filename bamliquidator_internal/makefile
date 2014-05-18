@@ -25,6 +25,8 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
+VERSION = 0.5
+
 # The directory to install in:
 prefix = /usr/local
 bindir = $(prefix)/bin
@@ -63,25 +65,25 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator_regions.m.cpp
   
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
-	$(CC) $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
+	$(CC) $(CPPFLAGS) -pthread -c bamliquidator.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
 
 archive:
-	mkdir bamliquidator-1.0
-	cp *.h *.cpp makefile bamliquidator-1.0
-	tar -czf bamliquidator-1.0.tar.gz bamliquidator-1.0
-	rm -rf bamliquidator-1.0
+	mkdir bamliquidator-$(VERSION)
+	cp *.h *.cpp makefile bamliquidator-$(VERSION)
+	tar -czf bamliquidator-$(VERSION).tar.gz bamliquidator-$(VERSION)
+	rm -rf bamliquidator-$(VERSION)
 
 deb: clean archive
-	mv bamliquidator-1.0.tar.gz bamliquidator_1.0.orig.tar.gz 
-	tar xf bamliquidator_1.0.orig.tar.gz
-	cp -R debian bamliquidator-1.0
-	cd bamliquidator-1.0/debian; debuild -us -uc	
+	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
+	tar xf bamliquidator_$(VERSION).orig.tar.gz
+	cp -R debian bamliquidator-$(VERSION)
+	cd bamliquidator-$(VERSION)/debian; debuild -us -uc	
 
 clean:
 	rm -f $(EXECUTABLES) *.o
-	rm -rf bamliquidator_1.0* bamliquidator-1.0*
+	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)*
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
