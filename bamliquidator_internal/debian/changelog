@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 bamliquidator (0.5-1) UNRELEASED; urgency=low
+=======
+bamliquidator (1.0-1) UNRELEASED; urgency=low
+>>>>>>> 70290c9db7dc305e3133f0450a26592827368523
 
   * Initial release.
 
