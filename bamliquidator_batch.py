@@ -254,8 +254,7 @@ def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
                                                  'in the bam file(s) at the given directory, and then normalize, plot bins, '
                                                  'and summarize the counts in the output directory.  For additional '
-                                                 'help, please see https://github.com/BradnerLab/pipeline/wiki',
-                                     version=version)
+                                                 'help, please see https://github.com/BradnerLab/pipeline/wiki')
 
     mut_exclusive_group = parser.add_mutually_exclusive_group()
     mut_exclusive_group.add_argument('-b', '--bin_size', type=int, default=100000,
