@@ -79,7 +79,8 @@ deb: clean archive
 	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
 	cp -R debian bamliquidator-$(VERSION)
-	cd bamliquidator-$(VERSION)/debian; debuild -us -uc	
+	cd bamliquidator-$(VERSION)/debian; debuild -S
+
 clean:
 	rm -f $(EXECUTABLES) *.o
 	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)*
