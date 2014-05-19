@@ -81,6 +81,9 @@ deb: clean archive
 	cp -R debian bamliquidator-$(VERSION)
 	cd bamliquidator-$(VERSION)/debian; debuild -S
 
+dput: deb
+	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
+
 clean:
 	rm -f $(EXECUTABLES) *.o
 	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)*
