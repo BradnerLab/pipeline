@@ -25,7 +25,8 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.5
+VERSION = 0.6.4
+# when changing version consider adding corresponding entry to debian/changelog as well 
 
 # The directory to install in:
 prefix = /usr/local
