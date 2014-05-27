@@ -25,9 +25,9 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.6.5
-# when changing version consider adding corresponding entry to debian/changelog as well 
-# and keeping this in sync with setup.py's version
+VERSION = 0.6.6
+# when changing version consider adding corresponding entry to debian*/changelog as well 
+# and keeping this in sync with debain_bamliquidator_batch/setup.py's version
 
 # The directory to install in:
 prefix = /usr/local
@@ -80,7 +80,7 @@ archive:
 deb: clean archive
 	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
-	cp -R debian bamliquidator-$(VERSION)
+	cp -R debian_bamliquidator bamliquidator-$(VERSION)/debian
 	cd bamliquidator-$(VERSION)/debian; debuild -S
 
 dput: deb
