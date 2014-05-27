@@ -25,8 +25,9 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.6.4
+VERSION = 0.6.5
 # when changing version consider adding corresponding entry to debian/changelog as well 
+# and keeping this in sync with setup.py's version
 
 # The directory to install in:
 prefix = /usr/local
