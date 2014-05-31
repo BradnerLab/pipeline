@@ -2,12 +2,12 @@ from setuptools import setup
 
 setup(
     name='BamLiquidatorBatch',
-    version='0.6.14',
+    version='0.6.15',
     maintainer='John DiMatteo',
     maintainer_email='jdimatteo@gmail.com',
     packages=['bamliquidatorbatch'],
     url='https://github.com/BradnerLab/pipeline/wiki/bamliquidator',
-    license='LICENSE.txt',
+    license='The MIT License (MIT)',
     entry_points = {
         'console_scripts': [
             'bamliquidator_batch = bamliquidatorbatch.bamliquidator_batch:main',
