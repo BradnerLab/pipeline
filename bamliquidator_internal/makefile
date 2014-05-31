@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.6.6
+VERSION = 0.6.14
 # when changing version consider adding corresponding entry to debian/changelog
 # and keeping this in sync with setup.py's version
 
