@@ -26,8 +26,8 @@
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
 VERSION = 0.6.6
-# when changing version consider adding corresponding entry to debian*/changelog as well 
-# and keeping this in sync with debain_bamliquidator_batch/setup.py's version
+# when changing version consider adding corresponding entry to debian/changelog
+# and keeping this in sync with setup.py's version
 
 # The directory to install in:
 prefix = /usr/local
@@ -80,15 +80,18 @@ archive:
 deb: clean archive
 	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
-	cp -R debian_bamliquidator bamliquidator-$(VERSION)/debian
+	cp -R debian bamliquidator-$(VERSION)
 	cd bamliquidator-$(VERSION)/debian; debuild -S
 
 dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
 
+pip:
+	python setup.py sdist upload
+
 clean:
-	rm -f $(EXECUTABLES) *.o
-	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)*
+	rm -f $(EXECUTABLES) *.o MANIFEST
+	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)* BamLiquidatorBatch.egg-info dist
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
