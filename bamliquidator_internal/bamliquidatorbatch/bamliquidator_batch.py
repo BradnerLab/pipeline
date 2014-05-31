@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import bamliquidator_internal.normalize_plot_and_summarize as nps 
-from bamliquidator_internal.flattener import write_tab_for_all 
+import normalize_plot_and_summarize as nps 
+from flattener import write_tab_for_all 
 
 import argparse
 import csv
@@ -10,7 +10,10 @@ import errno
 import os
 import subprocess
 import tables
+
 from time import time 
+from os.path import basename
+from os.path import dirname
 
 def create_lengths_table(h5file):
     class Length(tables.IsDescription):
@@ -36,7 +39,7 @@ def bam_file_paths_with_no_counts(counts, bam_file_paths):
 
     for bam_file_path in bam_file_paths:
         count_found = False
-        condition = "file_name == '%s'" % os.path.basename(bam_file_path)
+        condition = "file_name == '%s'" % basename(bam_file_path)
 
         for _ in counts.where(condition):
             count_found = True
@@ -65,7 +68,7 @@ def populate_lengths(lengths, bam_file_paths):
         output = subprocess.check_output(args)
         # skip last two lines: the unmapped chromosome line and the empty line
         reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
-        file_name = os.path.basename(bam_file_path)
+        file_name = basename(bam_file_path)
         file_count = 0
         
         chromosome_length_pairs = []
@@ -93,10 +96,18 @@ class BaseLiquidator(object):
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
 
-        self.executable_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                            "bamliquidator_internal", executable)
-        if not os.path.isfile(self.executable_path):
-            exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
+        # This script may be run by either a developer install from a git pipeline checkout,
+        # or from a user install so that the exectuable is on the path.  First we try to
+        # find the exectuable for a developer install, and if that fails we look on the
+        # standard path.
+        if basename(dirname(dirname(os.path.realpath(__file__)))) == 'bamliquidator_internal':
+            # look for developer executable location 
+            self.executable_path = os.path.join(dirname(dirname(os.path.realpath(__file__))), executable)
+            if not os.path.isfile(self.executable_path):
+                exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
+        else:
+            # just look on standard path
+            self.executable_path = executable 
 
         try:
             os.mkdir(output_directory)
@@ -164,8 +175,8 @@ class BinLiquidator(BaseLiquidator):
     def liquidate(self, bam_file_path, extension, sense):
         if sense is None: sense = '.'
 
-        cell_type = os.path.basename(os.path.dirname(bam_file_path))
-        bam_file_name = os.path.basename(bam_file_path)
+        cell_type = basename(dirname(bam_file_path))
+        bam_file_name = basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, self.counts_file_path]
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
