@@ -1,0 +1,41 @@
+bamliquidator (0.6.4-0ppa1~precise) precise; urgency=low
+
+  * Moved some libs to depends from build-depends 
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 25 May 2014 20:10:40 -0600
+
+bamliquidator (0.6.3-0ppa1~precise) precise; urgency=low
+
+  * Added python-numexpr dependency 
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 25 May 2014 16:10:40 -0600
+
+bamliquidator (0.6.2-0ppa1~precise) precise; urgency=low
+
+  * Corrected pytables dependency 
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 25 May 2014 10:10:40 -0600
+
+bamliquidator (0.6.1-0ppa1~precise) precise; urgency=low
+
+  * Upped version to 0.6.1
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 25 May 2014 10:10:40 -0600
+
+bamliquidator (0.6.0-0ppa1~precise) precise; urgency=low
+
+  * Upped version to 0.6.0
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 25 May 2014 09:17:40 -0600
+
+bamliquidator (0.5.1-0ppa1~precise) precise; urgency=low
+
+  * Added pytables dependency 
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Mon, 25 May 2014 00:48:10 -0400
+
+bamliquidator (0.5-0ppa1~precise) precise; urgency=low
+
+  * Initial release.
+
+ -- John DiMatteo <jdimatteo@gmail.com>  Sun, 27 Apr 2014 21:52:48 -0400

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from os import sys, path
-sys.path.append(path.dirname(path.dirname(path.abspath(__file__)))) # so we can import parent directory
 
 import bamliquidator_batch as blb
 import normalize_plot_and_summarize as nps
