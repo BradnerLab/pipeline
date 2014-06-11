@@ -44,9 +44,9 @@ import pipeline_dfci
 
 
 
-projectName = 'rasmc'
-dataFile = '/grail/projects/%s/%s_TABLE.txt' % (projectName,projectName)
-genome ='hg19'
+projectName = 'liver'
+dataFile = '/grail/projects/%s/LIVER_TABLE.txt' % (projectName)
+genome ='mm9'
 annotFile = '/ark/home/cl512/src/pipeline/annotation/%s_refseq.ucsc' % (genome)
 
 #project folders

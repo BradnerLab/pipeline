@@ -229,125 +229,8 @@ import string
 #                                                                         #
 #-------------------------------------------------------------------------#
 
-def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bashFileName = ''):
-
-    '''
-    call cuffquant on each bam individually
-    and then string the cbx files into cuffnorm
-
-    '''
-
-    def long_substr(data):
-        '''
-        helper function to find longest substring for group naming
-        '''
-        substr = ''
-        if len(data) > 1 and len(data[0]) > 0:
-            for i in range(len(data[0])):
-                for j in range(len(data[0])-i+1):
-                    if j > len(substr) and all(data[0][i:i+j] in x for x in data):
-                        substr = data[0][i:i+j]
-        return substr
-    
-    dataDict = loadDataTable(dataFile)
-
-    #if no grouplist is given
-    #run every dataset as a single group
-    #for now assumes that every dataset given is RNA Seq
-    if len(groupList) == 0:
-        namesList = dataDict.keys()
-        namesList.sort()
-        groupList = [[x] for x in namesList]
-        namesString = ','.join(namesList)
-
-    else:
-        #only a single name per group
-        namesList =[]
-        namesStringList = []
-        groupTicker = 1
-        for group in groupList:
-            
-            namesList+=group
-            coreName = long_substr(group)
-            if len(coreName) ==0:
-                coreName = '%s_GROUP_%s' % (analysisName,groupTicker)
-            else:
-                if '-_.'.count(coreName[-1]) == 1:  #get rid of any separators for a core name
-                    coreName = coreName[:-1]
-            namesStringList.append(coreName)
-            groupTicker+=1
-        namesString = ','.join(namesStringList)
-            
-
-
-    #let's do this in bashfile format
-    if len(bashFileName) ==0:
-        bashFileName = '%scuffquant.sh' % (cufflinksFolder)
-        
-    
-    bashFile = open(bashFileName,'w')
-
-    bashFile.write('#!/usr/bin/bash\n')
-
-    bashFile.write('cd %s\n\n' % (cufflinksFolder))
-
-    bashFile.write("echo 'making cuffquant folders'\n")
-
-    for name in namesList:
-        bashFile.write('mkdir %s\n' % (name))
-
-    bashFile.write("\necho 'calling cuffquant'\n")
-
-    cuffquantList = [] # create a list to store cuffquant .cxb outputs so we can check for completeness
-    for name in namesList:
-        bamFileName = dataDict[name]['bam']
-        bashFile.write('cuffquant -p 4 -o %s%s/ %s %s\n' % (cufflinksFolder,name,gtfFile,bamFileName))
-        cuffquantList.append('%s%s/abundances.cxb' % (cufflinksFolder,name))
-
-
-    #if we want to have python run this as opposed to making a bash file
-    # #check for output
-    # for cuffquantFile in cuffquantList:
-
-    #     if checkOutput(cuffquantFile,5,60):
-    #         print "FOUND CUFFQUANT OUTPUT FOR %s" % (cuffquantFile)
-            
-    #     else:
-            
-        
-    #now we want to string together all of the abundances.cxb files to run cuffnorm
-    #cuff norm gives you the opportunity to string together replicates
-    #gotta figure out the right way to designate sample groups
-
-    cxbList = []
-    for group in groupList:
-        
-        groupString = ','.join(['%s%s/abundances.cxb' % (cufflinksFolder,name) for name in group])
-        cxbList.append(groupString)
-
-    cxbString = ' '.join(cxbList)
-
-    #now run the cuffnorm
-
-    bashFile.write("\necho 'making cuffnorm folder'\n")
-    bashFile.write('mkdir %scuffnorm\n' % (cufflinksFolder))
-    
-
-    bashFile.write("\necho 'running cuffnorm command'\n")
-
-    
-    cuffNormCmd = 'cuffnorm -p 4 -o %scuffnorm/ -L %s %s %s\n' % (cufflinksFolder,namesString,gtfFile,cxbString)
-
-    bashFile.write(cuffNormCmd + '\n')
-
-
-    #now we'll want to pipe the output into the R script for RNA_Seq normalization
-
-
-    bashFile.close()
-
-
-
+#MAKING EXPRESSION TABLES
+#def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bashFileName = ''):
 
 #============================================================================================================
 #============================================================================================================
@@ -449,7 +332,7 @@ def formatDataTable(dataFile):
     #lower case all of the genomes
     #make the color 0,0,0 for blank lines and strip out any " marks
     for i in range(1,len(newDataTable)):
-        newDataTable[i][2] = lower(newDataTable[i][2])
+        newDataTable[i][2] = string.lower(newDataTable[i][2])
         color = newDataTable[i][7]
         if len(color) == 0:
             newDataTable[i][7] = '0,0,0'
@@ -540,7 +423,7 @@ def loadDataTable(dataFile):
         
         dataDict[line[3]] = {}
 
-        dataDict[line[3]]['folder'] = line[0]
+        dataDict[line[3]]['folder'] = formatFolder(line[0],False)
         dataDict[line[3]]['uniqueID'] = line[1]
         dataDict[line[3]]['genome']=string.upper(line[2])
         genome = line[2]
@@ -556,27 +439,69 @@ def loadDataTable(dataFile):
 
         #figure out which bam convention we are using
         #default will be new convention
-        bam1 = line[0]+line[1]+'_'+genome+'.sorted.bam'
-        bam2 = line[0]+line[1]+'.'+genome+'.bwt.sorted.bam'
+        #look in the bamFolder for all bams that might fit the bill
+        bamFolder = "%s" % (line[0])
+        bamFileList = [x for x in os.listdir(bamFolder) if len(x) > 0 and x[0] != '.']
 
-        hasBam =False
-        try:
-            bam = open(bam1,'r')
-            hasBam = True
-            dataDict[line[3]]['bam'] = bam1
-            bam.close()
-        except IOError:
+        bamFileCandidates = [x for x in bamFileList if x.count(line[1]) == 1 and x.count('sorted.bam') == 1 and x.count('bai') ==0]
+        if len(bamFileCandidates) == 0:
+            print("UNABLE TO FIND A BAM FILE IN %s WITH UNIQUE ID %s" % (bamFolder,line[1]))
+            fullBamPath = ''
+        elif len(bamFileCandidates) > 1:
+            print("MUTLIPLE BAM FILES IN %s WITH UNIQUE ID %s. NO BAM ASISGNED" % (bamFolder,line[1]))
+            fullBamPath = ''
+        else:
+            bamFile = bamFileCandidates[0]
+            fullBamPath = '%s%s' % (bamFolder,bamFile)
+            fullBaiPath = fullBamPath + '.bai'
+            
+        if len(fullBamPath) > 0:
             try:
-                bam = open(bam2,'r')
-                hasBam = True
-                dataDict[line[3]]['bam'] = bam2
+                bam = open(fullBamPath,'r')
                 bam.close()
             except IOError:
-                pass
-        if hasBam == False:
-            dataDict[line[3]]['bam'] = bam1            
+                print("ERROR: BAM FILE %s DOES NOT EXIST" % (fullBamPath))
+                fullBamPath = ''
+            try:
+                bai = open(fullBaiPath,'r')
+                bai.close()
+            except IOError:
+                print("ERROR: BAM FILE %s DOES NOT HAVE BAI INDEX" % (fullBamPath))
+                fullBamPath = ''
+
+
+        dataDict[line[3]]['bam'] = fullBamPath
+            
 
     return dataDict
+
+def writeDataTable(dataDict,dataFile):
+    
+    '''
+    writes a dataDict to a dataFile
+    '''
+
+    newDataTable = [['FILE_PATH','UNIQUE_ID','GENOME','NAME','BACKGROUND','ENRICHED_REGION','ENRICHED_MACS','COLOR','FASTQ_FILE']]
+
+    namesList = dataDict.keys()
+
+    namesList.sort()
+
+    for name in namesList:
+
+        file_path = dataDict[name]['folder']
+        uniqueID = dataDict[name]['uniqueID']
+        genome = dataDict[name]['genome']
+        background = dataDict[name]['background']
+        enriched = dataDict[name]['enriched']
+        macsEnriched = dataDict[name]['enrichedMacs']
+        color = dataDict[name]['color']
+        fastq = dataDict[name]['fastq']
+
+        newLine = [file_path,uniqueID,genome,name,background,enriched,macsEnriched,color,fastq]
+        newDataTable.append(newLine)
+
+    unParseTable(newDataTable,dataFile,'\t')
 
 
 def summary(dataFile,outputFile=''):
@@ -907,7 +832,7 @@ def mergeBams(dataFile,mergedName,namesList,color='',background =''):
     #make an .sh file to call the merging
     
     bamFolder = dataDict[namesList[0]]['folder']
-    genome = lower(dataDict[namesList[0]]['genome'])
+    genome = string.lower(dataDict[namesList[0]]['genome'])
     if color == '':
         color = dataDict[namesList[0]]['color']
 
@@ -985,7 +910,13 @@ def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFo
 
         uniqueID = dataDict[name]['uniqueID']
         genome = string.lower(dataDict[name]['genome'])
+        
+        #check to see if this has already been done
+        if dataDict[name]['folder'] == "%s%s/" % (bamFolder,genome):
+            continue
 
+        #change the bam Folder to the location of the filtered bam
+        dataDict[name]['folder'] = "%s%s/" % (bamFolder,genome)
         #get the original bam
         bamFile = getTONYInfo(uniqueID,column =47)
 
@@ -997,7 +928,7 @@ def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFo
         tempOutFolder = formatFolder(tempOutFolder,True)
 
         #set up a bashFile
-        bashFileName = '%sfilterBam.sh' % (tempOutFolder)
+        bashFileName = '%s%s_filterBam.sh' % (tempOutFolder,uniqueID)
         bashFile = open(bashFileName,'w')
         bashFile.write('#!usr/bin/bash\n')
         
@@ -1030,11 +961,15 @@ def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFo
         bashFile.write(symBaiCommand + '\n')
 
         #now the cleanup
-        cleanCommand = '#rm -rf %s' % (tempOutFolder)
-        bashFile.write(cleanCommand + '\n')
+        #cleanCommand = 'rm -rf %s' % (tempOutFolder)
+        #bashFile.write(cleanCommand + '\n')
+        bashFile.close()
+        runCommand = 'bash %s &' %(bashFileName) 
+        print("Run command: %s" % (runCommand))
+        os.system(runCommand)
 
-        #os.system('bash %s' %(bashFile))
-                            
+    
+    writeDataTable(dataDict,dataFile)
 
 
 #-------------------------------------------------------------------------#
@@ -1358,8 +1293,8 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
     if len(wigLink) > 0:
         if wigLink[-1] != '/':
             wigLink+='/'
-        genome = lower(dataDict[namesList[0]]['genome'])
-        cellType = lower(namesList[0].split('_')[0])
+        genome = string.lower(dataDict[namesList[0]]['genome'])
+        cellType = string.lower(namesList[0].split('_')[0])
         wigLinkFolder = '%s%s/%s' % (wigLink,genome,cellType)
         formatFolder(wigLinkFolder,True)
 
@@ -1372,8 +1307,8 @@ def formatMacsOutput(dataFile,macsFolder,macsEnrichedFolder,wiggleFolder,wigLink
         if len(wigLink) > 0:
             if wigLink[-1] != '/':
                 wigLink+='/'
-            genome = lower(dataDict[namesList[0]]['genome'])
-            cellType = lower(namesList[0].split('_')[0])
+            genome = string.lower(dataDict[namesList[0]]['genome'])
+            cellType = string.lower(namesList[0].split('_')[0])
             wigLinkFolder = '%s%s/%s' % (wigLink,genome,cellType)
             formatFolder(wigLinkFolder,True)
 
@@ -2144,7 +2079,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     colorString = string.join([dataDict[name]['color'] for name in namesList],':')
     bamList = [dataDict[name]['bam'] for name in namesList]
     bamString = string.join(bamList,',')
-    genome = lower(dataDict[namesList[0]]['genome'])
+    genome = string.lower(dataDict[namesList[0]]['genome'])
     os.chdir('/ark/home/cl512/src/pipeline/')
     cmd = "python /ark/home/cl512/src/pipeline/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
 
@@ -2157,12 +2092,12 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
 #========================BATCH PLOTTING REGIONS============================
 #==========================================================================
 
-def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True):
+def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200):
 
     '''
     batch plots all regions in a gff
     '''
-
+    plotType = string.upper(plotType)
     dataDict = loadDataTable(dataFile)
 
     if len(namesList) == 0:
@@ -2170,7 +2105,7 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     
     #we now need to generate all the arguments for bamPlot_turbo.py
 
-    genomeList = [lower(dataDict[x]['genome']) for x in namesList]
+    genomeList = [string.lower(dataDict[x]['genome']) for x in namesList]
     if len(uniquify(genomeList)) != 1:
         print "ERROR: CANNOT PLOT DATA FROM MULTIPLE GENOMES"
         sys.exit()
@@ -2209,7 +2144,10 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     
 
     os.chdir(pipelineFolder)
-    cmd = 'python %sbamPlot_turbo.py -g %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r --save-temp' % (pipelineFolder,genome,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
+    cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
+    if len(bed) > 0:
+        cmd += ' --bed %s' % (bed)
+    cmd += ' &'
 
     print cmd
     os.system(cmd)
@@ -2492,6 +2430,202 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
 
 
+def callRose2(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch='',bashFileName ='',mask=''):
+
+    '''
+    calls rose w/ standard parameters
+    '''
+
+    dataDict = loadDataTable(dataFile)
+    
+
+    #a timestamp to name this pipeline batch of files
+    timeStamp =datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    #a random integer ticker to help name files
+    randTicker = random.randint(0,10000)
+
+    formatFolder(parentFolder,True)
+
+    if len(bashFileName) == 0:
+        bashFileName = '%srose_%s_%s.sh' % (parentFolder,timeStamp,randTicker)
+    bashFile = open(bashFileName,'w')
+    bashFile.write("cd /ark/home/cl512/pipeline/")
+    bashFile.write('\n')
+
+    mapString = [dataDict[name]['bam'] for name in extraMap]
+    mapString = string.join(mapString,',')
+
+    for name in namesList:
+        #print name
+        genome = dataDict[name]['genome']
+        bamFile = dataDict[name]['bam']
+        
+        backgroundName = dataDict[name]['background']
+        if dataDict.has_key(backgroundName):
+            backgroundBamFile = dataDict[backgroundName]['bam']
+            hasBackground = True
+        else:
+            hasBackground = False
+
+        if len(inputFile) == 0:
+            macsFile = "%s%s" % (macsEnrichedFolder,dataDict[name]['enrichedMacs'])
+        else:
+            macsFile = inputFile
+        outputFolder = "%s%s_ROSE" % (parentFolder,name)
+
+        roseCmd = 'python ROSE2_main.py -g %s -i %s -r %s -o %s -t %s' % (genome,macsFile,bamFile,outputFolder,tss)
+
+        if len(str(stitch)) > 0:
+            roseCmd += ' -s %s' % (stitch)
+        if hasBackground:
+            roseCmd +=' -c %s' % (backgroundBamFile)
+        if len(mapString) > 0:
+            roseCmd +=' -b %s' % (mapString)
+        if len(mask) >0:
+            roseCmd += ' --mask %s' % (mask)
+
+        roseCmd += ' &'
+        bashFile.write(roseCmd)
+        bashFile.write('\n')
+
+
+    bashFile.close()
+
+    print ('Wrote rose commands to %s' % (bashFileName))
+    return bashFileName
+
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                          EXPRESSION TOOLS                               #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
+
+def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bashFileName = ''):
+
+    '''
+    call cuffquant on each bam individually
+    and then string the cbx files into cuffnorm
+
+    '''
+
+    def long_substr(data):
+        '''
+        helper function to find longest substring for group naming
+        '''
+        substr = ''
+        if len(data) > 1 and len(data[0]) > 0:
+            for i in range(len(data[0])):
+                for j in range(len(data[0])-i+1):
+                    if j > len(substr) and all(data[0][i:i+j] in x for x in data):
+                        substr = data[0][i:i+j]
+        return substr
+    
+    dataDict = loadDataTable(dataFile)
+
+    #if no grouplist is given
+    #run every dataset as a single group
+    #for now assumes that every dataset given is RNA Seq
+    if len(groupList) == 0:
+        namesList = dataDict.keys()
+        namesList.sort()
+        groupList = [[x] for x in namesList]
+        namesString = ','.join(namesList)
+
+    else:
+        #only a single name per group
+        namesList =[]
+        namesStringList = []
+        groupTicker = 1
+        for group in groupList:
+            
+            namesList+=group
+            coreName = long_substr(group)
+            if len(coreName) ==0:
+                coreName = '%s_GROUP_%s' % (analysisName,groupTicker)
+            else:
+                if '-_.'.count(coreName[-1]) == 1:  #get rid of any separators for a core name
+                    coreName = coreName[:-1]
+            namesStringList.append(coreName)
+            groupTicker+=1
+        namesString = ','.join(namesStringList)
+            
+
+
+    #let's do this in bashfile format
+    if len(bashFileName) ==0:
+        bashFileName = '%scuffquant.sh' % (cufflinksFolder)
+        
+    
+    bashFile = open(bashFileName,'w')
+
+    bashFile.write('#!/usr/bin/bash\n')
+
+    bashFile.write('cd %s\n\n' % (cufflinksFolder))
+
+    bashFile.write("echo 'making cuffquant folders'\n")
+
+    for name in namesList:
+        bashFile.write('mkdir %s\n' % (name))
+
+    bashFile.write("\necho 'calling cuffquant'\n")
+
+    cuffquantList = [] # create a list to store cuffquant .cxb outputs so we can check for completeness
+    for name in namesList:
+        bamFileName = dataDict[name]['bam']
+        bashFile.write('cuffquant -p 4 -o %s%s/ %s %s\n' % (cufflinksFolder,name,gtfFile,bamFileName))
+        cuffquantList.append('%s%s/abundances.cxb' % (cufflinksFolder,name))
+
+
+    #if we want to have python run this as opposed to making a bash file
+    # #check for output
+    # for cuffquantFile in cuffquantList:
+
+    #     if checkOutput(cuffquantFile,5,60):
+    #         print "FOUND CUFFQUANT OUTPUT FOR %s" % (cuffquantFile)
+            
+    #     else:
+            
+        
+    #now we want to string together all of the abundances.cxb files to run cuffnorm
+    #cuff norm gives you the opportunity to string together replicates
+    #gotta figure out the right way to designate sample groups
+
+    cxbList = []
+    for group in groupList:
+        
+        groupString = ','.join(['%s%s/abundances.cxb' % (cufflinksFolder,name) for name in group])
+        cxbList.append(groupString)
+
+    cxbString = ' '.join(cxbList)
+
+    #now run the cuffnorm
+
+    bashFile.write("\necho 'making cuffnorm folder'\n")
+    bashFile.write('mkdir %scuffnorm\n' % (cufflinksFolder))
+    
+
+    bashFile.write("\necho 'running cuffnorm command'\n")
+
+    
+    cuffNormCmd = 'cuffnorm -p 4 -o %scuffnorm/ -L %s %s %s\n' % (cufflinksFolder,namesString,gtfFile,cxbString)
+
+    bashFile.write(cuffNormCmd + '\n')
+
+
+    #now we'll want to pipe the output into the R script for RNA_Seq normalization
+
+
+    bashFile.close()
+
+
+
+
 #=========================================================================================================
 #EVERYTHING BELOW IS EITHER DEPRECATED OR HAS NOT BEEN INTEGRATED INTO PIPELINE YET
 
@@ -2518,7 +2652,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 #         refIDList = []
 
 #         for geneName in geneList:
-#             mouseName = lower(geneName)
+#             mouseName = string.lower(geneName)
 #             mouseName = string.upper(mouseName[0]) + mouseName[1:]
 #             #tries both the human and mouse nomenclature
 #             refIDs = nameDict[string.upper(geneName)] + nameDict[mouseName]
