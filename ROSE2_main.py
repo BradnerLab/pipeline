@@ -20,16 +20,74 @@ import subprocess
 
 from collections import defaultdict
 
+
+
+
+#==================================================================
+#=====================HELPER FUNCTIONS=============================
+#==================================================================
+
+def getBamChromList(bamFileList):
+
+    '''
+    gets the consensus list of chromosomes mapped by the bams
+    '''
+    
+    #start w/ the first bam
+    cmd = 'samtools idxstats %s' % (bamFileList[0])
+    idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
+    idxStats= idxStats.communicate()
+    finalChromList = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
+    
+    #now go through each additional bam
+    for bamFile in bamFileList:
+        cmd = 'samtools idxstats %s' % (bamFile)
+        idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
+        idxStats= idxStats.communicate()
+        chromList = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
+        finalChromList = [chrom for chrom in finalChromList if chromList.count(chrom) != 0]
+
+    return utils.uniquify(finalChromList)
+
+
+def filterGFF(gffFile,chromList):
+
+    '''
+    takes in a gff and filters out all lines that don't belong to a chrom in the chromList
+    '''
+    gff = utils.parseTable(gffFile,'\t')
+    filteredGFF = []
+    excludeList=[]
+    for line in gff:
+        if chromList.count(line[0]) ==1:
+            filteredGFF.append(line)
+        else:
+            excludeList.append(line[0])
+
+    excludeList = utils.uniquify(excludeList)
+    if len(excludeList) > 0:
+        print("EXCLUDED GFF REGIONS FROM THE FALLING CHROMS: %s" % (','.join(excludeList)))
+
+    return filteredGFF
+             
+
+          
+
+
+
+
 #==================================================================
 #=====================REGION STITCHING=============================
 #==================================================================
+
+
 
 
 def optimizeStitching(locusCollection, name, outFolder, stepSize=500):
     '''
     takes a locus collection and starts writing out stitching stats at step sized intervals
     '''
-    maxStitch = 10000  # set a hard wired match stitching parameter
+    maxStitch = 15000  # set a hard wired match stitching parameter
 
     stitchTable = [['STEP', 'NUM_REGIONS', 'TOTAL_CONSTIT', 'TOTAL_REGION', 'MEAN_CONSTIT', 'MEDIAN_CONSTIT', 'MEAN_REGION', 'MEDIAN_REGION', 'MEAN_STITCH_FRACTION', 'MEDIAN_STITCH_FRACTION']]
     # first consolidate the collection
@@ -90,12 +148,12 @@ def optimizeStitching(locusCollection, name, outFolder, stepSize=500):
     return stitchParam
 
 
-def regionStitching(inputGFF, name, outFolder, stitchWindow, tssWindow, annotFile, removeTSS=True):
+def regionStitching(referenceCollection, name, outFolder, stitchWindow, tssWindow, annotFile, removeTSS=True):
     print('PERFORMING REGION STITCHING')
     # first have to turn bound region file into a locus collection
 
     # need to make sure this names correctly... each region should have a unique name
-    boundCollection = utils.gffToLocusCollection(inputGFF)
+    #referenceCollection 
 
     debugOutput = []
     # filter out all bound regions that overlap the TSS of an ACTIVE GENE
@@ -118,8 +176,8 @@ def regionStitching(inputGFF, name, outFolder, stitchWindow, tssWindow, annotFil
         # 50 is the internal parameter for LocusCollection and doesn't really matter
         tssCollection = utils.LocusCollection(tssLoci, 50)
 
-        # gives all the loci in boundCollection
-        boundLoci = boundCollection.getLoci()
+        # gives all the loci in referenceCollection
+        boundLoci = referenceCollection.getLoci()
 
         # this loop will check if each bound region is contained by the TSS exclusion zone
         # this will drop out a lot of the promoter only regions that are tiny
@@ -128,19 +186,19 @@ def regionStitching(inputGFF, name, outFolder, stitchWindow, tssWindow, annotFil
             if len(tssCollection.getContainers(locus, 'both')) > 0:
 
                 # if true, the bound locus overlaps an active gene
-                boundCollection.remove(locus)
+                referenceCollection.remove(locus)
                 debugOutput.append([locus.__str__(), locus.ID(), 'CONTAINED'])
                 removeTicker += 1
         print('REMOVED %s LOCI BECAUSE THEY WERE CONTAINED BY A TSS' % (removeTicker))
 
-    # boundCollection is now all enriched region loci that don't overlap an active TSS
+    # referenceCollection is now all enriched region loci that don't overlap an active TSS
 
     if stitchWindow == '':
         print('DETERMINING OPTIMUM STITCHING PARAMTER')
-        optCollection = copy.deepcopy(boundCollection)
+        optCollection = copy.deepcopy(referenceCollection)
         stitchWindow = optimizeStitching(optCollection, name, outFolder, stepSize=500)
     print('USING A STITCHING PARAMETER OF %s' % stitchWindow)
-    stitchedCollection = boundCollection.stitchCollection(stitchWindow, 'both')
+    stitchedCollection = referenceCollection.stitchCollection(stitchWindow, 'both')
 
     if removeTSS:
         # now replace any stitched region that overlap 2 distinct genes
@@ -162,7 +220,7 @@ def regionStitching(inputGFF, name, outFolder, stitchWindow, tssWindow, annotFil
             if len(tssNames) > 2:
 
                 # stitchedCollection.remove(stitchedLocus)
-                originalLoci = boundCollection.getOverlap(stitchedLocus, 'both')
+                originalLoci = referenceCollection.getOverlap(stitchedLocus, 'both')
                 originalTicker += len(originalLoci)
                 fixedLoci += originalLoci
                 debugOutput.append([stitchedLocus.__str__(), stitchedLocus.ID(), 'MULTIPLE_TSS'])
@@ -376,6 +434,7 @@ def main():
         'HG19': '%s/annotation/hg19_refseq.ucsc' % (cwd),
         'MM8': '%s/annotation/mm8_refseq.ucsc' % (cwd),
         'MM10': '%s/annotation/mm10_refseq.ucsc' % (cwd),
+        'RN4': '%s/annotation/rn4_refseq.ucsc' % (cwd),
     }
 
     annotFile = genomeDict[genome.upper()]
@@ -384,9 +443,19 @@ def main():
     print('MAKING START DICT')
     startDict = utils.makeStartDict(annotFile)
 
+
+    #GET CHROMS FOUND IN THE BAMS
+    print('GETTING CHROMS IN BAMFILES')
+    bamChromList = getBamChromList(bamFileList)
+    print("USING THE FOLLOWING CHROMS")
+    print(bamChromList)
+
+    #LOADING IN THE GFF AND FILTERING BY CHROM
+    print('LOADING AND FILTERING THE GFF')
+    inputGFF = filterGFF(inputGFFFile,bamChromList)
     # LOADING IN THE BOUND REGION REFERENCE COLLECTION
     print('LOADING IN GFF REGIONS')
-    referenceCollection = utils.gffToLocusCollection(inputGFFFile)
+    referenceCollection = utils.gffToLocusCollection(inputGFF)
 
     # MASKING REFERENCE COLLECTION
     # see if there's a mask
@@ -410,7 +479,7 @@ def main():
 
     # NOW STITCH REGIONS
     print('STITCHING REGIONS TOGETHER')
-    stitchedCollection, debugOutput, stitchWindow = regionStitching(inputGFFFile, inputName, outFolder, stitchWindow, tssWindow, annotFile, removeTSS)
+    stitchedCollection, debugOutput, stitchWindow = regionStitching(referenceCollection, inputName, outFolder, stitchWindow, tssWindow, annotFile, removeTSS)
 
     # NOW MAKE A STITCHED COLLECTION GFF
     print('MAKING GFF FROM STITCHED COLLECTION')
@@ -481,22 +550,22 @@ def main():
                 print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (stitchedGFFFile, bamFileName))
                 sys.exit()
 
-        # MAPPING TO THE ORIGINAL GFF
-        mappedOut2Folder = '%s%s_%s_MAPPED' % (mappedFolder, inputName, bamFileName)
-        mappedOut2File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, inputName, bamFileName)
-        if utils.checkOutput(mappedOut2File, 0.2, 0.2):
-            print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut2File))
-        else:
-            cmd2 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
-            print(cmd2)
+        # # MAPPING TO THE ORIGINAL GFF
+        # mappedOut2Folder = '%s%s_%s_MAPPED' % (mappedFolder, inputName, bamFileName)
+        # mappedOut2File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, inputName, bamFileName)
+        # if utils.checkOutput(mappedOut2File, 0.2, 0.2):
+        #     print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut2File))
+        # else:
+        #     cmd2 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
+        #     print(cmd2)
 
-            output2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, shell=True)
-            output2 = output2.communicate()
-            if len(output2[0]) > 0:  # test if mapping worked correctly
-                print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (inputGFFFile, bamFileName))
-            else:
-                print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (inputGFFFile, bamFileName))
-                sys.exit()
+        #     output2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, shell=True)
+        #     output2 = output2.communicate()
+        #     if len(output2[0]) > 0:  # test if mapping worked correctly
+        #         print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (inputGFFFile, bamFileName))
+        #     else:
+        #         print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (inputGFFFile, bamFileName))
+        #         sys.exit()
 
     print('BAM MAPPING COMPLETED NOW MAPPING DATA TO REGIONS')
     # CALCULATE DENSITY BY REGION
@@ -523,25 +592,25 @@ def main():
     time.sleep(20)
     superTableFile = "%s_SuperEnhancers.table.txt" % (inputName)
     if options.control:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, superTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s &" % (genome, options.rankby, options.control, outFolder, superTableFile)
     else:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, superTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s &" % (genome, options.rankby, outFolder, superTableFile)
     os.system(cmd)
 
 
     stretchTableFile = "%s_StretchEnhancers.table.txt" % (inputName)
     if options.control:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, stretchTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s &" % (genome, options.rankby, options.control, outFolder, stretchTableFile)
     else:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, stretchTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s &" % (genome, options.rankby, outFolder, stretchTableFile)
     os.system(cmd)
 
 
     superStretchTableFile = "%s_SuperStretchEnhancers.table.txt" % (inputName)
     if options.control:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s" % (genome, options.rankby, options.control, outFolder, superStretchTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -c %s -i %s%s &" % (genome, options.rankby, options.control, outFolder, superStretchTableFile)
     else:
-        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s" % (genome, options.rankby, outFolder, superStretchTableFile)
+        cmd = "python ROSE2_geneMapper.py -g %s -r %s -i %s%s &" % (genome, options.rankby, outFolder, superStretchTableFile)
     os.system(cmd)
 
 

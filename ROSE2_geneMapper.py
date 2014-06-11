@@ -445,6 +445,26 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     print('MAKING ENHANCER ASSOCIATED GENE TSS COLLECTION')
     overallGeneList = utils.uniquify(overallGeneList)
 
+    #get the chromLists from the various bams here
+    cmd = 'samtools idxstats %s' % (rankByBamFile)
+    idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
+    idxStats= idxStats.communicate()
+    bamChromList = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
+    
+    if len(controlBamFile) > 0:
+        cmd = 'samtools idxstats %s' % (controlBamFile)
+        idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
+        idxStats= idxStats.communicate()
+        bamChromListControl = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
+        bamChromList = [chrom for chrom in bamChromList if bamChromListControl.count(chrom) != 0]
+
+
+
+    #now make sure no genes have a bad chrom 
+    overallGeneList = [gene for gene in overallGeneList if bamChromList.count(startDict[gene]['chr']) != 0]
+
+    
+    #now make an enhancer collection of all transcripts    
     enhancerGeneCollection = utils.makeTranscriptCollection(
         annotFile, 5000, 5000, 500, overallGeneList)
 
@@ -648,7 +668,7 @@ def main():
     # RETRIEVING FLAGS
     (options, args) = parser.parse_args()
 
-    if not options.input or not options.genome or not options.rankby:
+    if not options.input or not options.genome:
 
         parser.print_help()
         exit()
@@ -667,6 +687,7 @@ def main():
         'HG19': '%s/annotation/hg19_refseq.ucsc' % (cwd),
         'MM8': '%s/annotation/mm8_refseq.ucsc' % (cwd),
         'MM10': '%s/annotation/mm10_refseq.ucsc' % (cwd),
+        'RN4': '%s/annotation/rn4_refseq.ucsc' % (cwd),
     }
 
     annotFile = genomeDict[genome.upper()]
@@ -699,6 +720,7 @@ def main():
         transcribedFile = ''
 
     if options.rankby:
+        print("MAPPING GENES TO ENHANCERS USING CLOSEST ACTIVE GENE")
         enhancerToGeneTable, enhancerToTopGeneTable, geneToEnhancerTable = mapEnhancerToGeneTop(
             rankByBamFile, controlBamFile, genome, annotFile, enhancerFile, transcribedFile, True, window, noFormatTable)
 
@@ -736,6 +758,7 @@ def main():
             utils.unParseTable(geneToEnhancerTable, out3, '\t')
     else:
         #do traditional mapping
+        print("MAPPING GENES TO ENHANCERS USING PROXIMITY RULE")
         enhancerToGeneTable,geneToEnhancerTable = mapEnhancerToGene(annotFile,enhancerFile,transcribedFile,True,window,noFormatTable)
 
         #Writing enhancer output
