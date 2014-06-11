@@ -25,19 +25,29 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
+VERSION = 0.6.15
+# when changing version consider adding corresponding entry to debian/changelog
+# and keeping this in sync with setup.py's version
+
+# The directory to install in:
+prefix = /usr/local
+bindir = $(prefix)/bin
+
 # I prefer clang++, but g++ is more easily available, so using that instead
 #CC=clang++
 CC=g++
 
-CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -march=native
+# CPPFLAGS used to include march=native, but was removed so executables would 
+# work on platforms besides the one used for the build
+CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
-all: ../bamliquidator bamliquidator_bins bamliquidator_regions 
+all: bamliquidator bamliquidator_bins bamliquidator_regions 
 
-../bamliquidator: bamliquidator.m.o bamliquidator.o
-	$(CC) $(LDFLAGS) -o ../bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
+bamliquidator: bamliquidator.m.o bamliquidator.o
+	$(CC) $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
 bamliquidator_bins: bamliquidator_bins.m.o
 	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o \
@@ -57,7 +67,31 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator_regions.m.cpp
   
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
-	$(CC) $(CPPFLAGS) -I$(SAM_DIR) -pthread -c bamliquidator.cpp
+	$(CC) $(CPPFLAGS) -pthread -c bamliquidator.cpp
+
+EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
+
+archive:
+	mkdir bamliquidator-$(VERSION)
+	cp *.h *.cpp makefile bamliquidator-$(VERSION)
+	tar -czf bamliquidator-$(VERSION).tar.gz bamliquidator-$(VERSION)
+	rm -rf bamliquidator-$(VERSION)
+
+deb: clean archive
+	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
+	tar xf bamliquidator_$(VERSION).orig.tar.gz
+	cp -R debian bamliquidator-$(VERSION)
+	cd bamliquidator-$(VERSION)/debian; debuild -S
+
+dput: deb
+	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
+
+pip:
+	python setup.py sdist upload
 
 clean:
-	rm -f ../bamliquidator bamliquidator bamliquidator_bins bamliquidator_regions *.o 
+	rm -f $(EXECUTABLES) *.o MANIFEST
+	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)* BamLiquidatorBatch.egg-info dist
+
+install: all
+	install $(EXECUTABLES) $(DESTDIR)$(bindir)
