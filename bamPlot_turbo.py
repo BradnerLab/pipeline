@@ -70,7 +70,9 @@ def loadAnnotFile(genome):
         'hg18': 'annotation/hg18_refseq.ucsc',
         'mm9': 'annotation/mm9_refseq.ucsc',
         'HG19': 'annotation/hg19_refseq.ucsc',
-        'hg19': 'annotation/hg19_refseq.ucsc'
+        'hg19': 'annotation/hg19_refseq.ucsc',
+        'rn4': 'annotation/rn4_refseq.ucsc',
+        'RN4': 'annotation/rn4_refseq.ucsc',
     }
 
     annotFile = whereAmI + '/' + genomeDict[genome]
@@ -179,8 +181,18 @@ def makeBedCollection(bedFileList):
         print(bedName)
         bed = utils.parseTable(bedFile, '\t')
         for line in bed:
-            bedLocus = utils.Locus(line[0], line[1], line[2], '.', bedName)
-            bedLoci.append(bedLocus)
+            if len(line) >= 3:
+                #check that line[0]
+                if line[0][0:3] == 'chr':
+                    try:
+                        coords = [int(line[1]),int(line[2])]
+                        bedLocus = utils.Locus(line[0], min(coords), max(coords), '.', bedName)
+                        bedLoci.append(bedLocus)
+
+                    except ValueError:
+                        pass
+
+        print("IDENTIFIED %s BED REGIONS" % (len(bedLoci)))
 
     return utils.LocusCollection(bedLoci, 50)
 
@@ -203,6 +215,7 @@ def mapGFFLineToBed(gffLine, outFolder, nBins, bedCollection, header=''):
     # plotBuffer = int(gffLocus.len() / float(nBins) * 20) # UNUSED (?)
 
     overlapLoci = bedCollection.getOverlap(gffLocus, sense='both')
+    print("IDENTIFIED %s OVERLAPPING BED LOCI FOR REGION %s" % (len(overlapLoci),gffLine))
 
     # since beds come from multiple sources, we want to figure out how to offset them
     offsetDict = {}  # this will store each ID name
@@ -455,8 +468,8 @@ def main():
 
         # bring in the genome
         genome = options.genome.upper()
-        if ['HG18', 'HG19', 'MM9', 'RN5'].count(genome) == 0:
-            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN5, OR MM9' % (genome))
+        if ['HG18', 'HG19', 'MM9', 'RN4'].count(genome) == 0:
+            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN4, OR MM9' % (genome))
             parser.print_help()
             exit()
 

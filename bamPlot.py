@@ -1,7 +1,7 @@
 #bamPlot.py
 
 from utils import *
-
+import string
 '''
 The MIT License (MIT)
 
@@ -151,7 +151,7 @@ def mapBamToGFFLine(bamFile,name,gffLine,color,nBins,sense = 'both',unique = Fal
     
     print('using a MMR value of %s' % (MMR))
     
-    senseTrans = maketrans('-+.','+-+')
+    senseTrans = string.maketrans('-+.','+-+')
     
     line = gffLine[0:9]
     gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
@@ -369,7 +369,7 @@ def main():
             gff = [gffLine]
 
         #bring in the genome
-        genome = upper(options.genome)
+        genome = string.upper(options.genome)
         if ['HG19','HG18','MM9','RN5'].count(genome) == 0:
             print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG18, HG19, RN5, OR MM9' % (genome))
             parser.print_help()
@@ -413,7 +413,7 @@ def main():
         rpm = options.rpm
 
         unique = options.unique
-        yScale = upper(options.yScale)
+        yScale = string.upper(options.yScale)
                                      
         fileName = options.title 
         #names
@@ -428,7 +428,7 @@ def main():
             names = bamFileList
 
         #plot style
-        plotStyle = upper(options.plot)
+        plotStyle = string.upper(options.plot)
         if ['SINGLE','MULTIPLE'].count(plotStyle) == 0:
             print('ERROR: PLOT STYLE %s NOT AN OPTION' % (plotStyle))
             parser.print_help()

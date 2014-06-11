@@ -89,6 +89,7 @@ for(i in 1:nrow(summaryTable)){
 	#check if the beds have any data
 	if(nrow(bedNameTable) >1){
 		hasBed=TRUE
+		print("Plotting with a bed file")
 	}else{hasBed=FALSE}
 
 	#don't attempt to plot regions w/o data
@@ -142,6 +143,9 @@ for(i in 1:nrow(summaryTable)){
 		par(mai=c(0.1,1.5,0.1,0.2772))	
 		if(yScale =='RELATIVE'){
 			#establish a blank plot			
+			plotSpline = spline(1:nBins,scaleFactor*as.numeric(plotTable[1,(8:(nBins+7))]),n=2*nBins)			
+			xVector = c(1,plotSpline$x,max(plotSpline$x))
+
 			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Relative peak heights',xaxt = 'n',main=name)
 
 			if(sense =='-'){
