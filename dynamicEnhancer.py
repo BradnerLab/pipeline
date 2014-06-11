@@ -62,7 +62,7 @@ import numpy
 #add locations of files and global parameters in this section
 
 pipelineDir = '/ark/home/cl512/pipeline/'
-roseDir = '/ark/home/cl512/rose/'
+
 
 #dataFile = '/ark/home/cl512/projects/athero/EC_TABLE_FINAL.txt'
 #genome = 'hg18'
@@ -90,8 +90,8 @@ def getFile(fileString,fileList,parentFolder):
     parentFolder = utils.formatFolder(parentFolder,False)
     matchFiles = [fileName for fileName in fileList if fileName.count(fileString) == 1]
     if len(matchFiles) == 0:
-        print "ERROR: No files found in %s with %s in title" % (parentFolder,fileString)
-        sys.exit()
+        print "WARNING: No files found in %s with %s in title" % (parentFolder,fileString)
+        return ''
     if len(matchFiles) > 1:
         print "ERROR: Multiple files found in %s with %s in title" % (parentFolder,fileString)
         sys.exit()
@@ -124,8 +124,11 @@ def makeRoseDict(roseFolder):
 
     #sequentially find each one and add the full path to the roseDict
     roseDict['AllEnhancer'] = getFile('AllEnhancers.table.txt',roseFileList,roseFolder)
-    roseDict['SuperEnhancer'] = getFile('SuperEnhancers.table.txt',roseFileList,roseFolder)
-    roseDict['EnhancerToGene'] = getFile('ENHANCER_TO_GENE',roseFileList,roseFolder)
+    roseDict['super'] = getFile('SuperEnhancers.table.txt',roseFileList,roseFolder)
+    roseDict['stretch'] = getFile('_StretchEnhancers.table.txt',roseFileList,roseFolder)
+    roseDict['superstretch'] = getFile('SuperStretchEnhancers.table.txt',roseFileList,roseFolder)
+
+    roseDict['EnhancerToGene'] = getFile('_SuperEnhancers_ENHANCER_TO_GENE',roseFileList,roseFolder)
     roseDict['RegionMap'] = getFile('REGION_MAP',roseFileList,roseFolder)
     roseDict['bed'] = getFile('Enhancers_withSuper.bed',roseFileList,roseFolder)
 
@@ -291,7 +294,7 @@ def callRoseMerged(dataFile,mergedGFFFile,name1,name2,parentFolder):
         extraMap = [name2]
 
 
-    return pipeline_dfci.callRose(dataFile,'',parentFolder,namesList,extraMap,mergedGFFFile,tss=0,stitch=0)
+    return pipeline_dfci.callRose2(dataFile,'',parentFolder,namesList,extraMap,mergedGFFFile,tss=0,stitch=0)
 
 
 def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,parentFolder):
@@ -324,11 +327,20 @@ def callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,
         os.system('bash %s' % (roseBashFile))
 
         #check for and return output
-        if utils.checkOutput(roseOutput,1,30):
+        if utils.checkOutput(roseOutput,1,10):
             return roseOutput
         else:
-            print "ERROR: ROSE CALL ON MERGED REGIONS FAILED"
-            sys.exit()
+            #try finding it w/ a different name
+            #this will bug out if nothing is there
+            roseFolder = "%s%s_ROSE/" % (parentFolder,name1)
+            roseFileList = [x for x in os.listdir(roseFolder) if x[0] != '.'] #no hidden files
+            if len(roseFileList) == 0:
+                print "No files found in %s" % (roseFolder)
+                sys.exit()
+
+            enhancerToGeneFile = getFile('_SuperEnhancers_ENHANCER_TO_GENE.txt',roseFileList,roseFolder)
+            
+
 
 def callDeltaRScript(mergedGFFFile,parentFolder,dataFile,name1,name2,allFile1,allFile2,medianScale = False):
 
@@ -387,8 +399,8 @@ def callRoseGeneMapper(mergedGFFFile,genome,parentFolder,name1):
     
     deltaFile = stitchedFile.replace('REGION_MAP','DELTA')
     
-    os.chdir(roseDir)
-    cmd = 'python ROSE_geneMapper.py -g %s -i %s -w 100000' % (genome,deltaFile)
+    os.chdir(pipelineDir)
+    cmd = 'python ROSE2_geneMapper.py -g %s -i %s -w 100000' % (genome,deltaFile)
     os.system(cmd)
     print(cmd)
     
@@ -666,6 +678,8 @@ def main():
                       help = "If flagged, will run analysis for all enhancers and not just supers.")
     parser.add_option("-m","--median", dest="median",action = 'store_true', default=False,
                       help = "If flagged, will use median enhancer scaling")
+    parser.add_option("-e","--enhancer-type", dest="enhancer_type",nargs = 1,default='super',
+                      help = "specify type of enhancer to analyze: super, stretch, superStretch")
 
     (options,args) = parser.parse_args()
 
@@ -714,15 +728,25 @@ def main():
         roseDict1 = makeRoseDict(roseFolder1)
         roseDict2 = makeRoseDict(roseFolder2)
 
-        superFile1 = roseDict1['SuperEnhancer']
-        superFile2 = roseDict2['SuperEnhancer']
+
+        #choosing the type of enhancer to analyze
+        enhancerCallType = string.lower(options.enhancer_type)
+        if superOnly:
+            print("ANALYZING ENHANCER TYPE: %s" % (string.upper(enhancerCallType)))
+        superFile1 = roseDict1[enhancerCallType]
+        superFile2 = roseDict2[enhancerCallType]
 
         allFile1 = roseDict1['AllEnhancer']
         allFile2 = roseDict2['AllEnhancer']
 
         print('\tMERGING ENHANCERS AND CALLING ROSE')
         if superOnly:
-
+            if len(superFile1) ==0:
+                print "ERROR: UNABLE TO FIND %s FILES IN %s" % (enhancerCallType,roseFolder1)
+                sys.exit()
+            if len(superFile2) == 0:
+                print "ERROR: UNABLE TO FIND %s FILES IN %s" % (enhancerCallType,roseFolder2)
+                sys.exit()
             roseOutput = callMergeSupers(dataFile,superFile1,superFile2,name1,name2,mergeName,genome,parentFolder)
 
         else:

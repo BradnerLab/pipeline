@@ -55,13 +55,34 @@ import os
 #============================PARAMETERS====================================
 #==========================================================================
 
-###Change cl512 to jr246
+
 
 #==========================================================================
 #==============================FUNCTIONS===================================
 #==========================================================================
 
-def makeNameDict(dataFile,roseFolder,namesList=[]):
+def getFile(fileString,fileList,parentFolder):
+    '''
+    returns full path of file from fileList containing the fileString
+    returns an error if multiple files match
+    '''
+    if not utils.formatFolder(parentFolder,False):
+        print "ERROR: Folder %s does not exist" % (parentFolder)
+        sys.exit()
+    parentFolder = utils.formatFolder(parentFolder,False)
+    matchFiles = [fileName for fileName in fileList if fileName.count(fileString) == 1]
+    if len(matchFiles) == 0:
+        print "ERROR: No files found in %s with %s in title" % (parentFolder,fileString)
+        sys.exit()
+    if len(matchFiles) > 1:
+        print "ERROR: Multiple files found in %s with %s in title" % (parentFolder,fileString)
+        sys.exit()
+    matchFilePath  = "%s%s" % (parentFolder,matchFiles[0])
+    return matchFilePath
+
+
+
+def makeNameDict(dataFile,roseFolder,namesList=[],enhancerType='super'):
 
     '''
     for each name, check for the presence of an enriched file or  allEnhancer table
@@ -104,8 +125,6 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
         else:
             nameDict[name]['background'] = False
 
-
-        
         #assumes standard folder structure for enriched file
         enrichedFile = "%smacsEnriched/%s" % (parentFolder,dataDict[name]['enrichedMacs'])
         
@@ -124,7 +143,14 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
         if roseExists:
             try:
                 roseOutputFiles = os.listdir("%s%s_ROSE" % (roseFolder,name))
-                allEnhancerFileList = [x for x in roseOutputFiles if x.count("AllEnhancers.table.txt") == 1 and x[0] != '.' ] #no weird hidden or temp files
+                if enhancerType == 'super':
+                    enhancerString = 'AllEnhancers.table.txt'
+                if enhancerType == 'stretch':
+                    enhancerString = 'AllEnhancers_Length.table.txt'
+                if enhancerType == 'superstretch':
+                    enhancerString = 'AllEnhancers_SuperStretch.table.txt'
+
+                allEnhancerFileList = [x for x in roseOutputFiles if x.count(enhancerString) == 1 and x[0] != '.' ] #no weird hidden or temp files
                 if len(allEnhancerFileList) > 0:
                     nameDict[name]['enhancerFile'] = "%s%s_ROSE/%s" % (roseFolder,name,allEnhancerFileList[0])
                 else:
@@ -142,7 +168,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[]):
 
 
 
-def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,maskFile=''):
+def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhancerType,maskFile=''):
 
     '''
     launches enhancer mapping if needed from enriched region files
@@ -169,28 +195,47 @@ def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,maskFile='')
             enrichedFile = nameDict[name]['enrichedFile']
             #call rose
             print "CALLING ROSE FOR %s" % (name)
-            bashFileName = pipeline_dfci.callRose(dataFile,'',roseOutputFolder,[name],[],enrichedFile,mask=maskFile)
+            bashFileName = pipeline_dfci.callRose2(dataFile,'',roseOutputFolder,[name],[],enrichedFile,2500,stitch,mask=maskFile)
             print bashFileName
             os.system('bash %s &' % (bashFileName))
             #add name to queue list
             queueList.append(name)
 
+
+
+    #define the enhancer type
+    if enhancerType == 'super':
+        enhancerString = 'AllEnhancers.table.txt'
+    if enhancerType == 'stretch':
+        enhancerString = 'AllEnhancers_Length.table.txt'
+    if enhancerType == 'superstretch':
+        enhancerString = 'AllEnhancers_SuperStretch.table.txt'
+
+
+
     #now check for completion of datasets
-            
     for name in queueList:
 
-        #check for the AllEnhancers table
-        enhancerFile = "%s%s_ROSE/%s_peaks_AllEnhancers.table.txt" % (roseOutputFolder,name,name)
+        #check for the AllEnhancers table        
+        enhancerFile = "%s%s_ROSE/%s_peaks_%s" % (roseOutputFolder,name,name,enhancerString)
         
 
         print "CHECKING FOR %s ROSE OUTPUT IN %s" % (name,enhancerFile)
-        if utils.checkOutput(enhancerFile,5,60):
+        if utils.checkOutput(enhancerFile,1,10):
             
             print "FOUND ENHANCER OUTPUT FOR %s" % (name)
             nameDict[name]['enhancerFile'] = enhancerFile
         else:
-            print "UNABLE TO FIND ENHANCER OUTPUT FOR %s. QUITTING NOW" % (name)
-            sys.exit()
+
+            #try finding it w/ a different name
+            #this will bug out if nothing is there
+            roseFolder = "%s%s_ROSE/" % (roseOutputFolder,name)
+            roseFileList = [x for x in os.listdir(roseFolder) if x[0] != '.'] #no hidden files
+            if len(roseFileList) == 0:
+                print "No files found in %s" % (roseFolder)
+                sys.exit()
+            enhancerFile = getFile(enhancerString,roseFileList,roseFolder)
+            nameDict[name]['enhancerFile'] = enhancerFile
 
     return nameDict
         
@@ -296,7 +341,7 @@ def mergeCollections(nameDict,analysisName,output='',superOnly=True):
 
 
 
-def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder):
+def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder,maskFile):
 
     '''
     calls rose on the mergedGFFFile for all datasets
@@ -335,7 +380,7 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder):
 
 
 
-    bashFileName = pipeline_dfci.callRose(dataFile,'',roseParentFolder,[namesList[0]],extraMap,mergedGFFFile,0,0,bashFileName) 
+    bashFileName = pipeline_dfci.callRose2(dataFile,'',roseParentFolder,[namesList[0]],extraMap,mergedGFFFile,0,0,bashFileName,mask=maskFile) 
     
     bashCommand = "bash %s" % (bashFileName)
     os.system(bashCommand)
@@ -453,6 +498,12 @@ def main():
 
     parser.add_option("-a","--all", dest="all",action = 'store_true', default=False,
                       help = "flag to run analysis on ALL enhancers (this is much slower)")
+    parser.add_option("-s","--stitch", dest="stitch",nargs = 1, default='',
+                      help = "specify a fixed stitch distance for all datasets, otherwise will compute stitching automatically on each dataset")
+    parser.add_option("-e","--enhancer-type", dest="enhancer_type",nargs = 1,default='super',
+                      help = "specify type of enhancer to analyze: super, stretch, superStretch")
+
+
 
     parser.add_option("--mask",dest="mask",nargs=1,default=None,
                       help = 'Create a mask set of regions to filter out of analysis. must be .bed or .gff format')
@@ -471,9 +522,6 @@ def main():
         
         #pull in the datafile and create a datadict
         dataFile = options.data
-
-
-
 
         #now the output folder
         outputFolder = utils.formatFolder(options.output,True) #check and create the output folder
@@ -503,6 +551,19 @@ def main():
             analysisName = options.name
         else:
             analysisName = "enhancers"
+        
+        #check for a stitching parameter
+        if len(str(options.stitch)) > 0:
+            stitch = str(options.stitch)
+        else:
+            stitch = ''
+
+        #check enhancer type
+        enhancerType = string.lower(options.enhancer_type)
+        if ['super','superstretch','stretch'].count(enhancerType) == 0:
+            print("ERROR: unsupported enhancer type %s" % (enhancerType))
+            sys.exit()
+
 
         #see if there's a mask
         if options.mask:
@@ -523,7 +584,7 @@ def main():
         #=====================================================
 
         print "\n\n\nESTABLISHING WORKING FILES"
-        nameDict = makeNameDict(dataFile,roseFolder,namesList)
+        nameDict = makeNameDict(dataFile,roseFolder,namesList,enhancerType)
 
             
         print nameDict
@@ -537,7 +598,7 @@ def main():
         #=====================================================
         
         print "\n\n\nLAUNCHING ENHANCER MAPPING (IF NECESSARY)"
-        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,maskFile)
+        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhancerType,maskFile)
         print nameDict
 
 
@@ -565,7 +626,7 @@ def main():
         #=====================================================
 
         print "\n\n\nMAPPING DATA TO CONSENSUS ENHANCER REGIONS"
-        mergedRegionMap = mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder)
+        mergedRegionMap = mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder,maskFile)
 
         #=====================================================
         #==============CORRECT FOR MEDIAN SIGNAL==============
@@ -589,8 +650,8 @@ def main():
         #=============GENE MAPPING BY CLUSTER=================
         #=====================================================
 
-        os.chdir('/ark/home/cl512/rose/')
-        cmd = 'python /ark/home/cl512/rose/ROSE_geneMapper.py -g %s -i %s' % (genome,clusterTableFile)
+        os.chdir('/ark/home/cl512/pipeline/')
+        cmd = 'python /ark/home/cl512/pipeline/ROSE2_geneMapper.py -g %s -i %s' % (genome,clusterTableFile)
         os.system(cmd)
 
         print "FINISHED"
