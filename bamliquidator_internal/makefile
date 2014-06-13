@@ -44,7 +44,8 @@ LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
-ifeq ($(git diff --quiet), 0)
+GIT_DIFF_RC := $(shell git diff --quiet; echo $$?)
+ifeq ($(GIT_DIFF_RC), 0)
 CLEAN := clean
 else
 CLEAN := unclean
