@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.7.0
+VERSION = 0.7.1
 # when changing version consider adding corresponding entry to debian/changelog
 # and keeping this in sync with setup.py's version
 
@@ -44,13 +44,22 @@ LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
+ifeq ($(git diff --quiet), 0)
+CLEAN := clean
+else
+CLEAN := unclean
+endif
+
 # Whoever is uploading the deb should be listed here
 define CHANGELOG 
 bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
 
   * Auto generated from makefile
+  * $(shell git config --get remote.origin.url)
+  * $(shell git rev-parse HEAD) ($(CLEAN)) 
 
- -- John DiMatteo <jdimatteo@gmail.com> $(shell date +"%a, %d %b %G %H:%M:%S %z")
+ -- John DiMatteo <jdimatteo@gmail.com>  $(shell date +"%a, %d %b %G %H:%M:%S %z")
+
 endef
 export CHANGELOG 
 
@@ -93,8 +102,8 @@ deb: clean archive
 	cp -R debian bamliquidator-$(VERSION)
 	cp -R bamliquidator-$(VERSION) bamliquidator-$(VERSION)-precise
 	mv bamliquidator-$(VERSION) bamliquidator-$(VERSION)-trusty
-	printf "$$CHANGELOG\n" precise precise > bamliquidator-$(VERSION)-precise/debian/changelog 
-	printf "$$CHANGELOG\n" trusty trusty > bamliquidator-$(VERSION)-trusty/debian/changelog 
+	printf "$$CHANGELOG" precise precise > bamliquidator-$(VERSION)-precise/debian/changelog 
+	printf "$$CHANGELOG" trusty trusty > bamliquidator-$(VERSION)-trusty/debian/changelog 
 	cd bamliquidator-$(VERSION)-precise/debian; debuild -S
 	cd bamliquidator-$(VERSION)-trusty/debian; debuild -S
 
