@@ -1,7 +1,7 @@
 ###############################################################################
 # The MIT License (MIT)
 #
-# Copyright (c) 2013 Xin Zhong and Charles Lin
+# Copyright (c) 2013 John DiMatteo, Xin Zhong, and Charles Lin
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.6.15
+VERSION = 0.7.0
 # when changing version consider adding corresponding entry to debian/changelog
 # and keeping this in sync with setup.py's version
 
@@ -43,6 +43,16 @@ CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LDFLAGS := -O3 -g -Wall -march=native
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
+
+# Whoever is uploading the deb should be listed here
+define CHANGELOG 
+bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
+
+  * Auto generated from makefile
+
+ -- John DiMatteo <jdimatteo@gmail.com> $(shell date +"%a, %d %b %G %H:%M:%S %z")
+endef
+export CHANGELOG 
 
 all: bamliquidator bamliquidator_bins bamliquidator_regions 
 
@@ -81,7 +91,12 @@ deb: clean archive
 	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
 	cp -R debian bamliquidator-$(VERSION)
-	cd bamliquidator-$(VERSION)/debian; debuild -S
+	cp -R bamliquidator-$(VERSION) bamliquidator-$(VERSION)-precise
+	mv bamliquidator-$(VERSION) bamliquidator-$(VERSION)-trusty
+	printf "$$CHANGELOG\n" precise precise > bamliquidator-$(VERSION)-precise/debian/changelog 
+	printf "$$CHANGELOG\n" trusty trusty > bamliquidator-$(VERSION)-trusty/debian/changelog 
+	cd bamliquidator-$(VERSION)-precise/debian; debuild -S
+	cd bamliquidator-$(VERSION)-trusty/debian; debuild -S
 
 dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
