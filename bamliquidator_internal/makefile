@@ -143,8 +143,8 @@ pip:
 	python setup.py sdist upload
 
 clean:
-	rm -f $(EXECUTABLES) *.o MANIFEST
-	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)* BamLiquidatorBatch.egg-info dist
+	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
