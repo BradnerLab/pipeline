@@ -25,9 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.7.3
-# when changing version consider adding corresponding entry to debian/changelog
-# and keeping this in sync with setup.py's version
+VERSION = 0.7.4
 
 # The directory to install in:
 prefix = /usr/local
@@ -51,7 +49,10 @@ else
 CLEAN := unclean
 endif
 
-# Whoever is uploading the deb should be listed here
+# if someone does a ppa and/or pip upload, first change the name/email and commit it
+UPLOADER := John DiMatteo
+UPLOADER_EMAIL := jdimatteo@gmail.com
+
 define CHANGELOG 
 bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
 
@@ -59,10 +60,35 @@ bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
   * $(shell git config --get remote.origin.url)
   * $(shell git rev-parse HEAD) ($(CLEAN)) 
 
- -- John DiMatteo <jdimatteo@gmail.com>  $(shell date +"%a, %d %b %G %H:%M:%S %z")
+ -- $(UPLOADER) <$(UPLOADER_EMAIL)>  $(shell date +"%a, %d %b %G %H:%M:%S %z")
 
 endef
 export CHANGELOG 
+
+define SETUP_PY
+from setuptools import setup
+
+setup(
+    name='BamLiquidatorBatch',
+    version='$(VERSION)',
+    maintainer='$(UPLOADER)',
+    maintainer_email='$(UPLOADER_EMAIL)',
+    packages=['bamliquidatorbatch'],
+    url='https://github.com/BradnerLab/pipeline/wiki/bamliquidator',
+    license='The MIT License (MIT)',
+    entry_points = {
+        'console_scripts': [
+            'bamliquidator_batch = bamliquidatorbatch.bamliquidator_batch:main',
+            'bamliquidator_flattener = bamliquidatorbatch.flattener:main'
+        ]
+    },
+    install_requires=[
+        "bokeh >= 0.4.0"
+    ],
+)
+
+endef
+export SETUP_PY
 
 all: bamliquidator bamliquidator_bins bamliquidator_regions 
 
@@ -113,6 +139,7 @@ dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
 
 pip:
+	echo "$$SETUP_PY" > setup.py
 	python setup.py sdist upload
 
 clean:
