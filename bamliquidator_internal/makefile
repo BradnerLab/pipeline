@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.7.2
+VERSION = 0.7.3
 # when changing version consider adding corresponding entry to debian/changelog
 # and keeping this in sync with setup.py's version
 
@@ -110,7 +110,7 @@ deb: clean archive
 
 dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
-	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty.changes
+	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
 
 pip:
 	python setup.py sdist upload
