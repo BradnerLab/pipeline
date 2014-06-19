@@ -74,6 +74,13 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(len(self.sequence), record["count"]) # count represents how many base pair reads 
                                                                   # intersected the bin
 
+    def test_bin_liquidation_zero_bin_size(self):
+        with self.assertRaises(SystemExit):
+            liquidator = blb.BinLiquidator(bin_size = 0,
+                                           output_directory = os.path.join(self.dir_path, 'output'),
+                                           bam_file_path = self.bam_file_path)
+            liquidator.batch(extension = 0, sense = '.')
+
     def test_region_liquidation(self):
         start = 1
         stop  = 8
