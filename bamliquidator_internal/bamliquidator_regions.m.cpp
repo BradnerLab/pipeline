@@ -298,6 +298,11 @@ int main(int argc, char* argv[])
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 file_name_from_path(bam_file_path),
                                                 strand);
+    if (regions.size() == 0)
+    {
+      std::cerr << "Warning: no regions detected in " << region_file_path << std::endl;
+      return 0;
+    }
 
     liquidate_and_write(h5file, regions, extension, bam_file_path);
    
