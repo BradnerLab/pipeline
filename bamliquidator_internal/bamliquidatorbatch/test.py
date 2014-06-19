@@ -21,12 +21,12 @@ def create_single_full_read_bam(dir_path, chromosome, sequence):
         sequence_header = '@SQ\tSN:%s\tLN:%d\n' % (chromosome, length)
         qual = '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
         sam_file.write(sequence_header)
-        #       qname      chr    quality   next read name                                                   
-        #       |      flag|   pos|    CIGAR|  next read pos
-        #       |      |   |   |  |    |    |  |  template length 
-        #       |      |   |   |  |    |    |  |  |  sequence
-        #       |      |   |   |  |    |    |  |  |  |   QUAL           
-        #       |      |   |   |  |    |    |  |  |  |   |   distance to ref
+        #               qname      chr    quality   next read name                                                   
+        #               |      flag|   pos|    CIGAR|  next read pos
+        #               |      |   |   |  |    |    |  |  template length 
+        #               |      |   |   |  |    |    |  |  |  sequence
+        #               |      |   |   |  |    |    |  |  |  |   QUAL           
+        #               |      |   |   |  |    |    |  |  |  |   |   distance to ref
         sam_file.write('read1\t16\t%s\t1\t255\t50M\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, sequence, qual))
    
     # create bam file
@@ -113,6 +113,16 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(start, record["start"])
             self.assertEqual(stop,  record["stop"])
             self.assertEqual(0, record["count"]) # 0 since region doesn't intersect sequence
+
+    def test_empty_region_file(self):
+        empty_file_path = os.path.join(self.dir_path, 'empty.gff')
+        open(empty_file_path, 'w').close()
+
+        liquidator = blb.RegionLiquidator(regions_file = empty_file_path,
+                                          output_directory = os.path.join(self.dir_path, 'output'),
+                                          bam_file_path = self.bam_file_path)
+        liquidator.batch(extension = 0, sense = '.')
+        
 
     def test_region_with_wrong_chromosome(self):
         start = len(self.sequence) + 10
