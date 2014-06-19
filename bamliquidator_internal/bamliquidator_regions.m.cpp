@@ -154,7 +154,9 @@ void write(hid_t& file, std::vector<Region>& regions)
                                      field_sizes, regions.data());
   if (status != 0)
   {
-    std::cerr << "Error appending record, status = " << status << std::endl;
+    std::stringstream ss;
+    ss << "Error appending record, status = " << status;
+    throw std::runtime_error(ss.str());
   }
 }
 
@@ -239,7 +241,7 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
                                               extension);
     } catch(const std::exception& e)
     {
-      std::cerr << "Skipping region " << i+1 << " (" << regions[i] << ") due to error: "
+      std::cerr << "Warning: skipping region " << i+1 << " (" << regions[i] << ") due to error: "
                 << e.what() << std::endl;
     }
   }
@@ -296,6 +298,11 @@ int main(int argc, char* argv[])
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 file_name_from_path(bam_file_path),
                                                 strand);
+    if (regions.size() == 0)
+    {
+      std::cerr << "Warning: no regions detected in " << region_file_path << std::endl;
+      return 0;
+    }
 
     liquidate_and_write(h5file, regions, extension, bam_file_path);
    
