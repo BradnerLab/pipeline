@@ -133,7 +133,7 @@ class SingleFullReadBamTest(unittest.TestCase):
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
         with capture(liquidator.batch, extension = 0, sense = '.') as out:
-            self.assertEqual("1", out)
+            self.assertEqual("", out)
 
     def test_region_with_wrong_chromosome(self):
         start = len(self.sequence) + 10
