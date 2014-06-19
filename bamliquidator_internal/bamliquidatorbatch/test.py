@@ -12,17 +12,6 @@ import tables
 import tempfile
 import unittest
 
-from cStringIO import StringIO
-from contextlib import contextmanager
-
-@contextmanager
-def capture(command, *args, **kwargs):
-    out, sys.stderr = sys.stderr, StringIO()
-    command(*args, **kwargs)
-    sys.stderr.seek(0)
-    yield sys.stderr.read()
-    sys.stderr = out
-
 def create_single_full_read_bam(dir_path, chromosome, sequence):
     # create a sam file, based on instructions at http://genome.ucsc.edu/goldenPath/help/bam.html
     # and http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -132,8 +121,8 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.RegionLiquidator(regions_file = empty_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
-        with capture(liquidator.batch, extension = 0, sense = '.') as out:
-            self.assertEqual("", out)
+        liquidator.batch(extension = 0, sense = '.')
+        
 
     def test_region_with_wrong_chromosome(self):
         start = len(self.sequence) + 10
