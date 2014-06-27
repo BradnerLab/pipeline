@@ -155,6 +155,7 @@ class BaseLiquidator(object):
         start = time()
         self.normalize()
         duration = time() - start
+        print("Post liquidation processing took %f seconds" % duration)
 
     def flatten(self):
         print("Flattening HDF5 tables into text files")
