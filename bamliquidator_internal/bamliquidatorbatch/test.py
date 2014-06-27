@@ -64,7 +64,9 @@ class SingleFullReadBamTest(unittest.TestCase):
 
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
-            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
+            file_record = counts.root.files[0] 
+            self.assertEqual(1, file_record["length"]) # 1 since only a single read 
+            self.assertEqual(1, file_record["key"]) # this would be nice as expectEqual instead
 
             self.assertEqual(1, len(counts.root.bin_counts)) # 1 since 1 bin accommodates full sequence 
            
@@ -73,6 +75,32 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(self.chromosome, record["chromosome"])
             self.assertEqual(len(self.sequence), record["count"]) # count represents how many base pair reads intersected
                                                                   # the bin
+
+            specific_bam_file_normalization_records = 0
+            cell_type_normalization_records = 0
+            for record in counts.root.normalized_counts:
+                self.assertEqual(0, record["bin_number"])
+                self.assertEqual(self.chromosome, record["chromosome"])
+                self.assertNotEqual("", record["cell_type"])
+                # reads per million per base pair
+                # this seems a little wacky, we have 1 read but there are multiple base pairs in the read, so why divide only by 1?
+                expected_normalized_count = 1 / 10**6 / 1 
+                self.assertEqual(expected_normalized_count, record["count"])
+
+                if record["file_key"] == 0:
+                    cell_type_normalization_records += 1
+                elif record["file_key"] == 1:
+                    specific_bam_file_normalization_records += 1
+                else:
+                    self.fail("unexpected file_key %s" % str(record["file_key"]))
+
+            self.assertEqual(specific_bam_file_normalization_records, 1)
+            self.assertEqual(cell_type_normalization_records, 1)
+
+            self.assertEqual(1, len(counts.root.summary))
+
+            self.assertEqual(1, len(counts.root.sorted_summary))
+
 
     def test_region_liquidation(self):
         start = 1
