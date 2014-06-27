@@ -21,7 +21,7 @@
 // -- see bamliquidator_batch.py function create_regions_table
 struct Region
 {
-  char file_name[64];
+  uint32_t bam_file_key;
   char chromosome[16];
   char region_name[64];
   uint64_t start;
@@ -33,7 +33,7 @@ struct Region
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
 {
-  os << r.file_name << ' ' << r.chromosome << ' ' << r.region_name << ' ' 
+  os << "bam file key " << r.bam_file_key << ' ' << r.chromosome << ' ' << r.region_name << ' ' 
      << r.start << " -> " << r.stop << ' ' << r.strand << ' ' << r.normalized_count;
   return os;
 }
@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 // default_strand: optional argument, default (space) indicates to use 
 //                 gff strand column or . (both) for .bed region file
 std::vector<Region> parse_regions(const std::string& region_file_path,
-                                  const std::string& file_name,
+                                  const unsigned int bam_file_key,
                                   const char default_strand = ' ') 
 {
   const std::string extension = extension_from_file_name(region_file_path);
@@ -93,7 +93,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       throw std::runtime_error("error parsing " + region_file_path);
     }
     Region region;
-    strncpy(region.file_name,   file_name.c_str(),                  sizeof(Region::file_name));
+    region.bam_file_key = bam_file_key; 
     strncpy(region.chromosome,  columns[chromosome_column].c_str(), sizeof(Region::chromosome));
     strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name));
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
@@ -132,7 +132,7 @@ void write(hid_t& file, std::vector<Region>& regions)
 {
   const size_t record_size = sizeof(Region);
 
-  size_t record_offset[] = { HOFFSET(Region, file_name),
+  size_t record_offset[] = { HOFFSET(Region, bam_file_key),
                              HOFFSET(Region, chromosome),
                              HOFFSET(Region, region_name),
                              HOFFSET(Region, start),
@@ -141,7 +141,7 @@ void write(hid_t& file, std::vector<Region>& regions)
                              HOFFSET(Region, count),
                              HOFFSET(Region, normalized_count) };
 
-  size_t field_sizes[] = { sizeof(Region::file_name),
+  size_t field_sizes[] = { sizeof(Region::bam_file_key),
                            sizeof(Region::chromosome),
                            sizeof(Region::region_name),
                            sizeof(Region::start),
@@ -267,11 +267,11 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 5 && argc != 6)
+    if (argc != 6 && argc != 7)
     {
-      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension bam_file hdf5_file [strand]\n"
+      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension bam_file bam_file_key hdf5_file [strand]\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
-        << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam\n"
+        << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 \n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
@@ -281,9 +281,10 @@ int main(int argc, char* argv[])
     const std::string region_file_path = argv[1];
     const unsigned int extension = boost::lexical_cast<unsigned int>(argv[2]);
     const std::string bam_file_path = argv[3];
-    const std::string hdf5_file_path = argv[4];
-    const char strand = argc == 6
-                      ? boost::lexical_cast<char>(argv[5])
+    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[4]);
+    const std::string hdf5_file_path = argv[5];
+    const char strand = argc == 7
+                      ? boost::lexical_cast<char>(argv[6])
                       : ' ';
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -294,7 +295,7 @@ int main(int argc, char* argv[])
     }
 
     std::vector<Region> regions = parse_regions(region_file_path,
-                                                file_name_from_path(bam_file_path),
+                                                bam_file_key,
                                                 strand);
 
     liquidate_and_write(h5file, regions, extension, bam_file_path);

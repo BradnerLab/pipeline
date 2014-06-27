@@ -22,60 +22,30 @@
 // -- see bamliquidator_batch.py function create_count_table
 struct CountH5Record
 {
+  uint32_t bam_file_key;
   uint32_t bin_number;
+  uint64_t count;
   char cell_type[16];
   char chromosome[16];
-  uint64_t count;
-  char file_name[64];
 };
 
-std::vector<CountH5Record> count(const std::string chr,
-                                 const std::string cell_type,
-                                 const unsigned int bin_size,
-                                 const size_t length,
-                                 const unsigned int extension,
-                                 const char strand,
-                                 const std::string bam_file)
-{
-  const std::string bam_file_name = file_name_from_path(bam_file);
-
-  int bins = std::ceil(length / (double) bin_size);
-  int max_base_pair = bins * bin_size;
-
-  const std::vector<double> bin_counts = liquidate(bam_file, chr, 0, max_base_pair, strand, bins, extension);
-
-  CountH5Record record;
-  record.bin_number = 0;
-  strncpy(record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-  strncpy(record.chromosome, chr.c_str(),           sizeof(CountH5Record::chromosome));
-  strncpy(record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
-
-  std::vector<CountH5Record> records(bin_counts.size(), record);
-  for (size_t bin=0; bin < bin_counts.size(); ++bin)
-  {
-    records[bin].bin_number = bin;
-    records[bin].count = bin_counts[bin];
-  }
-
-  return records;
-}
 
 void write(hid_t& file,
            const std::vector<CountH5Record>& records)
 {
   const size_t record_size = sizeof(CountH5Record);
 
-  size_t record_offset[] = { HOFFSET(CountH5Record, bin_number),
-                             HOFFSET(CountH5Record, cell_type),
-                             HOFFSET(CountH5Record, chromosome),
+  size_t record_offset[] = { HOFFSET(CountH5Record, bam_file_key), 
+                             HOFFSET(CountH5Record, bin_number),
                              HOFFSET(CountH5Record, count),
-                             HOFFSET(CountH5Record, file_name) };
+                             HOFFSET(CountH5Record, cell_type),
+                             HOFFSET(CountH5Record, chromosome) };
 
-  size_t field_sizes[] = { sizeof(CountH5Record::bin_number),
-                           sizeof(CountH5Record::cell_type),
-                           sizeof(CountH5Record::chromosome),
+  size_t field_sizes[] = { sizeof(CountH5Record::bam_file_key),
+                           sizeof(CountH5Record::bin_number),
                            sizeof(CountH5Record::count),
-                           sizeof(CountH5Record::file_name) };
+                           sizeof(CountH5Record::cell_type),
+                           sizeof(CountH5Record::chromosome) };
 
   herr_t status = H5TBappend_records(file, "bin_counts", records.size(), record_size,
                                      record_offset, field_sizes, records.data());
@@ -198,7 +168,7 @@ void batch_liquidate(std::vector<CountH5Record>& counts,
 std::vector<CountH5Record> count_placeholders(
   const std::vector<std::pair<std::string, size_t>>& chromosome_lengths,
   const std::string& cell_type,
-  const std::string& bam_file_path,
+  const unsigned int bam_file_key,
   const unsigned int bin_size)
 {
   size_t num_records = 0;
@@ -207,14 +177,13 @@ std::vector<CountH5Record> count_placeholders(
     int bins = std::ceil(chr_length.second / (double) bin_size);
     num_records += bins; 
   }
-  const std::string bam_file_name = file_name_from_path(bam_file_path);
 
   CountH5Record empty_record;
+  empty_record.bam_file_key = bam_file_key;
   empty_record.bin_number = 0;
   empty_record.count      = 0;
   strncpy(empty_record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
   strncpy(empty_record.chromosome, "",                    sizeof(CountH5Record::chromosome));
-  strncpy(empty_record.file_name,  bam_file_name.c_str(), sizeof(CountH5Record::file_name));
 
   std::vector<CountH5Record> records(num_records, empty_record);
 
@@ -238,11 +207,12 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc < 9 || argc % 2 != 1)
+    if (argc < 10 || argc % 2 != 0)
     {
-      std::cerr << "usage: " << argv[0] << " cell_type bin_size extension strand bam_file hdf5_file chr1 length1 ... \n"
+      std::cerr << "usage: " << argv[0] 
+        << " cell_type bin_size extension strand bam_file bam_file_key hdf5_file chr1 length1 ... \n"
         << "\ne.g. " << argv[0] << " mm1s 100000 0 . /ifs/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam "
-        << "chr1 247249719 chr2 242951149 chr3 199501827"
+        << "137 counts.hdf5 chr1 247249719 chr2 242951149 chr3 199501827"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
@@ -254,10 +224,11 @@ int main(int argc, char* argv[])
     const unsigned int extension = boost::lexical_cast<unsigned int>(argv[3]);
     const char strand = boost::lexical_cast<char>(argv[4]);
     const std::string bam_file_path = argv[5];
-    const std::string hdf5_file_path = argv[6];
+    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[6]);
+    const std::string hdf5_file_path = argv[7];
 
     std::vector<std::pair<std::string, size_t>> chromosome_lengths;
-    for (int arg = 7; arg < argc && arg + 1 < argc; arg += 2)
+    for (int arg = 8; arg < argc && arg + 1 < argc; arg += 2)
     {
       chromosome_lengths.push_back(
         std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
@@ -276,7 +247,7 @@ int main(int argc, char* argv[])
       return 3;
     }
 
-    std::vector<CountH5Record> counts = count_placeholders(chromosome_lengths, cell_type, bam_file_path, bin_size);
+    std::vector<CountH5Record> counts = count_placeholders(chromosome_lengths, cell_type, bam_file_key, bin_size);
     batch_liquidate(counts, bin_size, extension, strand, bam_file_path);
     write(h5file, counts);
 

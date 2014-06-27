@@ -63,8 +63,8 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
-            self.assertEqual(1, len(counts.root.lengths)) # 1 since only a single bam file
-            self.assertEqual(1, counts.root.lengths[0]["length"]) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
 
             self.assertEqual(1, len(counts.root.bin_counts)) # 1 since 1 bin accommodates full sequence 
            
@@ -85,8 +85,8 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
-            self.assertEqual(1, len(counts.root.lengths)) # 1 since only a single bam file
-            self.assertEqual(1, counts.root.lengths[0]["length"]) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
             self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
            
             record = counts.root.region_counts[0]
@@ -106,8 +106,8 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
-            self.assertEqual(1, len(counts.root.lengths)) # 1 since only a single bam file
-            self.assertEqual(1, counts.root.lengths[0]["length"]) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
 
             record = counts.root.region_counts[0]
             self.assertEqual(start, record["start"])
@@ -125,15 +125,15 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
-            self.assertEqual(1, len(counts.root.lengths)) # 1 since only a single bam file
-            self.assertEqual(1, counts.root.lengths[0]["length"]) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
 
             record = counts.root.region_counts[0]
             self.assertEqual(start, record["start"])
             self.assertEqual(stop,  record["stop"])
             self.assertEqual(0, record["count"]) # 0 since region doesn't intersect sequence
 
-    def test_long_file_name(self):
+    def test_bin_long_bam_file_name(self):
         long_file_name = "x" * 65 # more than Float64Col 
         long_file_path = os.path.join(self.dir_path, long_file_name)
         shutil.copyfile(self.bam_file_path, long_file_path) 
@@ -143,6 +143,12 @@ class SingleFullReadBamTest(unittest.TestCase):
                                            bam_file_path = long_file_path)
         bin_liquidator.batch(extension = 0, sense = '.')
 
+    def test_region_long_bam_file_name(self):
+        long_file_name = "x" * 65 # more than Float64Col 
+        long_file_path = os.path.join(self.dir_path, long_file_name)
+        shutil.copyfile(self.bam_file_path, long_file_path) 
+        shutil.copyfile(self.bam_file_path + ".bai", long_file_path + ".bai") 
+
         start = 1
         stop  = len(self.sequence) 
         regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
@@ -150,9 +156,6 @@ class SingleFullReadBamTest(unittest.TestCase):
                                                  output_directory = os.path.join(self.dir_path, 'region_output'),
                                                  bam_file_path = long_file_path) 
         region_liquidator.batch(extension = 0, sense = '.')
-
-    def test_region_long_file_name(self):
-        pass # todo
 
 if __name__ == '__main__':
     unittest.main()

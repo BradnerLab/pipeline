@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.7.4
+VERSION = 0.8.0
 
 # The directory to install in:
 prefix = /usr/local
@@ -38,7 +38,7 @@ CC=g++
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
 CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
-LDFLAGS := -O3 -g -Wall -march=native
+LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 

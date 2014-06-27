@@ -41,21 +41,21 @@ import collections
 # I also found that create_index doesn't always work (this was causing where statements to not work)
 # -- I don't know if this was my fault or a bug in pytables, but I just always use create_csindex instead
 
-def delete_all_but_bin_counts_and_lengths_table(h5file):
+def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:
-        if table.name != "bin_counts" and table.name != "lengths":
+        if table.name != "bin_counts" and table.name != "files":
             for index in table.colindexes.values():
                 index.column.remove_index()
             table.remove()
 
 def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
-        bin_number = tables.UInt32Col(    pos=0)
-        cell_type  = tables.StringCol(16, pos=1)
-        chromosome = tables.StringCol(16, pos=2)
-        count      = tables.Float64Col(   pos=3)
-        percentile = tables.Float64Col(   pos=4)
-        file_name  = tables.StringCol(64, pos=5)
+        file_key   = tables.UInt32Col(    pos=0)
+        bin_number = tables.UInt32Col(    pos=1)
+        count      = tables.Float64Col(   pos=2)
+        percentile = tables.Float64Col(   pos=3)
+        cell_type  = tables.StringCol(16, pos=4)
+        chromosome = tables.StringCol(16, pos=5)
 
     table = h5file.create_table("/", "normalized_counts", BinCount, "normalized bin counts")
 
@@ -79,6 +79,7 @@ def all_chromosomes(counts):
 
     return chromosomes.keys() 
 
+# todo: can we remove this function since it was replaced with file_keys?
 file_names_memo = {}
 def file_names(counts, cell_type):
     if not cell_type in file_names_memo:
@@ -93,6 +94,21 @@ def file_names(counts, cell_type):
         #print "memoizing files for " + cell_type + ": " + str(file_names_memo[cell_type]) 
         
     return file_names_memo[cell_type] 
+
+file_keys_memo = {}
+def file_keys(counts, cell_type):
+    if not cell_type in file_keys_memo:
+        file_keys = set() 
+       
+        #print "Getting file names for cell type " + cell_type
+        for row in counts.where("cell_type == '%s'" % cell_type):
+            file_keys.add(row["file_key"])
+
+        file_keys_memo[cell_type] = file_keys
+
+        #print "memoizing files for " + cell_type + ": " + str(file_keys_memo[cell_type]) 
+        
+    return file_keys_memo[cell_type] 
 
 def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.output_file(output_directory + "/summary.html")
@@ -141,10 +157,8 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
 
     bp.save()
 
-def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, lengths):
-    length_rows = lengths.read_where("file_name == '%s'" % file_name)
-    assert len(length_rows) == 1
-    total_count = length_rows[0]["length"]
+def populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files):
+    total_count = length_for_file_key(files, file_key)
 
     '''
     Excerpt from Feb 13, 2014 email from Charles Lin:
@@ -160,27 +174,33 @@ def populate_normalized_counts(normalized_counts, counts, file_name, bin_size, l
     '''
     factor = (1 / bin_size) * (1 / (total_count / 10**6))
 
-    for count_row in counts.where("file_name == '%s'" % file_name):
+    for count_row in counts.where("file_key == %d" % file_key):
         normalized_counts.row["bin_number"] = count_row["bin_number"]
         normalized_counts.row["cell_type"] = count_row["cell_type"] 
         normalized_counts.row["chromosome"] = count_row["chromosome"] 
-        assert file_name == count_row["file_name"]
-        normalized_counts.row["file_name"] = file_name 
+        assert file_key == count_row["file_key"]
+        normalized_counts.row["file_key"] = file_key
         normalized_counts.row["count"] = count_row["count"] * factor 
         normalized_counts.row["percentile"] = -1
         normalized_counts.row.append()
 
     normalized_counts.flush()
-   
-def normalize(region_counts, file_to_count):
+  
+
+def length_for_file_key(files, file_key):
+    file_rows = files.read_where("key == %d" % file_key)
+    assert len(file_rows) == 1
+    return file_rows[0]["length"]
+
+def normalize_regions(region_counts, files):
     print "Normalizing"
      
-    file_name = None
+    file_key = None
 
     for row in region_counts:
-        if row["file_name"] != file_name:
-            file_name = row["file_name"]
-            total_count = file_to_count[file_name]
+        if row["file_key"] != file_key:
+            file_key = row["file_key"]
+            total_count = length_for_file_key(files, file_key)
         
         region_size = row["stop"] - row["start"]
         factor = (1 / region_size) * (1 / (total_count / 10**6))
@@ -341,11 +361,12 @@ def populate_summary(summary, normalized_counts, chromosome):
     summary.flush()
 
 def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
-    delete_all_but_bin_counts_and_lengths_table(counts_file)
-    # regenerating these tables is quick and easier than updating prior records correctly
+    delete_all_but_bin_counts_and_files_table(counts_file)
+
+    # recreating the entirity of the remaining tables is quick and easier than updating prior records correctly
 
     counts = counts_file.root.bin_counts
-    lengths = counts_file.root.lengths
+    files = counts_file.root.files
     normalized_counts = create_normalized_counts_table(counts_file)
     summary = create_summary_table(counts_file)
 
@@ -358,9 +379,10 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
 
     for cell_type in cell_types:
         print "Normalizing and calculating percentiles for cell type " + cell_type 
-        current_file_names = file_names(counts, cell_type)
-        for file_name in current_file_names:
-           populate_normalized_counts(normalized_counts, counts, file_name, bin_size, lengths)
+        current_file_keys = file_keys(counts, cell_type)
+        for file_key in current_file_keys:
+           populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files)
+           print "todo: add a failing test, then update rest to use files instead of lengths and file_key instead of file_name"; return
            populate_percentiles(normalized_counts, cell_type, file_name)
         populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_names) 
         populate_percentiles(normalized_counts, cell_type)
