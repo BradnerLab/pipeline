@@ -44,16 +44,8 @@ std::vector<double> liquidate(const samfile_t* bamfile, const bam_index_t* bamid
                               char strand, unsigned int spnum,
                               unsigned int extendlen);
 
-// a couple helper functions, which could be replaced with boost filesystem usages,
+// a helper function, which could be replaced with boost filesystem usages,
 // but I don't want to introduce any non-header-only Boost dependencies at this time
-// todo: can this function be deleted?
-inline std::string file_name_from_path(const std::string& path)
-{
-  const size_t last_slash_position = path.find_last_of("/");
-  return last_slash_position == std::string::npos 
-         ? path 
-         : path.substr(last_slash_position + 1);
-}
 inline std::string extension_from_file_name(const std::string& file_name)
 {
   const size_t last_period_position = file_name.find_last_of("."); 
