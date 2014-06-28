@@ -196,10 +196,10 @@ class BaseLiquidator(object):
         print("Flattening took %f seconds" % duration)
 
 class BinLiquidator(BaseLiquidator):
-    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None):
-        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
-
+    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
         self.bin_size = bin_size
+        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
+        self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense):
         if sense is None: sense = '.'
@@ -240,10 +240,10 @@ class BinLiquidator(BaseLiquidator):
         return table
 
 class RegionLiquidator(BaseLiquidator):
-    def __init__(self, regions_file, output_directory, bam_file_path, counts_file_path = None):
-        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
-
+    def __init__(self, regions_file, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
         self.regions_file = regions_file
+        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
+        self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
         bam_file_name = basename(bam_file_path)
@@ -344,16 +344,15 @@ def main():
     assert(tables.__version__ >= '3.0.0')
 
     if args.regions_file is None:
-        liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path, args.counts_file)
+        liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
+                                   args.counts_file, args.extension, args.sense)
     else:
         if args.counts_file:
             print("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
                   " if you need this feature")
             exit(1)
-        liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
-
-    # todo: move call to batch inside constructor -- there is no need to ever not call batch
-    liquidator.batch(args.extension, args.sense)
+        liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
+                                      args.counts_file, args.extension, args.sense)
 
     if args.flatten:
         liquidator.flatten()

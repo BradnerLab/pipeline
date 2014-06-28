@@ -61,7 +61,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.BinLiquidator(bin_size = bin_size,
                                        output_directory = os.path.join(self.dir_path, 'output'),
                                        bam_file_path = self.bam_file_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
@@ -114,7 +113,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         matrix_path = os.path.join(self.dir_path, "matrix.gff")
         blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
@@ -156,7 +154,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
@@ -175,7 +172,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
@@ -194,7 +190,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         bin_liquidator = blb.BinLiquidator(bin_size = len(self.sequence),
                                            output_directory = os.path.join(self.dir_path, 'bin_output'),
                                            bam_file_path = long_file_path)
-        bin_liquidator.batch(extension = 0, sense = '.')
 
     def test_region_long_bam_file_name(self):
         long_file_name = "x" * 65 # more than Float64Col 
@@ -208,7 +203,6 @@ class SingleFullReadBamTest(unittest.TestCase):
         region_liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                                  output_directory = os.path.join(self.dir_path, 'region_output'),
                                                  bam_file_path = long_file_path) 
-        region_liquidator.batch(extension = 0, sense = '.')
 
 class AppendingTest(unittest.TestCase):
     def setUp(self):
@@ -229,21 +223,18 @@ class AppendingTest(unittest.TestCase):
         liquidator = blb.BinLiquidator(bin_size = bin_size,
                                        output_directory = together_dir_path, 
                                        bam_file_path = self.dir_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         appending_dir = os.path.join(self.dir_path, 'appending')
         print "liquidating bams at path:", self.bam1_file_path
         liquidator = blb.BinLiquidator(bin_size = bin_size,
                                        output_directory = appending_dir,
                                        bam_file_path = self.bam1_file_path)
-        liquidator.batch(extension = 0, sense = '.')
 
         appending_h5_path = os.path.join(appending_dir, "counts.h5")
         liquidator = blb.BinLiquidator(bin_size = bin_size,
                                        output_directory = os.path.join(self.dir_path, 'appending_extra_without_h5_file'),
                                        bam_file_path = self.bam2_file_path,
                                        counts_file_path = appending_h5_path) 
-        liquidator.batch(extension = 0, sense = '.')
 
         with tables.open_file(os.path.join(together_dir_path, "counts.h5")) as together_h5:
             with tables.open_file(appending_h5_path) as appending_h5:
