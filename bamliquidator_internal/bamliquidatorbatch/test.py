@@ -62,6 +62,8 @@ class SingleFullReadBamTest(unittest.TestCase):
                                        output_directory = os.path.join(self.dir_path, 'output'),
                                        bam_file_path = self.bam_file_path)
 
+        liquidator.flatten()
+
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
             file_record = counts.root.files[0] 
@@ -113,6 +115,7 @@ class SingleFullReadBamTest(unittest.TestCase):
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
                                           bam_file_path = self.bam_file_path)
+        liquidator.flatten()
 
         matrix_path = os.path.join(self.dir_path, "matrix.gff")
         blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
