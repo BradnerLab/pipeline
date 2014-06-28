@@ -9,6 +9,7 @@ def write_tab(table, file_names, output_directory, log=False):
     chromosome_to_file_writer_pair = {}
 
     columns = [col for col in table.colnames if col != "chromosome"]
+    columns = [col if col != "file_key" else "file_name" for col in columns]
 
     for row in table:
         chromosome = row["chromosome"]
@@ -27,12 +28,12 @@ def write_tab(table, file_names, output_directory, log=False):
         # pickup here: translate file_key to file_name
         row_list = []
         for col in columns:
-            if col == "file_key":
+            if col == "file_name":
                 row_list.append(file_names[row["file_key"]])
             else:
                 row_list.append(row[col])
             
-        writer.writerow([row[col] ])
+        writer.writerow(row_list)
 
     for tab_file, _ in chromosome_to_file_writer_pair.values():
         tab_file.close()

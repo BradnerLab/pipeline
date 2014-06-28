@@ -32,7 +32,7 @@ def create_file_names_array(h5file):
     # vlarray of strings only supports a single column, so the file_key is implicitly the array index
     array = h5file.create_vlarray("/", "file_names", tables.VLStringAtom(),
                                 "File names with index corresponding to Files table key")
-    array.append("all files in cell type") # index/key 0 is reserved for this
+    array.append("*") # index/key 0 is reserved for this
     array.flush()
 
     return array
@@ -229,11 +229,11 @@ class BinLiquidator(BaseLiquidator):
 
     def create_counts_table(self, h5file):
         class BinCount(tables.IsDescription):
-            file_key   = tables.UInt32Col(    pos=0)
-            bin_number = tables.UInt32Col(    pos=1)
-            count      = tables.UInt64Col(    pos=2)
-            cell_type  = tables.StringCol(16, pos=3)
-            chromosome = tables.StringCol(16, pos=4)
+            bin_number = tables.UInt32Col(    pos=0)
+            cell_type  = tables.StringCol(16, pos=1)
+            chromosome = tables.StringCol(16, pos=2)
+            count      = tables.UInt64Col(    pos=3)
+            file_key   = tables.UInt32Col(    pos=4)
 
         table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
         table.flush()

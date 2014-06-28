@@ -50,12 +50,12 @@ def delete_all_but_bin_counts_and_files_table(h5file):
 
 def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
-        file_key   = tables.UInt32Col(    pos=0)
-        bin_number = tables.UInt32Col(    pos=1)
-        count      = tables.Float64Col(   pos=2)
-        percentile = tables.Float64Col(   pos=3)
-        cell_type  = tables.StringCol(16, pos=4)
-        chromosome = tables.StringCol(16, pos=5)
+        bin_number = tables.UInt32Col(    pos=0)
+        cell_type  = tables.StringCol(16, pos=1)
+        chromosome = tables.StringCol(16, pos=2)
+        count      = tables.Float64Col(   pos=3)
+        percentile = tables.Float64Col(   pos=4)
+        file_key   = tables.UInt32Col(    pos=5)
 
     table = h5file.create_table("/", "normalized_counts", BinCount, "normalized bin counts")
 

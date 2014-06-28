@@ -22,11 +22,11 @@
 // -- see bamliquidator_batch.py function create_count_table
 struct CountH5Record
 {
-  uint32_t bam_file_key;
   uint32_t bin_number;
-  uint64_t count;
   char cell_type[16];
   char chromosome[16];
+  uint64_t count;
+  uint32_t bam_file_key;
 };
 
 
@@ -35,17 +35,17 @@ void write(hid_t& file,
 {
   const size_t record_size = sizeof(CountH5Record);
 
-  size_t record_offset[] = { HOFFSET(CountH5Record, bam_file_key), 
-                             HOFFSET(CountH5Record, bin_number),
-                             HOFFSET(CountH5Record, count),
+  size_t record_offset[] = { HOFFSET(CountH5Record, bin_number), 
                              HOFFSET(CountH5Record, cell_type),
-                             HOFFSET(CountH5Record, chromosome) };
+                             HOFFSET(CountH5Record, chromosome),
+                             HOFFSET(CountH5Record, count),
+                             HOFFSET(CountH5Record, bam_file_key) };
 
-  size_t field_sizes[] = { sizeof(CountH5Record::bam_file_key),
-                           sizeof(CountH5Record::bin_number),
-                           sizeof(CountH5Record::count),
+  size_t field_sizes[] = { sizeof(CountH5Record::bin_number),
                            sizeof(CountH5Record::cell_type),
-                           sizeof(CountH5Record::chromosome) };
+                           sizeof(CountH5Record::chromosome),
+                           sizeof(CountH5Record::count),
+                           sizeof(CountH5Record::bam_file_key) };
 
   herr_t status = H5TBappend_records(file, "bin_counts", records.size(), record_size,
                                      record_offset, field_sizes, records.data());
