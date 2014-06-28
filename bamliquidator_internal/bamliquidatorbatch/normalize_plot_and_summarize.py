@@ -79,28 +79,12 @@ def all_chromosomes(counts):
 
     return chromosomes.keys() 
 
-# todo: can we remove this function since it was replaced with file_keys?
-file_names_memo = {}
-def file_names(counts, cell_type):
-    if not cell_type in file_names_memo:
-        file_names = set() 
-       
-        #print "Getting file names for cell type " + cell_type
-        for row in counts.where("cell_type == '%s'" % cell_type):
-            file_names.add(row["file_name"])
-
-        file_names_memo[cell_type] = file_names
-
-        #print "memoizing files for " + cell_type + ": " + str(file_names_memo[cell_type]) 
-        
-    return file_names_memo[cell_type] 
-
 file_keys_memo = {}
 def file_keys(counts, cell_type):
     if not cell_type in file_keys_memo:
         file_keys = set() 
        
-        #print "Getting file names for cell type " + cell_type
+        #print "Getting file keys for cell type " + cell_type
         for row in counts.where("cell_type == '%s'" % cell_type):
             file_keys.add(row["file_key"])
 
@@ -121,7 +105,7 @@ def plot_summaries(output_directory, normalized_counts, chromosomes):
 def plot_summary(normalized_counts, chromosome):
     #print " - plotting " + chromosome + " summary"
 
-    condition = "(file_name == '*') & (chromosome == '%s')" % chromosome
+    condition = "(file_key == 0) & (chromosome == '%s')" % chromosome
 
     chromosome_count_by_bin = collections.defaultdict(int) 
     for row in normalized_counts.where(condition):
@@ -146,7 +130,7 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
         bin_number = [] 
         count = [] 
         
-        condition = "(file_name == '*') & (chromosome == '%s') & (cell_type == '%s')" % (chromosome, cell_type)
+        condition = "(file_key == 0) & (chromosome == '%s') & (cell_type == '%s')" % (chromosome, cell_type)
 
         for row in normalized_counts.where(condition):
             bin_number.append(row["bin_number"])
@@ -210,12 +194,12 @@ def normalize_regions(region_counts, files):
 
     region_counts.flush()
 
-# leave off file_name argument to calculate percentiles for the cell_type averaged normalized counts
-def populate_percentiles(normalized_counts, cell_type, file_name = "*"):
+# leave off file_key argument to calculate percentiles for the cell_type averaged normalized counts
+def populate_percentiles(normalized_counts, cell_type, file_key = 0):
     bin_numbers = []
     normalized_count_list = []
 
-    condition = "(cell_type == '%s') & (file_name == '%s')" % (cell_type, file_name)
+    condition = "(cell_type == '%s') & (file_key == %d)" % (cell_type, file_key)
 
     for row in normalized_counts.where(condition):
         bin_numbers.append(row["bin_number"])
@@ -232,12 +216,12 @@ def populate_percentiles(normalized_counts, cell_type, file_name = "*"):
     normalized_counts.flush()
 
 # the cell type normalized counts are the averages of the genomes in the cell type
-def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_names):
+def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_keys):
     processed_a_single_file = False
     chromosome_to_summed_counts = collections.OrderedDict() 
 
-    for file_name in file_names:
-        condition = "(file_name == '%s') & (cell_type == '%s')" % (file_name, cell_type)
+    for file_key in file_keys:
+        condition = "(file_key == %d) & (cell_type == '%s')" % (file_key, cell_type)
         for row in normalized_counts.where(condition):
             if processed_a_single_file:
                 chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] += row["count"]
@@ -247,11 +231,12 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
                 chromosome_to_summed_counts[row["chromosome"]].append(row["count"])
         processed_a_single_file = True
             
-    cell_type_condition = "(file_name == '*') & (cell_type == '%s')" % cell_type
+    cell_type_condition = "(file_key == 0) & (cell_type == '%s')" % cell_type
     prior_normalized_cell_type_rows_found = False
     for row in normalized_counts.where(cell_type_condition):
         prior_normalized_cell_type_rows_found = True
         break
+    # todo: is this logic necessary?  I thought we always just drop all the tables anyway
     if not prior_normalized_cell_type_rows_found:
         # just add all the rows with -1 counts, so that the same code path for populating the counts
         # is used regardless of whether there were any prior normalized counts for this cell type
@@ -260,16 +245,14 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
                 normalized_counts.row["bin_number"] = i
                 normalized_counts.row["cell_type"] = cell_type 
                 normalized_counts.row["chromosome"] = chromosome 
-                normalized_counts.row["file_name"] = "*" 
-                # using "*" instead of "" due to pytables empty string query bug
-                # -- https://github.com/PyTables/PyTables/issues/184
+                normalized_counts.row["file_key"] = 0 
                 normalized_counts.row["count"] = -1 
                 normalized_counts.row["percentile"] = -1
                 normalized_counts.row.append()
         normalized_counts.flush()
 
     for row in normalized_counts.where(cell_type_condition):
-        row["count"] = chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] / len(file_names)
+        row["count"] = chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] / len(file_keys)
         row.update()
     
     normalized_counts.flush()
@@ -319,7 +302,7 @@ def populate_summary(summary, normalized_counts, chromosome):
         max_bin = max(max_bin, bin_number)
         percentile = row["percentile"]
 
-        if row["file_name"] == "*":
+        if row["file_key"] == 0:
             cell_types.add(row["cell_type"])
             summed_cell_type_percentiles_by_bin[bin_number] += percentile
             if percentile >= high:
@@ -332,7 +315,7 @@ def populate_summary(summary, normalized_counts, chromosome):
             else:
                 cell_types_lt_low_percentile_by_bin[bin_number] += 1
         else:
-            lines.add(row["file_name"])
+            lines.add(row["file_key"])
             if percentile >= high:
                 lines_gte_high_percentile_by_bin[bin_number] += 1
             else:
@@ -382,15 +365,14 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
         current_file_keys = file_keys(counts, cell_type)
         for file_key in current_file_keys:
            populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files)
-           print "todo: add a failing test, then update rest to use files instead of lengths and file_key instead of file_name"; return
-           populate_percentiles(normalized_counts, cell_type, file_name)
-        populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_names) 
+           populate_percentiles(normalized_counts, cell_type, file_key)
+        populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_keys) 
         populate_percentiles(normalized_counts, cell_type)
 
     print "Indexing normalized counts"
     normalized_counts.cols.bin_number.create_csindex()
     normalized_counts.cols.percentile.create_csindex()
-    normalized_counts.cols.file_name.create_csindex()
+    normalized_counts.cols.file_key.create_csindex()
     normalized_counts.cols.chromosome.create_csindex()
 
     if not skip_plots:
@@ -432,9 +414,7 @@ def main():
     parser.add_argument('-v', '--validate', action='store_true',
                         help='validates the previously generated normalization and/or summary tables, returning '
                              'non-zero if any problems detected')
-    parser.add_argument('bin_counts_h5_file', help='the hdf5 file with a "counts" table with columns ' 
-                                                   '"bin_number", "cell_type", "chromosome", "count", and '
-                                                   '"file_name", e.g. "bin_counts.hdf5" as generated by '
+    parser.add_argument('bin_counts_h5_file', help='the hdf5 file with a "counts" and "files" tables as generated by ' 
                                                    'bamliquidate_batch')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='enables debugging hooks so ctr-c (SIGINT) enters debugging instead of halting execution')
@@ -465,7 +445,7 @@ def validate(counts_file_path):
     num_cell_types = len(cell_types)
     num_files = 0
     for cell_type in cell_types:
-        num_files += len(file_names(counts, cell_type))
+        num_files += len(file_keys(counts, cell_type))
 
     print "Verifying that summary files add up to %d and cell types add up to %d" % (num_files, num_cell_types)
     

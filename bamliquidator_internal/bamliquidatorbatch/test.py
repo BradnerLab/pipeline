@@ -57,7 +57,8 @@ class SingleFullReadBamTest(unittest.TestCase):
         shutil.rmtree(self.dir_path)
 
     def test_bin_liquidation(self):
-        liquidator = blb.BinLiquidator(bin_size = len(self.sequence),
+        bin_size = len(self.sequence)
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
                                        output_directory = os.path.join(self.dir_path, 'output'),
                                        bam_file_path = self.bam_file_path)
         liquidator.batch(extension = 0, sense = '.')
@@ -82,9 +83,11 @@ class SingleFullReadBamTest(unittest.TestCase):
                 self.assertEqual(0, record["bin_number"])
                 self.assertEqual(self.chromosome, record["chromosome"])
                 self.assertNotEqual("", record["cell_type"])
-                # reads per million per base pair
-                # this seems a little wacky, we have 1 read but there are multiple base pairs in the read, so why divide only by 1?
-                expected_normalized_count = 1 / 10**6 / 1 
+
+                # 50 base pair reads in bin 1, bin size is 50, 1 read total, unit is reads per million per base pair
+                # 50 / 50 / (1 / 1,000,000) = 1,000,000 rpm/bp 
+                # usually there are millions of total reads, which is why the number is sort of odd here
+                expected_normalized_count = 10**6
                 self.assertEqual(expected_normalized_count, record["count"])
 
                 if record["file_key"] == 0:
@@ -98,8 +101,9 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(cell_type_normalization_records, 1)
 
             self.assertEqual(1, len(counts.root.summary))
-
             self.assertEqual(1, len(counts.root.sorted_summary))
+            self.assertEqual(str(counts.root.summary[0]), str(counts.root.sorted_summary[0]))
+            # todo: add summary record checks
 
 
     def test_region_liquidation(self):
@@ -122,6 +126,8 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(stop,  record["stop"])
             self.assertEqual(stop-start, record["count"]) # count represents how many base pair reads intersected
                                                           # the region
+
+            # todo: add normalization record checks
 
     def test_region_with_no_reads(self):
         start = len(self.sequence) + 10

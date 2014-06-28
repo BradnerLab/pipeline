@@ -121,7 +121,11 @@ class BaseLiquidator(object):
         length_col      = 1
         mapped_read_col = 2
 
-        next_file_key = -1 
+        # bam file keys start at 1.
+        # key 0 is special and denotes "no specific file", which
+        # is used in normalizated_counts tables to mean an average or total for all bam files
+        # of a specific cell type.
+        next_file_key = 0 # see += 1 below
         for file_record in files:
             next_file_key = max(next_file_key, file_record["key"])
         next_file_key += 1
