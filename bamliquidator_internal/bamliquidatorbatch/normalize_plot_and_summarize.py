@@ -43,7 +43,7 @@ import collections
 
 def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:
-        if table.name != "bin_counts" and table.name != "files":
+        if table.name != "bin_counts" and table.name != "files" and table.name != "file_names":
             for index in table.colindexes.values():
                 index.column.remove_index()
             table.remove()
@@ -79,6 +79,8 @@ def all_chromosomes(counts):
 
     return chromosomes.keys() 
 
+# todo: if this used the files table and we added the cell_type to the files table, this would be much faster,
+#       but it is probably necessary to leave cell_type in counts table as well (for queries)
 file_keys_memo = {}
 def file_keys(counts, cell_type):
     if not cell_type in file_keys_memo:

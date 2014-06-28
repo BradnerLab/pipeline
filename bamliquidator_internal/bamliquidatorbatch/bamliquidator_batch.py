@@ -24,10 +24,17 @@ def create_files_table(h5file):
 
     table = h5file.create_table("/", "files", Files, "File names, keys, and reference sequence lengths corresponding, "
                                                      "to the counts table")
-
     table.flush()
 
     return table
+
+def create_file_names_array(h5file):
+    array = h5file.create_vlarray("/", "file_names", tables.VLStringAtom(),
+                                "File names with index corresponding to Files table key")
+    array.append("all files in cell type") # index/key 0 is reserved for this
+    array.flush()
+
+    return array
 
 def all_bam_file_paths_in_directory(bam_directory):
     bam_file_paths = []
@@ -37,19 +44,15 @@ def all_bam_file_paths_in_directory(bam_directory):
                 bam_file_paths.append(os.path.join(dirpath, file_))
     return bam_file_paths
 
-# todo: change this to bam_file_paths_with_no_file_entries or something
-#       -- it seems to make much more sense to check the central file table
-def bam_file_paths_with_no_counts(counts, bam_file_paths):
+def bam_file_paths_with_no_file_entries(files, bam_file_paths):
     with_no_counts = []
 
     for bam_file_path in bam_file_paths:
-        count_found = False
         condition = "file_name == '%s'" % basename(bam_file_path)
 
-        for _ in counts.where(condition):
-            count_found = True
-
-        if not count_found:
+        num_file_records = len(files.read_where(condition))
+        assert(num_file_records <= 1)
+        if num_file_records == 0:
             with_no_counts.append(bam_file_path)
 
     return with_no_counts
@@ -58,6 +61,9 @@ def bam_file_paths_with_no_counts(counts, bam_file_paths):
 # The concrete classes must define the methods liquidate, normalize, and create_counts_table
 class BaseLiquidator(object):
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
+        # clear all memoized values from any prior runs
+        nps.file_keys_memo = {}
+
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
 
@@ -91,16 +97,18 @@ class BaseLiquidator(object):
         try: 
             counts = counts_file.get_node("/", counts_table_name)
             files = counts_file.root.files
+            file_names = counts_file.root.file_names
         except:
             counts = self.create_counts_table(counts_file)
             files = create_files_table(counts_file)
+            file_names = create_file_names_array(counts_file)
 
         if os.path.isdir(bam_file_path):
             self.bam_file_paths = all_bam_file_paths_in_directory(bam_file_path)
         else:
             self.bam_file_paths = [bam_file_path]
        
-        self.bam_file_paths = bam_file_paths_with_no_counts(counts, self.bam_file_paths)
+        self.bam_file_paths = bam_file_paths_with_no_file_entries(files, self.bam_file_paths)
 
         self.preprocess(files)
 
@@ -343,6 +351,7 @@ def main():
             exit(1)
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
 
+    # todo: move call to batch inside constructor -- there is no need to ever not call batch
     liquidator.batch(args.extension, args.sense)
 
     if args.flatten:

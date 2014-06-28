@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from os import sys, path
+from itertools import izip
 
 import bamliquidator_batch as blb
 import normalize_plot_and_summarize as nps
@@ -12,7 +13,7 @@ import tables
 import tempfile
 import unittest
 
-def create_single_full_read_bam(dir_path, chromosome, sequence):
+def create_single_full_read_bam(dir_path, chromosome, sequence, file_name="single.bam"):
     # create a sam file, based on instructions at http://genome.ucsc.edu/goldenPath/help/bam.html
     # and http://samtools.github.io/hts-specs/SAMv1.pdf
     sam_file_path = os.path.join(dir_path, 'single.sam') 
@@ -30,7 +31,7 @@ def create_single_full_read_bam(dir_path, chromosome, sequence):
         sam_file.write('read1\t16\t%s\t1\t255\t50M\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, sequence, qual))
    
     # create bam file
-    bam_file_path = os.path.join(dir_path, 'single.bam')
+    bam_file_path = os.path.join(dir_path, file_name)
     subprocess.check_call(['samtools', 'view', '-S', '-b', '-o', bam_file_path, sam_file_path])
 
     # skipping sorting since it is already sorted
@@ -44,7 +45,6 @@ def create_single_region_file(dir_path, chromosome, start, stop, strand='.'):
     with open(region_file_path, 'w') as region_file:
         region_file.write('%s\tregion1\t\t%d\t%d\t\t%s\t\tregion1\n' % (chromosome, start, stop, strand))
     return region_file_path
-
 
 class SingleFullReadBamTest(unittest.TestCase):
     def setUp(self):
@@ -190,6 +190,48 @@ class SingleFullReadBamTest(unittest.TestCase):
                                                  output_directory = os.path.join(self.dir_path, 'region_output'),
                                                  bam_file_path = long_file_path) 
         region_liquidator.batch(extension = 0, sense = '.')
+
+class AppendingTest(unittest.TestCase):
+    def setUp(self):
+        self.dir_path = tempfile.mkdtemp()
+        self.chromosome = 'chr1'
+        self.sequence1 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+        self.bam1_file_path = create_single_full_read_bam(self.dir_path, self.chromosome, self.sequence1, "single1.bam")
+        self.sequence2 = 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC'
+        self.bam2_file_path = create_single_full_read_bam(self.dir_path, self.chromosome, self.sequence2, "single2.bam")
+
+    def tearDown(self):
+        shutil.rmtree(self.dir_path)
+
+    def testBin(self):
+        # first do all liquidation together at once, then do it in two runs appending, and verify everything matches
+        bin_size = len(self.sequence1)
+        together_dir_path = os.path.join(self.dir_path, 'together')
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = together_dir_path, 
+                                       bam_file_path = self.dir_path)
+        liquidator.batch(extension = 0, sense = '.')
+
+        appending_dir = os.path.join(self.dir_path, 'appending')
+        print "liquidating bams at path:", self.bam1_file_path
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = appending_dir,
+                                       bam_file_path = self.bam1_file_path)
+        liquidator.batch(extension = 0, sense = '.')
+
+        appending_h5_path = os.path.join(appending_dir, "counts.h5")
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = os.path.join(self.dir_path, 'appending_extra_without_h5_file'),
+                                       bam_file_path = self.bam2_file_path,
+                                       counts_file_path = appending_h5_path) 
+        liquidator.batch(extension = 0, sense = '.')
+
+        with tables.open_file(os.path.join(together_dir_path, "counts.h5")) as together_h5:
+            with tables.open_file(appending_h5_path) as appending_h5:
+                self.assertEqual(str(together_h5.root.bin_counts[:]), str(appending_h5.root.bin_counts[:]))
+                self.assertEqual(str(together_h5.root.normalized_counts[:]), str(appending_h5.root.normalized_counts[:]))
+                self.assertEqual(str(together_h5.root.summary[:]), str(appending_h5.root.summary[:]))
+                self.assertEqual(str(together_h5.root.sorted_summary[:]), str(appending_h5.root.sorted_summary[:]))
 
 if __name__ == '__main__':
     unittest.main()
