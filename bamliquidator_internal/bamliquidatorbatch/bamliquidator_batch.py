@@ -18,9 +18,9 @@ from os.path import dirname
 def create_files_table(h5file):
     class Files(tables.IsDescription):
         key       = tables.UInt32Col(    pos=0) # is there an easier way to assign keys?
-        file_name = tables.StringCol(64, pos=1) # todo: make this an unbounded string
         length    = tables.UInt64Col(    pos=2)
-        # todo: consider moving cell_type here and making it unbounded as well
+        # file_name would be included here, but pytables doesn't support variable length strings as table column
+        # so it is instead in a vlarray "file_names" 
 
     table = h5file.create_table("/", "files", Files, "File names, keys, and reference sequence lengths corresponding, "
                                                      "to the counts table")
@@ -29,6 +29,7 @@ def create_files_table(h5file):
     return table
 
 def create_file_names_array(h5file):
+    # vlarray of strings only supports a single column, so the file_key is implicitly the array index
     array = h5file.create_vlarray("/", "file_names", tables.VLStringAtom(),
                                 "File names with index corresponding to Files table key")
     array.append("all files in cell type") # index/key 0 is reserved for this
@@ -44,15 +45,11 @@ def all_bam_file_paths_in_directory(bam_directory):
                 bam_file_paths.append(os.path.join(dirpath, file_))
     return bam_file_paths
 
-def bam_file_paths_with_no_file_entries(files, bam_file_paths):
+def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
     with_no_counts = []
 
     for bam_file_path in bam_file_paths:
-        condition = "file_name == '%s'" % basename(bam_file_path)
-
-        num_file_records = len(files.read_where(condition))
-        assert(num_file_records <= 1)
-        if num_file_records == 0:
+        if basename(bam_file_path) not in file_names:
             with_no_counts.append(bam_file_path)
 
     return with_no_counts
@@ -108,9 +105,9 @@ class BaseLiquidator(object):
         else:
             self.bam_file_paths = [bam_file_path]
        
-        self.bam_file_paths = bam_file_paths_with_no_file_entries(files, self.bam_file_paths)
+        self.bam_file_paths = bam_file_paths_with_no_file_entries(file_names, self.bam_file_paths)
 
-        self.preprocess(files)
+        self.preprocess(files, file_names)
 
         counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
                             # it, so it is probably best that we not hold an out of sync reference
@@ -120,7 +117,7 @@ class BaseLiquidator(object):
     # 1) file_name -> [(chromosome, sequence length), ...] 
     # 2) file_name -> total mapped count
     # 3) file_name -> file key number
-    def preprocess(self, files):
+    def preprocess(self, files, file_names):
         self.file_to_chromosome_length_pairs = {}
         self.file_to_count = {}
         self.file_to_key = {}
@@ -158,9 +155,9 @@ class BaseLiquidator(object):
                 chromosome_length_pairs.append((chromosome, int(row[length_col])))
             
             files.row["key"] = next_file_key
-            files.row["file_name"] = file_name
             files.row["length"] = file_count
             files.row.append()
+            file_names.append(file_name)
 
             self.file_to_chromosome_length_pairs[file_name] = chromosome_length_pairs
             self.file_to_count[file_name] = file_count
@@ -169,6 +166,9 @@ class BaseLiquidator(object):
             next_file_key += 1
 
         files.flush()
+        file_names.flush()
+        assert(len(file_names) - 1 == len(files))
+        assert(len(file_names) == next_file_key)
 
     def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
@@ -279,6 +279,7 @@ class RegionLiquidator(BaseLiquidator):
         table.flush()
         return table
 
+# todo: update and test this
 def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
     print("Writing bamToGff style matrix.gff file")
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
