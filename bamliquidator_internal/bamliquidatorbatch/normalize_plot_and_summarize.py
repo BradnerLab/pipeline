@@ -234,29 +234,19 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
         processed_a_single_file = True
             
     cell_type_condition = "(file_key == 0) & (cell_type == '%s')" % cell_type
-    prior_normalized_cell_type_rows_found = False
-    for row in normalized_counts.where(cell_type_condition):
-        prior_normalized_cell_type_rows_found = True
-        break
-    # todo: is this logic necessary?  I thought we always just drop all the tables anyway
-    if not prior_normalized_cell_type_rows_found:
-        # just add all the rows with -1 counts, so that the same code path for populating the counts
-        # is used regardless of whether there were any prior normalized counts for this cell type
-        for chromosome, summed_counts in chromosome_to_summed_counts.iteritems():
-            for i, summed_count in enumerate(summed_counts):
-                normalized_counts.row["bin_number"] = i
-                normalized_counts.row["cell_type"] = cell_type 
-                normalized_counts.row["chromosome"] = chromosome 
-                normalized_counts.row["file_key"] = 0 
-                normalized_counts.row["count"] = -1 
-                normalized_counts.row["percentile"] = -1
-                normalized_counts.row.append()
-        normalized_counts.flush()
 
-    for row in normalized_counts.where(cell_type_condition):
-        row["count"] = chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] / len(file_keys)
-        row.update()
-    
+    len_file_keys = len(file_keys)
+
+    for chromosome, summed_counts in chromosome_to_summed_counts.iteritems():
+        for i, summed_count in enumerate(summed_counts):
+            normalized_counts.row["bin_number"] = i
+            normalized_counts.row["cell_type"] = cell_type 
+            normalized_counts.row["chromosome"] = chromosome 
+            normalized_counts.row["file_key"] = 0 
+            normalized_counts.row["count"] = chromosome_to_summed_counts[chromosome][i] / len_file_keys
+            normalized_counts.row["percentile"] = -1
+            normalized_counts.row.append()
+
     normalized_counts.flush()
 
 def create_summary_table(h5file):
