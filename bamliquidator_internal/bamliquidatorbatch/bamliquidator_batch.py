@@ -279,15 +279,15 @@ class RegionLiquidator(BaseLiquidator):
         table.flush()
         return table
 
-# todo: update and test this
 def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
-    print("Writing bamToGff style matrix.gff file")
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
         with open(output_file_path, "w") as output:
-            file_name = ""
+            file_key = None
+            file_name = None 
             for row in counts_file.root.region_counts:
-                if file_name != row["file_name"]:
-                    file_name = row["file_name"]
+                if file_key != row["file_key"]:
+                    file_key = row["file_key"]
+                    file_name = counts_file.root.file_names[file_key]
                     output.write("GENE_ID\tlocusLine\tbin_1_%s\n" % file_name)
 
                 output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
@@ -362,7 +362,11 @@ def main():
         if args.regions_file is None:
             print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
+            print("Writing bamToGff style matrix.gff file")
+            start = time()
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
+            duration = time() - start
+            print("Writing matrix.gff took %f seconds" % duration)
 
 if __name__ == "__main__":
     main()

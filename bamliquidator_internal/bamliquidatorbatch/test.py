@@ -116,6 +116,9 @@ class SingleFullReadBamTest(unittest.TestCase):
                                           bam_file_path = self.bam_file_path)
         liquidator.batch(extension = 0, sense = '.')
 
+        matrix_path = os.path.join(self.dir_path, "matrix.gff")
+        blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
+
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
             self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
@@ -128,6 +131,22 @@ class SingleFullReadBamTest(unittest.TestCase):
                                                           # the region
 
             # todo: add normalization record checks
+
+        with open(matrix_path, "r") as matrix_file:
+           matrix_lines = matrix_file.readlines()
+           self.assertEqual(2, len(matrix_lines))
+
+           header_cols = matrix_lines[0].split("\t")
+           self.assertEqual(3, len(header_cols))
+           self.assertEqual("GENE_ID", header_cols[0])
+           self.assertEqual("locusLine", header_cols[1])
+           self.assertEqual("bin_1_%s\n" % "single.bam", header_cols[2])
+
+           data_cols = matrix_lines[1].split("\t")
+           self.assertEqual(3, len(data_cols))
+           self.assertEqual("region1", data_cols[0]) # todo: don't hardcode these values 
+           self.assertEqual("chr1(.):1-8", data_cols[1])
+           self.assertEqual("1000000.0\n", data_cols[2])
 
     def test_region_with_no_reads(self):
         start = len(self.sequence) + 10
