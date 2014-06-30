@@ -40,8 +40,8 @@ def create_single_full_read_bam(dir_path, chromosome, sequence, file_name="singl
 
     return bam_file_path
 
-def create_single_region_file(dir_path, chromosome, start, stop, strand='.'):
-    region_file_path = os.path.join(dir_path, 'single.gff') 
+def create_single_region_gff_file(dir_path, chromosome, start, stop, strand='.', file_name = 'single.gff'):
+    region_file_path = os.path.join(dir_path, file_name) 
     with open(region_file_path, 'w') as region_file:
         region_file.write('%s\tregion1\t\t%d\t%d\t\t%s\t\tregion1\n' % (chromosome, start, stop, strand))
     return region_file_path
@@ -110,7 +110,7 @@ class SingleFullReadBamTest(unittest.TestCase):
     def test_region_liquidation(self):
         start = 1
         stop  = 8
-        regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop)
 
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
@@ -152,7 +152,7 @@ class SingleFullReadBamTest(unittest.TestCase):
     def test_region_with_no_reads(self):
         start = len(self.sequence) + 10
         stop = start + 10
-        regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop)
 
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
@@ -170,7 +170,7 @@ class SingleFullReadBamTest(unittest.TestCase):
     def test_region_with_wrong_chromosome(self):
         start = len(self.sequence) + 10
         stop = start + 10
-        regions_file_path = create_single_region_file(self.dir_path, self.chromosome + '0', start, stop)
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome + '0', start, stop)
 
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
@@ -202,10 +202,21 @@ class SingleFullReadBamTest(unittest.TestCase):
 
         start = 1
         stop  = len(self.sequence) 
-        regions_file_path = create_single_region_file(self.dir_path, self.chromosome, start, stop)
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop)
         region_liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                                  output_directory = os.path.join(self.dir_path, 'region_output'),
                                                  bam_file_path = long_file_path) 
+
+    def test_region_other_extension(self):
+        start = 1
+        stop  = len(self.sequence) 
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop,
+                                                          file_name = 'single.txt')
+        region_liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
+                                                 region_format = "gff",
+                                                 output_directory = os.path.join(self.dir_path, 'region_output'),
+                                                 bam_file_path = self.bam_file_path)
+        
 
 class AppendingTest(unittest.TestCase):
     def setUp(self):

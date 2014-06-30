@@ -240,14 +240,26 @@ class BinLiquidator(BaseLiquidator):
         return table
 
 class RegionLiquidator(BaseLiquidator):
-    def __init__(self, regions_file, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
+    def __init__(self, regions_file, output_directory, bam_file_path,
+                 region_format=None, counts_file_path = None, extension = 0, sense = '.'):
         self.regions_file = regions_file
-        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
+        self.region_format = region_format
+        if self.region_format is None:
+            _, self.region_format = os.path.splitext(regions_file)
+            if len(self.region_format) > 0 and self.region_format[0] == '.':
+                self.region_format = self.region_format[1:]
+        if self.region_format not in ("gff", "bed"):
+            raise RuntimeError("Only bed and gff region file formats are supported -- %s format specified"
+                               % str(self.region_format))
+
+        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
+                                               bam_file_path, counts_file_path)
+        
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, self.regions_file, str(extension), bam_file_path, 
+        args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         if sense is not None:
             args.append(sense)
@@ -326,6 +338,8 @@ def main():
                              "the sense specified by the gff file; otherwise, default maps to both.")
     parser.add_argument('-m', '--match_bamToGFF', default=False, action='store_true',
                         help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
+    parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
+                        help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -352,7 +366,7 @@ def main():
                   " if you need this feature")
             exit(1)
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
-                                      args.counts_file, args.extension, args.sense)
+                                      args.region_format, args.counts_file, args.extension, args.sense)
 
     if args.flatten:
         liquidator.flatten()

@@ -41,11 +41,10 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 // default_strand: optional argument, default (space) indicates to use 
 //                 gff strand column or . (both) for .bed region file
 std::vector<Region> parse_regions(const std::string& region_file_path,
+                                  const std::string& region_format,
                                   const unsigned int bam_file_key,
                                   const char default_strand = ' ') 
 {
-  const std::string extension = extension_from_file_name(region_file_path);
-
   int chromosome_column = 0;
   int name_column = 0;
   int start_column = 0;
@@ -53,7 +52,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
   int strand_column = 0;
   int min_columns = 0;
 
-  if (extension == "gff")
+  if (region_format == "gff")
   {
     chromosome_column = 0;
     name_column = 1;
@@ -62,7 +61,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     strand_column = 6;
     min_columns = 7;
   }
-  else if (extension == "bed")
+  else if (region_format == "bed")
   {
     chromosome_column = 0;
     name_column = 3;
@@ -73,7 +72,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
   }
   else
   {
-    throw std::runtime_error("unsupported region file format (" + region_file_path
+    throw std::runtime_error("unsupported region file format (" + region_format + " for " + region_file_path
                              + "), please supply a .gff or .bed file");
   }
 
@@ -267,10 +266,10 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 6 && argc != 7)
+    if (argc != 7 && argc != 8)
     {
-      std::cerr << "usage: " << argv[0] << " gff_or_bed_file extension bam_file bam_file_key hdf5_file [strand]\n"
-        << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff "
+      std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file [strand]\n"
+        << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff gff"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 \n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
@@ -279,12 +278,13 @@ int main(int argc, char* argv[])
     }
 
     const std::string region_file_path = argv[1];
-    const unsigned int extension = boost::lexical_cast<unsigned int>(argv[2]);
-    const std::string bam_file_path = argv[3];
-    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[4]);
-    const std::string hdf5_file_path = argv[5];
-    const char strand = argc == 7
-                      ? boost::lexical_cast<char>(argv[6])
+    const std::string region_format = argv[2];
+    const unsigned int extension = boost::lexical_cast<unsigned int>(argv[3]);
+    const std::string bam_file_path = argv[4];
+    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[5]);
+    const std::string hdf5_file_path = argv[6];
+    const char strand = argc == 8
+                      ? boost::lexical_cast<char>(argv[7])
                       : ' ';
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -295,6 +295,7 @@ int main(int argc, char* argv[])
     }
 
     std::vector<Region> regions = parse_regions(region_file_path,
+                                                region_format,
                                                 bam_file_key,
                                                 strand);
 
