@@ -15,16 +15,27 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-def create_lengths_table(h5file):
-    class Length(tables.IsDescription):
-        file_name = tables.StringCol(64, pos=0)
-        length    = tables.UInt64Col(    pos=1)
+def create_files_table(h5file):
+    class Files(tables.IsDescription):
+        key       = tables.UInt32Col(    pos=0) # is there an easier way to assign keys?
+        length    = tables.UInt64Col(    pos=2)
+        # file_name would be included here, but pytables doesn't support variable length strings as table column
+        # so it is instead in a vlarray "file_names" 
 
-    table = h5file.create_table("/", "lengths", Length, "reference sequence length")
-
+    table = h5file.create_table("/", "files", Files, "File names, keys, and reference sequence lengths corresponding, "
+                                                     "to the counts table")
     table.flush()
 
     return table
+
+def create_file_names_array(h5file):
+    # vlarray of strings only supports a single column, so the file_key is implicitly the array index
+    array = h5file.create_vlarray("/", "file_names", tables.VLStringAtom(),
+                                "File names with index corresponding to Files table key")
+    array.append("*") # index/key 0 is reserved for this
+    array.flush()
+
+    return array
 
 def all_bam_file_paths_in_directory(bam_directory):
     bam_file_paths = []
@@ -34,65 +45,22 @@ def all_bam_file_paths_in_directory(bam_directory):
                 bam_file_paths.append(os.path.join(dirpath, file_))
     return bam_file_paths
 
-def bam_file_paths_with_no_counts(counts, bam_file_paths):
+def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
     with_no_counts = []
 
     for bam_file_path in bam_file_paths:
-        count_found = False
-        condition = "file_name == '%s'" % basename(bam_file_path)
-
-        for _ in counts.where(condition):
-            count_found = True
-
-        if not count_found:
+        if basename(bam_file_path) not in file_names:
             with_no_counts.append(bam_file_path)
 
     return with_no_counts
-
-# populates the lengths table and returns returns a tuple of two dictionaries:
-# 1) bam_file_name -> [(chromosome, sequence length), ...] 
-# 2) base_bam_file_name -> total mapped count
-def populate_lengths(lengths, bam_file_paths):
-    file_to_chromosome_length_pairs = {} 
-    file_to_count = {} 
-
-    chr_col         = 0
-    length_col      = 1
-    mapped_read_col = 2
-
-    # this skip list is somewhat arbitrary and can be emptied/removed if desired
-    chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
-
-    for bam_file_path in bam_file_paths:
-        args = ["samtools", "idxstats", bam_file_path]
-        output = subprocess.check_output(args)
-        # skip last two lines: the unmapped chromosome line and the empty line
-        reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
-        file_name = basename(bam_file_path)
-        file_count = 0
-        
-        chromosome_length_pairs = []
-        for row in reader:
-            chromosome = row[chr_col]
-            if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
-                continue
-            file_count += int(row[mapped_read_col])
-            chromosome_length_pairs.append((chromosome, int(row[length_col])))
-        file_to_chromosome_length_pairs[file_name] = chromosome_length_pairs
-        file_to_count[file_name] = file_count
-        
-        lengths.row["file_name"] = file_name
-        lengths.row["length"] = file_count
-        lengths.row.append()
-
-    lengths.flush()
-
-    return file_to_chromosome_length_pairs, file_to_count
 
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
 # The concrete classes must define the methods liquidate, normalize, and create_counts_table
 class BaseLiquidator(object):
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
+        # clear all memoized values from any prior runs
+        nps.file_keys_memo = {}
+
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
 
@@ -125,22 +93,82 @@ class BaseLiquidator(object):
 
         try: 
             counts = counts_file.get_node("/", counts_table_name)
-            lengths = counts_file.root.lengths
+            files = counts_file.root.files
+            file_names = counts_file.root.file_names
         except:
             counts = self.create_counts_table(counts_file)
-            lengths = create_lengths_table(counts_file)
+            files = create_files_table(counts_file)
+            file_names = create_file_names_array(counts_file)
 
         if os.path.isdir(bam_file_path):
             self.bam_file_paths = all_bam_file_paths_in_directory(bam_file_path)
         else:
             self.bam_file_paths = [bam_file_path]
        
-        self.bam_file_paths = bam_file_paths_with_no_counts(counts, self.bam_file_paths)
+        self.bam_file_paths = bam_file_paths_with_no_file_entries(file_names, self.bam_file_paths)
 
-        self.file_to_chromosome_length_pairs, self.file_to_count = populate_lengths(lengths, self.bam_file_paths)
+        self.preprocess(files, file_names)
 
         counts_file.close() # bamliquidator_bins/bamliquidator_regions will open this file and modify
                             # it, so it is probably best that we not hold an out of sync reference
+
+    
+    # adds files being liquidated to the files table and populates the following member dictionaries:
+    # 1) file_name -> [(chromosome, sequence length), ...] 
+    # 2) file_name -> total mapped count
+    # 3) file_name -> file key number
+    def preprocess(self, files, file_names):
+        self.file_to_chromosome_length_pairs = {}
+        self.file_to_count = {}
+        self.file_to_key = {}
+
+        chr_col         = 0
+        length_col      = 1
+        mapped_read_col = 2
+
+        # bam file keys start at 1.
+        # key 0 is special and denotes "no specific file", which
+        # is used in normalizated_counts tables to mean an average or total for all bam files
+        # of a specific cell type.
+        next_file_key = 0 # see += 1 below
+        for file_record in files:
+            next_file_key = max(next_file_key, file_record["key"])
+        next_file_key += 1
+
+        # this skip list is somewhat arbitrary and can be emptied/removed if desired
+        chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
+
+        for bam_file_path in self.bam_file_paths:
+            args = ["samtools", "idxstats", bam_file_path]
+            output = subprocess.check_output(args)
+            # skip last two lines: the unmapped chromosome line and the empty line
+            reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
+            file_name = basename(bam_file_path)
+            file_count = 0
+            
+            chromosome_length_pairs = []
+            for row in reader:
+                chromosome = row[chr_col]
+                if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
+                    continue
+                file_count += int(row[mapped_read_col])
+                chromosome_length_pairs.append((chromosome, int(row[length_col])))
+            
+            files.row["key"] = next_file_key
+            files.row["length"] = file_count
+            files.row.append()
+            file_names.append(file_name)
+
+            self.file_to_chromosome_length_pairs[file_name] = chromosome_length_pairs
+            self.file_to_count[file_name] = file_count
+            self.file_to_key[file_name] = next_file_key
+
+            next_file_key += 1
+
+        files.flush()
+        file_names.flush()
+        assert(len(file_names) - 1 == len(files))
+        assert(len(file_names) == next_file_key)
 
     def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
@@ -155,6 +183,7 @@ class BaseLiquidator(object):
         start = time()
         self.normalize()
         duration = time() - start
+        print("Post liquidation processing took %f seconds" % duration)
 
     def flatten(self):
         print("Flattening HDF5 tables into text files")
@@ -167,17 +196,18 @@ class BaseLiquidator(object):
         print("Flattening took %f seconds" % duration)
 
 class BinLiquidator(BaseLiquidator):
-    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None):
-        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
-
+    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
         self.bin_size = bin_size
+        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
+        self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense):
         if sense is None: sense = '.'
 
         cell_type = basename(dirname(bam_file_path))
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, self.counts_file_path]
+        args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
+                str(self.file_to_key[bam_file_name]), self.counts_file_path]
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
             args.append(chromosome)
@@ -203,20 +233,34 @@ class BinLiquidator(BaseLiquidator):
             cell_type  = tables.StringCol(16, pos=1)
             chromosome = tables.StringCol(16, pos=2)
             count      = tables.UInt64Col(    pos=3)
-            file_name  = tables.StringCol(64, pos=4)
+            file_key   = tables.UInt32Col(    pos=4)
 
         table = h5file.create_table("/", "bin_counts", BinCount, "bin counts")
         table.flush()
         return table
 
 class RegionLiquidator(BaseLiquidator):
-    def __init__(self, regions_file, output_directory, bam_file_path, counts_file_path = None):
-        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, bam_file_path, counts_file_path)
-
+    def __init__(self, regions_file, output_directory, bam_file_path,
+                 region_format=None, counts_file_path = None, extension = 0, sense = '.'):
         self.regions_file = regions_file
+        self.region_format = region_format
+        if self.region_format is None:
+            _, self.region_format = os.path.splitext(regions_file)
+            if len(self.region_format) > 0 and self.region_format[0] == '.':
+                self.region_format = self.region_format[1:]
+        if self.region_format not in ("gff", "bed"):
+            raise RuntimeError("Only bed and gff region file formats are supported -- %s format specified"
+                               % str(self.region_format))
+
+        super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
+                                               bam_file_path, counts_file_path)
+        
+        self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
-        args = [self.executable_path, self.regions_file, str(extension), bam_file_path, self.counts_file_path]
+        bam_file_name = basename(bam_file_path)
+        args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
+                str(self.file_to_key[bam_file_name]), self.counts_file_path]
         if sense is not None:
             args.append(sense)
 
@@ -230,11 +274,11 @@ class RegionLiquidator(BaseLiquidator):
 
     def normalize(self):
         with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
-            nps.normalize(counts_file.root.region_counts, self.file_to_count)
+            nps.normalize_regions(counts_file.root.region_counts, counts_file.root.files)
 
     def create_counts_table(self, h5file):
         class Region(tables.IsDescription):
-            file_name        = tables.StringCol(64, pos=0)
+            file_key         = tables.UInt32Col(    pos=0)
             chromosome       = tables.StringCol(16, pos=1)
             region_name      = tables.StringCol(64, pos=2)
             start            = tables.UInt64Col(    pos=3)
@@ -248,13 +292,14 @@ class RegionLiquidator(BaseLiquidator):
         return table
 
 def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
-    print("Writing bamToGff style matrix.gff file")
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
         with open(output_file_path, "w") as output:
-            file_name = ""
+            file_key = None
+            file_name = None 
             for row in counts_file.root.region_counts:
-                if file_name != row["file_name"]:
-                    file_name = row["file_name"]
+                if file_key != row["file_key"]:
+                    file_key = row["file_key"]
+                    file_name = counts_file.root.file_names[file_key]
                     output.write("GENE_ID\tlocusLine\tbin_1_%s\n" % file_name)
 
                 output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
@@ -293,6 +338,8 @@ def main():
                              "the sense specified by the gff file; otherwise, default maps to both.")
     parser.add_argument('-m', '--match_bamToGFF', default=False, action='store_true',
                         help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
+    parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
+                        help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -311,15 +358,15 @@ def main():
     assert(tables.__version__ >= '3.0.0')
 
     if args.regions_file is None:
-        liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path, args.counts_file)
+        liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
+                                   args.counts_file, args.extension, args.sense)
     else:
         if args.counts_file:
             print("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
                   " if you need this feature")
             exit(1)
-        liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, args.counts_file)
-
-    liquidator.batch(args.extension, args.sense)
+        liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
+                                      args.region_format, args.counts_file, args.extension, args.sense)
 
     if args.flatten:
         liquidator.flatten()
@@ -328,7 +375,11 @@ def main():
         if args.regions_file is None:
             print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
+            print("Writing bamToGff style matrix.gff file")
+            start = time()
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
+            duration = time() - start
+            print("Writing matrix.gff took %f seconds" % duration)
 
 if __name__ == "__main__":
     main()
