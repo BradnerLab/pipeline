@@ -295,12 +295,16 @@ def mapBamToGFFLine(bamFile, MMR, name, gffLine, color, nBins, sense='both', ext
     return clusterLine
 
 
-def callRPlot(summaryFile, outFile, yScale, plotStyle):
+def callRPlot(summaryFile, outFile, yScale, plotStyle,multi):
     '''
     calls the R plotting thingy
     '''
-
-    cmd = 'R --no-save %s %s %s %s < %s/bamPlot_turbo.R' % (summaryFile, outFile, yScale, plotStyle, whereAmI)
+    if multi == True:
+        pageFlag = 'MULTIPLE_PAGE'
+    else:
+        pageFlag = 'SINGLE_PAGE'
+    
+    cmd = 'R --no-save %s %s %s %s %s < %s/bamPlot_turbo.R' % (summaryFile, outFile, yScale, plotStyle, pageFlag,whereAmI)
     print('calling command %s' % (cmd))
     return cmd
 
@@ -428,6 +432,8 @@ def main():
                       help="If flagged will save temporary files made by bamPlot")
     parser.add_option("--bed", dest="bed", nargs=1, default=None,
                       help="Add a comma separated list of bam files to plot")
+    parser.add_option("--multi-page", dest="multi", action='store_true', default=False,
+                      help="If flagged will create a new pdf for each region")
 
     (options, args) = parser.parse_args()
 
@@ -541,10 +547,12 @@ def main():
         summaryTableFileName = makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extension, rpm, tempFolder, names, title, bedCollection)
         print ("%s is the summary table" % (summaryTableFileName))
 
+        #running the R command to plot
+        multi = options.multi
         outFile = "%s%s_plots.pdf" % (rootFolder, title)
-        rCmd = callRPlot(summaryTableFileName, outFile, yScale, plotStyle)
+        rCmd = callRPlot(summaryTableFileName, outFile, yScale, plotStyle,multi)
 
-        # open a bash file to get shit done
+        # open a bash file
         bashFileName = "%s%s_Rcmd.sh" % (tempFolder, title)
         bashFile = open(bashFileName, 'w')
         bashFile.write('#!/usr/bin/bash\n')

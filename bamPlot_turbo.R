@@ -34,7 +34,7 @@ summaryFile = args[3]
 outFile = args[4]
 yScale = args[5]
 plotStyle = args[6]
-
+multiPage = args[7]
 #==========================================================
 #==================DEBUG SECTION===========================
 #==========================================================
@@ -43,7 +43,7 @@ plotStyle = args[6]
 #outFile = '/Users/charles/Dropbox/src/temp/ACTB_plots_test.pdf'
 #yScale = 'UNIFORM'
 #plotStyle = 'MULTIPLE'
-
+#multiPage = 'SINGLE_PAGE'
 #==========================================================
 #==========================================================
 #==========================================================
@@ -62,8 +62,10 @@ plotFile = as.character(summaryTable$PLOT_TABLE[1])
 plotTable = read.delim(plotFile)
 plotHeight = (nrow(plotTable)+1)*3
 
-#now open up the pdf
-pdf(file=outFile,width = 8.5,height =plotHeight)
+#now open up the pdf if this is a multipage pdf
+if(multiPage == 'SINGLE_PAGE'){
+	pdf(file=outFile,width = 8.5,height =plotHeight)
+}
 
 #now loop through the summary table
 for(i in 1:nrow(summaryTable)){
@@ -85,7 +87,13 @@ for(i in 1:nrow(summaryTable)){
 	sense = as.character(summaryTable$SENSE[i])
 	start = as.numeric(summaryTable$START[i])
 	end = as.numeric(summaryTable$END[i])
-	
+
+	#if a multipage PDF, open up the pdf
+	if(multiPage == 'MULTIPLE_PAGE'){
+		pageName = paste('_',name,'.pdf',sep='')		     
+		pageOutFile = gsub('.pdf',pageName,outFile)
+		pdf(file=pageOutFile,width = 8.5,height =plotHeight)	
+	}
 	#check if the beds have any data
 	if(nrow(bedNameTable) >1){
 		hasBed=TRUE
@@ -252,8 +260,16 @@ for(i in 1:nrow(summaryTable)){
 		
 	}
 
+
+	if(multiPage == 'MULTIPLE_PAGE'){
+		dev.off()
+	}
+
 	
 }
 
+if(multiPage == 'SINGLE_PAGE'){
+	dev.off()
+}
 
-dev.off()
+
