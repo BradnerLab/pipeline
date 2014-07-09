@@ -44,6 +44,7 @@ bowtieString = 'bowtie2'
 samtoolsString = 'samtools'
 tempParentFolder = '/raider/BOWTIE_TEMP/'
 fastqcString = '/usr/local/FastQC/fastqc'
+fastqDelimiter = '::'
 
 #tempParentFolder = '/mnt/d0-0/share/bradnerlab/projects/anna/BOWTIE_TEMP/'
 
@@ -69,7 +70,7 @@ def stripExtension(fileName):
 #print stripExtension('CGATGT-s_8_1_sequence.txt')
 
 
-def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,uniqueID=''):
+def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,linkFolder,mismatchN,uniqueID='',pairedEnd = False):
 
     '''
     creates a dictionary w/ all filenames
@@ -77,8 +78,12 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,un
 
 
     fileNameDict = {}
-
-    fileNameDict['fastqFile'] = fastqFile
+    if pairedEnd:
+        fastqFileList = fastqFile.split(fastqDelimiter)
+        fileNameDict['fastqFile_1'] = fastqFileList[0]
+        fileNameDict['fastqFile_2'] = fastqFileList[1]
+    else:
+        fileNameDict['fastqFile'] = fastqFile
 
     if uniqueID == '':
         fastqName = fastqFile.split('/')[-1]
@@ -93,8 +98,16 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,un
     tempFolder = tempParentFolder + 'bwt_' + fastqName + tempString + '/'    
     fileNameDict['tempFolder'] = tempFolder
 
-    tempFastqFile = tempFolder + fastqName + '.rawFastq'
-    fileNameDict['tempFastqFile'] = tempFastqFile
+    if pairedEnd:
+        tempFastqFile1 = tempFolder + fastqName + '_1.rawFastq'
+        fileNameDict['tempFastqFile_1'] = tempFastqFile1
+
+        tempFastqFile2 = tempFolder + fastqName + '_2.rawFastq'
+        fileNameDict['tempFastqFile_2'] = tempFastqFile2
+
+    else:
+        tempFastqFile = tempFolder + fastqName + '.rawFastq'
+        fileNameDict['tempFastqFile'] = tempFastqFile
 
     tempSamFile = tempFolder + fastqName + '.sam'
     fileNameDict['tempSamFile'] = tempSamFile
@@ -102,57 +115,93 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,un
     tempBamFile = tempFolder + fastqName + '.bam'
     fileNameDict['tempBamFile'] = tempBamFile
 
-    tempSortedBamFile = tempFolder + fastqName + '.%s.bwt.sorted' % (genome)
+    tempSortedBamFile = tempFolder + fastqName + '.%s.bwt.N%s.sorted' % (genome,mismatchN)
     fileNameDict['tempSortedBamFile'] = tempSortedBamFile
 
-    groupHeader = tempFolder + fastqName + '.%s.bwt' % (genome)
+    groupHeader = tempFolder + fastqName + '.%s.bwt.N%s' % (genome,mismatchN)
     fileNameDict['groupHeader'] = groupHeader
 
     fileNameDict['finalFolder'] = finalFolder
+
+    fileNameDict['linkFolder'] = linkFolder
+
     return fileNameDict
 
 
 
 
-def extractFastqCmd(fileNameDict):
+def extractFastqCmd(fileNameDict,pairedEnd = False):
 
     '''
     creates a command to extract/copy the fastq to a temp location
     '''
-    
-    fastqFile = fileNameDict['fastqFile']
-    tempFastqFile = fileNameDict['tempFastqFile']
+    if pairedEnd:
+        fastqList = []
+        fastqFile1 = fileNameDict['fastqFile_1']
+        tempFastqFile1 = fileNameDict['tempFastqFile_1']
+        fastqList.append([fastqFile1,tempFastqFile1])
 
-    #there are 3 possibilities, a gzipped, tarballed, or naked fastq
-    if string.lower(fastqFile).count('tar.gz') == 1:
-        cmd = "tar --strip-components 5 --to-stdout -xzvf %s > %s" % (fastqFile,tempFastqFile)
-    elif string.lower(fastqFile).count('tar') == 1:
-        cmd = "tar -xzvf %s > %s" % (fastqFile,tempFastqFile)
-    elif string.lower(fastqFile.split('.')[-1]) == 'gz':
-        cmd = 'cp %s %s.gz\n' % (fastqFile,tempFastqFile)
-        cmd+= 'gunzip %s.gz' % (tempFastqFile)
+        fastqFile2 = fileNameDict['fastqFile_2']
+        tempFastqFile2 = fileNameDict['tempFastqFile_2']
+        fastqList.append([fastqFile2,tempFastqFile2])
+        
     else:
-        cmd = 'cp %s %s' % (fastqFile,tempFastqFile)
+        fastqFile = fileNameDict['fastqFile']
+        tempFastqFile = fileNameDict['tempFastqFile']
+        fastqList = [[fastqFile,tempFastqFile]]
 
-    return cmd
+    cmdList = []
+    for [fastqFile,tempFastqFile] in fastqList:
+    #there are 3 possibilities, a gzipped, tarballed, or naked fastq
+        if string.lower(fastqFile).count('tar.gz') == 1:
+            cmd = "tar --strip-components 5 --to-stdout -xzvf %s > %s" % (fastqFile,tempFastqFile)
+        elif string.lower(fastqFile).count('tar') == 1:
+            cmd = "tar -xzvf %s > %s" % (fastqFile,tempFastqFile)
+        elif string.lower(fastqFile.split('.')[-1]) == 'gz':
+            cmd = 'cp %s %s.gz\n' % (fastqFile,tempFastqFile)
+            cmd+= 'gunzip %s.gz' % (tempFastqFile)
+        else:
+            cmd = 'cp %s %s' % (fastqFile,tempFastqFile)
 
-def runFastQC(fastqcString,fileNameDict):
+        cmdList.append(cmd)
+    fullCmd = string.join(cmdList,'\n')
+
+    return fullCmd
+
+def runFastQC(fastqcString,fileNameDict,pairedEnd = False):
 
     '''
     cmd to run fastqc
     '''
-    fastqName = fileNameDict['fastqName']
-    tempFastqFile = fileNameDict['tempFastqFile']
-    finalFolder = fileNameDict['finalFolder']
+    if pairedEnd:
+        fastqName = fileNameDict['fastqName']
+        tempFastqFile1 = fileNameDict['tempFastqFile_1']
+        tempFastqFile2 = fileNameDict['tempFastqFile_2']
+        finalFolder = fileNameDict['finalFolder']
 
-    if finalFolder[-1] != '/':
-        finalFolder+='/'
-    finalFolder += '%s_fastqc' % (fastqName)
-    cmd = 'mkdir %s\n' % (finalFolder)
-    cmd += '%s -o %s %s' % (fastqcString,finalFolder,tempFastqFile)
+        if finalFolder[-1] != '/':
+            finalFolder+='/'
+        finalFolder1 = finalFolder + '%s_1_fastqc' % (fastqName)
+        finalFolder2 = finalFolder + '%s_2_fastqc' % (fastqName)
+        cmd = 'mkdir %s\n' % (finalFolder1)
+        cmd += 'mkdir %s\n' % (finalFolder2)
+        cmd += '%s -o %s %s\n' % (fastqcString,finalFolder1,tempFastqFile1)
+        cmd += '%s -o %s %s' % (fastqcString,finalFolder2,tempFastqFile2)
+
+    else:
+        fastqName = fileNameDict['fastqName']
+        tempFastqFile = fileNameDict['tempFastqFile']
+        finalFolder = fileNameDict['finalFolder']
+
+        if finalFolder[-1] != '/':
+            finalFolder+='/'
+        finalFolder += '%s_fastqc' % (fastqName)
+        cmd = 'mkdir %s\n' % (finalFolder)
+        cmd += '%s -o %s %s' % (fastqcString,finalFolder,tempFastqFile)
+
     return cmd
 
-def bowtieCmd(bowtieString,seedLength,bowtieIndex,fileNameDict):
+def bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd=False):
 
     '''
     creates the bowtie command call
@@ -160,20 +209,36 @@ def bowtieCmd(bowtieString,seedLength,bowtieIndex,fileNameDict):
 
     
     #calling bowtie
-    tempFastqFile = fileNameDict['tempFastqFile']
-    tempSamFile = fileNameDict['tempSamFile']
+    if pairedEnd:
 
-    cmd = "%s -p 6 -X2000 -N %s -x %s -1 -2 -S %s" % (bowtieString,mismatchN,bowtieIndex,tempFastqFile,tempSamFile)
+        tempFastqFile1 = fileNameDict['tempFastqFile_1']
+        tempFastqFile2 = fileNameDict['tempFastqFile_2']
+        tempSamFile = fileNameDict['tempSamFile']
+        cmd = "%s -p 4 -X2000 -N %s -x %s -1 %s -2 %s -S %s" % (bowtieString,mismatchN,bowtieIndex,tempFastqFile1,tempFastqFile2,tempSamFile)
+
+    else:
+        tempFastqFile = fileNameDict['tempFastqFile']
+        tempSamFile = fileNameDict['tempSamFile']
+
+        cmd = "%s -p 4 -N %s -x %s -U %s -S %s" % (bowtieString,mismatchN,bowtieIndex,tempFastqFile,tempSamFile)
     return cmd
 
 
-def removeTempFastqCmd(fileNameDict):
+def removeTempFastqCmd(fileNameDict,pairedEnd = False):
 
     '''
     removes the temp fastq
     '''
-    tempFastqFile = fileNameDict['tempFastqFile']    
-    cmd = '/bin/rm -f %s' % (tempFastqFile)
+    if pairedEnd:
+
+        tempFastqFile1 = fileNameDict['tempFastqFile_1']    
+        tempFastqFile2 = fileNameDict['tempFastqFile_2']    
+        cmd = '/bin/rm -f %s\n' % (tempFastqFile1)
+        cmd += '/bin/rm -f %s' % (tempFastqFile2)
+
+    else:
+        tempFastqFile = fileNameDict['tempFastqFile']    
+        cmd = '/bin/rm -f %s' % (tempFastqFile)
     return cmd
 
 #generate a bam file
@@ -247,13 +312,27 @@ def mvBamCmd(fileNameDict):
     
     return cmd
 
+def linkBamCmd(fileNameDict):
+
+    '''
+    moves and renames the bam w/o the temp string
+    '''
+    groupHeader = fileNameDict['groupHeader']
+    finalFolder = fileNameDict['finalFolder']
+    linkFolder = fileNameDict['linkFolder']
+
+    cmd = "ln %s%s* %s" % (finalFolder,groupHeader,linkFolder)
+    
+    return cmd
+
+
 def rmTempFiles(fileNameDict):
 
     '''
     removes everything left in the temp folder
     '''
     groupHeader = fileNameDict['groupHeader']
-    cmd = "/bin/rm -f '%s'*" % (groupHeader)
+    cmd = "/bin/rm -f '%s*'" % (groupHeader)
     return cmd
 
 #===================================================================
@@ -268,7 +347,7 @@ def main():
 
     from optparse import OptionParser
 
-    usage = "usage: %prog [options] -f [FASTQFILE] -l [SEEDLENGTH] -g [GENOME] -u [UNIQUEID] -o [OUTPUTFOLDER]"
+    usage = "usage: %prog [options] -f [FASTQFILE] -g [GENOME] -u [UNIQUEID] -o [OUTPUTFOLDER]"
     parser = OptionParser(usage = usage)
     #required flags
     parser.add_option("-f","--fastq", dest="fastq",nargs = 1, default=None,
@@ -279,11 +358,21 @@ def main():
                       help = "specify a uniqueID")
     parser.add_option("-o","--output",dest="output",nargs =1, default = None,
                       help = "Specify an output folder")
-    
+
+
+    #optional arguments
+    parser.add_option("-N","--mismatch",dest="mismatchN",nargs =1, default = 0,
+                      help = "Specify 0 or 1 for allowed mismatches")
+    parser.add_option("--link-folder",dest="linkFolder",nargs =1, default = None,
+                      help = "Specify a folder to symlink the bam")
+    parser.add_option("-p","--paired",dest="paired",action='store_true',default = False,
+                      help = "Flag for paired end data")
+
+
 
     (options,args) = parser.parse_args()
 
-    if not options.fastq or not options.seedLength or not options.genome or not options.unique or not options.output:
+    if not options.fastq or not options.genome or not options.unique or not options.output:
         parser.print_help()
         exit()
 
@@ -293,6 +382,15 @@ def main():
     genome = string.lower(options.genome)
     uniqueID = options.unique
     outputFolder = options.output
+
+    #retrieve optional arguments
+    mismatchN = options.mismatchN
+    if options.linkFolder:
+
+        linkFolder = options.linkFolder
+    else:
+        linkFolder =''
+    pairedEnd = options.paired
 
     #get the bowtie index
     bowtieDict = {
@@ -305,31 +403,34 @@ def main():
     #get the temp string
     tempString = '_%s' % str(random.randint(1,10000))
     
-    fileNameDict = makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,outputFolder,uniqueID)
-
+    fileNameDict = makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,outputFolder,linkFolder,mismatchN,uniqueID,pairedEnd)
 
     #open the bashfile to write to
     bashFileName = "%s%s_bwt.sh" % (outputFolder,uniqueID)
     bashFile = open(bashFileName,'w')
+
+    #shebang
+    bashFile.write('#!/usr/bin/bash\n')
 
     #make temp directory
     cmd = 'mkdir %s' % (fileNameDict['tempFolder'])
     bashFile.write(cmd+'\n')
 
     #extract fastq
-    cmd = extractFastqCmd(fileNameDict)
+    cmd = extractFastqCmd(fileNameDict,pairedEnd)
     bashFile.write(cmd+'\n')
 
-    #cmd =runFastQC(fastqcString,fileNameDict)
-    #bashFile.write(cmd+'\n')
+    #call fastqc
+    cmd =runFastQC(fastqcString,fileNameDict,pairedEnd)
+    bashFile.write(cmd+'\n')
 
     #call bowtie
-    cmd = bowtieCmd(bowtieString,seedLength,bowtieIndex,fileNameDict)
+    cmd = bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd)
     bashFile.write(cmd+'\n')
 
     #remove temp fastq
-    #cmd = removeTempFastqCmd(fileNameDict)
-    #bashFile.write(cmd+'\n')
+    cmd = removeTempFastqCmd(fileNameDict,pairedEnd)
+    bashFile.write(cmd+'\n')
 
     #generate a bam
     cmd = generateTempBamCmd(samtoolsString,fileNameDict)
@@ -355,9 +456,14 @@ def main():
     cmd = mvBamCmd(fileNameDict)
     bashFile.write(cmd+'\n')
 
+    #link bams
+    if options.linkFolder:
+        cmd = linkBamCmd(fileNameDict)
+        bashFile.write(cmd+'\n')
+
     #cleanup
-    #cmd = rmTempFiles(fileNameDict)
-    #bashFile.write(cmd+'\n')
+    cmd = rmTempFiles(fileNameDict)
+    bashFile.write(cmd+'\n')
 
 
     bashFile.close()
