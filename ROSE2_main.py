@@ -523,11 +523,9 @@ def main():
     # MAPPING TO THE STITCHED GFF
 
     # Try to use the bamliquidatior_path.py script on cluster, otherwise, failover to local (in path), otherwise fail.
-    bamliquidator_path = '/ark/home/jdm/pipeline/bamliquidator_batch.py'
-    if not os.path.isfile(bamliquidator_path):
-        bamliquidator_path = 'bamliquidator_batch.py'
-        if not os.path.isfile(bamliquidator_path):
-            raise ValueError('bamliquidator_batch.py not found in path')
+    bamliquidator_path = 'bamliquidator_batch'
+
+
 
     for bamFile in bamFileList:
 
@@ -539,7 +537,7 @@ def main():
         if utils.checkOutput(mappedOut1File, 0.2, 0.2):
             print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut1File))
         else:
-            cmd1 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
+            cmd1 = bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
             print(cmd1)
 
             output1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, shell=True)

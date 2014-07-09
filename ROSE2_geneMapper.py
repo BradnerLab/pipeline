@@ -479,11 +479,8 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # now we need to run bamToGFF
 
     # Try to use the bamliquidatior_path.py script on cluster, otherwise, failover to local (in path), otherwise fail.
-    bamliquidator_path = '/ark/home/jdm/pipeline/bamliquidator_batch.py'
-    if not os.path.isfile(bamliquidator_path):
-        bamliquidator_path = 'bamliquidator_batch.py'
-        if not os.path.isfile(bamliquidator_path):
-            raise ValueError('bamliquidator_batch.py not found in path')
+    bamliquidator_path = 'bamliquidator_batch'
+
 
     print('MAPPING SIGNAL AT ENHANCER ASSOCIATED GENE TSS')
     # map density at genes in the +/- 5kb tss region
@@ -491,7 +488,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     bamName = rankByBamFile.split('/')[-1]
     mappedRankByFolder = "%s%s_%s_%s/" % (enhancerFolder, enhancerName,gffRootName, bamName)
     mappedRankByFile = "%s%s_%s_%s/matrix.gff" % (enhancerFolder,enhancerName, gffRootName, bamName)
-    cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
+    cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
 
@@ -510,7 +507,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
             enhancerFolder, enhancerName,gffRootName, controlName)
         mappedControlFile = "%s%s_%s_%s/matrix.gff" % (
             enhancerFolder, enhancerName,gffRootName, controlName)
-        cmd = 'python ' + bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
+        cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
         outputControl = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
