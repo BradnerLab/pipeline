@@ -44,6 +44,7 @@ import os
 import gzip
 import time
 import re
+import sys
 
 from string import join
 
@@ -196,9 +197,12 @@ def bedToGFF(bed, output=''):
     bed = formatBed(bed)
 
     gff = []
+
     for line in bed:
-        gffLine = [line[0],line[3],'',line[1],line[2],line[4],line[5],'',line[3]]
-        gff.append(gffLine)
+
+           gffLine = [line[0],line[3],'',line[1],line[2],line[4],line[5],'',line[3]]
+           gff.append(gffLine)
+
 
     if len(output) > 0:
         unParseTable(gff,output,'\t')
@@ -805,6 +809,7 @@ class LocusCollection:
                     for overlappingLocus in overlappingLoci:
                         overlapCoords+=overlappingLocus.coords()
                         oldCollection.remove(overlappingLocus)
+                    overlapCoords = [int(x) for x in overlapCoords]
                     if sense == 'both':
                         locus = Locus(locus.chr(),min(overlapCoords),max(overlapCoords),'.',locus.ID())
                     else:

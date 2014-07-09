@@ -3,7 +3,7 @@
 
 samtoolsString = 'samtools'
 pipelineFolder = '/ark/home/cl512/pipeline/' # need to set this to where this code is stored
-
+fastqDelimiter = '::' #delimiter for pairs in fastqs
 
 '''
 The MIT License (MIT)
@@ -84,6 +84,7 @@ import string
 
 #LOADING THE MASTER DATA TABLE
 #def loadDataTable(dataFile):
+#def writeDataTable(dataDict,outFile):
 #def summary(dataFile,outputFile=''):
 #def makeBamTable(dataFile,output):
 
@@ -653,8 +654,11 @@ def getTONYInfo(uniqueID,column =''):
 
         outputLines = output.stdout.readlines()
         output.stdout.close()
-    
-        return outputLines[1].rstrip().split('\t')[-1]
+        if outputLines.count('not a valid ID') == 1:
+            print("NO RECORD OF %s" % (uniqueID))
+            return False
+        else:
+            return outputLines[1].rstrip().split('\t')[-1]
     
 #-------------------------------------------------------------------------#
 #                                                                         #
@@ -667,19 +671,14 @@ def getTONYInfo(uniqueID,column =''):
 #===================CALLING BOWTIE TO MAP DATA=============================
 #==========================================================================
 
-def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True,overwrite=False):
+def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,mismatchN=0):
 
     '''
     makes a mapping bash script and launches 
     '''
 
-    #hardCoded seed lengths and index locations
-
-
-    seedLength = 40
-    
-
-    dataDict = loadDataTable(pipelineFile)
+    #hardCoded index locations
+    dataDict = loadDataTable(dataFile)
 
     #print(dataDict)
     if len(namesList) == 0:
@@ -690,39 +689,67 @@ def makeBowtieBashJobs(pipelineFile,namesList = [],launch=True,overwrite=False):
     for name in namesList:
     
         fastqFile = dataDict[name]['fastq']
+        #paired end files will be comma separated
+        if fastqFile.count(fastqDelimiter) == 1:
+            pairedEnd = True
+        elif fastqFile.count(fastqDelimiter) > 1:
+            print("UNABLE TO PARSE OUT FASTQ FILES FOR %s" % (name))
+        else:
+            pairedEnd = False
         genome = dataDict[name]['genome']
-        outputFolder = dataDict[name]['folder']
+        
+        #get the unique ID
         uniqueID = dataDict[name]['uniqueID']
-        formatFolder(outputFolder,create=True)
 
+        #see if the dataset is already entered into TONY
+        #get the parent tony folder
+        tonyFolder = getTONYInfo(uniqueID,column = 30)
+        if tonyFolder:
+            outputFolder = tonyFolder
+        else:
+            outputFolder = dataDict[name]['folder']
 
-        if overwrite:
-            cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
+        outputFolder = formatFolder(outputFolder,create=True)
+
+        #setting up the folder for linking
+        if int(mismatchN) ==1:
+            linkFolder = '/grail/bam/mismatch/%s/' % (string.lower(genome))
+            linkFolder = formatFolder(linkFolder,create=True)
+        else:
+            linkFolder = '/grail/bam/%s/' % (string.lower(genome))
+
+        #decide whether or not to run
+        try:
+            foo = open(dataDict[name]['bam'],'r')
+            if not overwrite:
+                print('BAM file already exists for %s. OVERWRITE = FALSE' % (name))
+                sys.exit()
+            else:
+                run = True
+        except IOError:
+            print('no bam file found for %s, making mapping bash script' % (name))
+            run = True
+
+        if run:
+    
+            cmd = "python /ark/home/cl512/pipeline/callBowtie2.py -f %s -g %s -u %s -o %s --link-folder %s" % (fastqFile,genome,uniqueID,outputFolder,linkFolder)
+            if int(mismatchN) == 1:
+                cmd += ' -N 1'
+            if pairedEnd:
+                cmd += ' -p'
+                
             print(cmd)
             os.system(cmd)
             if launch:
                 time.sleep(1)
                 cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
                 os.system(cmd)
-        else:
-            try:
-                foo = open(dataDict[name]['bam'],'r')
-                print('BAM file already exists for %s. OVERWRITE = FALSE' % (name))
-            except IOError:
-                print('no bam file found for %s, making mapping bash script' % (name))
-                cmd = "python /ark/home/cl512/pipeline/callBowtie.py -f %s -l %s -g %s -u %s -o %s" % (fastqFile,seedLength,genome,uniqueID,outputFolder)
-                print(cmd)
-                os.system(cmd)
-                if launch:
-                    time.sleep(1)
-                    cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
-                    os.system(cmd)
 
 
 
 
 
-def callBowtie(dataFile,dataList = [],overwrite = False):
+def callBowtie(dataFile,dataList = [],overwrite = False,pairedEnd = False):
 
     '''
     calls bowtie for the dataset names specified. if blank, calls everything
@@ -920,7 +947,7 @@ def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFo
         #get the original bam
         bamFile = getTONYInfo(uniqueID,column =47)
 
-        #get the parent folde
+        #get the parent folder
         parentFolder = getParentFolder(bamFile)
 
         #make a temp folder
@@ -2092,7 +2119,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
 #========================BATCH PLOTTING REGIONS============================
 #==========================================================================
 
-def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200):
+def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200,multiPage = False,debug=False):
 
     '''
     batch plots all regions in a gff
@@ -2147,6 +2174,10 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
     if len(bed) > 0:
         cmd += ' --bed %s' % (bed)
+    if multiPage:
+        cmd += ' --multi-page'
+    if debug:
+        cmd += ' --save-temp'
     cmd += ' &'
 
     print cmd
