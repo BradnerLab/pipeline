@@ -107,7 +107,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[],enhancerType='super'):
     if len(namesList) == 0:
 
 
-        namesList = [name for name in dataDict.keys() if string.upper(name).count('WCE') ==0 or string.upper(name).count('INPUT') == 0 ]
+        namesList = [name for name in dataDict.keys() if string.upper(name).count('WCE') ==0 and string.upper(name).count('INPUT') == 0 ]
         #if no namesList is given, this filters out WCE 
 
     #now check that all of the datasets at a minimum have a rose output OR enriched region file
@@ -376,6 +376,7 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder,maskF
     #first check to see if this has already been done
     mergedRegionMap = "%srose/%s_ROSE/%s_0KB_STITCHED_ENHANCER_REGION_MAP.txt" % (outputFolder,namesList[0],gffName)
     if utils.checkOutput(mergedRegionMap,1,1):
+        print("FOUND PREVIOUS REGION MAP")
         return mergedRegionMap
 
 
@@ -592,7 +593,11 @@ def main():
         print "STARTING ANALYSIS ON THE FOLLOWING DATASETS:"
         print nameDict.keys()
 
-
+        for name in nameDict.keys():
+            if len(nameDict[name]['enhancerFile']) == 0:
+                print("NO ROSE OUTPUT FOR %s" % (name))
+        
+        #sys.exit()
         #=====================================================
         #==============LAUNCH ENHANCER MAPPING================
         #=====================================================
@@ -601,7 +606,7 @@ def main():
         nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhancerType,maskFile)
         print nameDict
 
-
+        #sys.exit()
 
         #=====================================================
         #====================GET MEDIAN SIGNAL================
@@ -619,7 +624,7 @@ def main():
         print "\n\n\nIDENTIFYING CONSENSUS ENHANCER REGIONS"
 
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
-        mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
+        #mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
@@ -634,6 +639,7 @@ def main():
 
         print "\n\n\nCREATING ENHANCER SIGNAL TABLE"
         signalTableFile = makeEnhancerSignalTable(nameDict,mergedRegionMap,medianDict,analysisName,genome,outputFolder)
+        #sys.exit()
         #=====================================================
         #===============CALL CLUSTERING R SCRIPT==============
         #=====================================================
@@ -645,7 +651,7 @@ def main():
         #png of cluster gram of samples w/ tree
         #ordered table w/ cluster assignment
         #similarity matrix for samples
-
+        #sys.exit()
         #=====================================================
         #=============GENE MAPPING BY CLUSTER=================
         #=====================================================
