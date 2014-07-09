@@ -1,7 +1,7 @@
 ###############################################################################
 # The MIT License (MIT)
 #
-# Copyright (c) 2013 Xin Zhong and Charles Lin
+# Copyright (c) 2013 John DiMatteo, Xin Zhong, and Charles Lin
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.6.15
-# when changing version consider adding corresponding entry to debian/changelog
-# and keeping this in sync with setup.py's version
+VERSION = 0.8.2
 
 # The directory to install in:
 prefix = /usr/local
@@ -40,9 +38,58 @@ CC=g++
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
 CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
-LDFLAGS := -O3 -g -Wall -march=native
+LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
+
+GIT_DIFF_RC := $(shell git diff --quiet; echo $$?)
+ifeq ($(GIT_DIFF_RC), 0)
+CLEAN := clean
+else
+CLEAN := unclean
+endif
+
+# if someone does a ppa and/or pip upload, first change the name/email and commit it
+UPLOADER := John DiMatteo
+UPLOADER_EMAIL := jdimatteo@gmail.com
+
+define CHANGELOG 
+bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
+
+  * Auto generated from makefile
+  * $(shell git config --get remote.origin.url)
+  * $(shell git rev-parse HEAD) ($(CLEAN)) 
+
+ -- $(UPLOADER) <$(UPLOADER_EMAIL)>  $(shell date +"%a, %d %b %G %H:%M:%S %z")
+
+endef
+export CHANGELOG 
+
+define SETUP_PY
+from setuptools import setup
+
+setup(
+    name='BamLiquidatorBatch',
+    version='$(VERSION)',
+    maintainer='$(UPLOADER)',
+    maintainer_email='$(UPLOADER_EMAIL)',
+    packages=['bamliquidatorbatch'],
+    url='https://github.com/BradnerLab/pipeline/wiki/bamliquidator',
+    license='The MIT License (MIT)',
+    entry_points = {
+        'console_scripts': [
+            'bamliquidator_batch = bamliquidatorbatch.bamliquidator_batch:main',
+            'bamliquidator_flattener = bamliquidatorbatch.flattener:main'
+        ]
+    },
+    install_requires=[
+        "openpyxl >=1.6.1, <2.0.0",
+        "bokeh >= 0.4.0"
+    ],
+)
+
+endef
+export SETUP_PY
 
 all: bamliquidator bamliquidator_bins bamliquidator_regions 
 
@@ -81,17 +128,24 @@ deb: clean archive
 	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
 	tar xf bamliquidator_$(VERSION).orig.tar.gz
 	cp -R debian bamliquidator-$(VERSION)
-	cd bamliquidator-$(VERSION)/debian; debuild -S
+	cp -R bamliquidator-$(VERSION) bamliquidator-$(VERSION)-precise
+	mv bamliquidator-$(VERSION) bamliquidator-$(VERSION)-trusty
+	printf "$$CHANGELOG" precise precise > bamliquidator-$(VERSION)-precise/debian/changelog 
+	printf "$$CHANGELOG" trusty trusty > bamliquidator-$(VERSION)-trusty/debian/changelog 
+	cd bamliquidator-$(VERSION)-precise/debian; debuild -S
+	cd bamliquidator-$(VERSION)-trusty/debian; debuild -S
 
 dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
+	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
 
 pip:
+	echo "$$SETUP_PY" > setup.py
 	python setup.py sdist upload
 
 clean:
-	rm -f $(EXECUTABLES) *.o MANIFEST
-	rm -rf bamliquidator_$(VERSION)* bamliquidator-$(VERSION)* BamLiquidatorBatch.egg-info dist
+	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
