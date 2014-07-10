@@ -8,5 +8,5 @@ notifications:
 install:
     - "pip install pep8 pylint"
 script:
-  - "pylint --disable=W0311,C0301 bamliquidator_internal/"
-  #  - "pep8 --ignore=E501 ."
+  - "pylint --rcfile=.pylintrc --disable=fixme bamliquidator_internal/"
+  #  - "pep8 --ignore=E501,E302,E303 ."
