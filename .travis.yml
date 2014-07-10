@@ -9,7 +9,8 @@ before_install:
 #  - "sudo apt-get update"
   - "sudo apt-get install libhdf5-serial-dev"
 install:
-  - "pip install pep8 pylint tables bokeh numexpr scipy"
+  - "pip install numexpr"
+  - "pip install pep8 pylint tables bokeh scipy"
   # TODO: Move tables, etc. to requirements.txt, specify versions.
 script:
   - "pylint --rcfile=.pylintrc --disable=fixme bamliquidator_internal/"
