@@ -7,11 +7,10 @@ notifications:
   email: false
 before_install:
 #  - "sudo apt-get update"
-  - "sudo apt-get install libhdf5-serial-dev"
+#  - "sudo apt-get install libhdf5-serial-dev"
 install:
-  - "pip install numexpr>=2.4 Cython>=0.20.1"
-  - "pip install pep8 pylint tables bokeh scipy"
+  - "pip install pep8 pylint"
   # TODO: Move tables, etc. to requirements.txt, specify versions.
 script:
-  - "pylint --rcfile=.pylintrc --disable=fixme bamliquidator_internal/"
-  #  - "pep8 --ignore=E501,E302,E303 ."
+  - "pylint --rcfile=.pylintrc --disable=fixme,import-error bamliquidator_internal/"
+  - "pep8 --ignore=E501,E302,E303 bamliquidator_internal/"
