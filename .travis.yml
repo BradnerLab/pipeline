@@ -6,11 +6,11 @@ python:
 notifications:
   email: false
 before_install:
-  - "sudo apt-get update"
+#  - "sudo apt-get update"
   - "sudo apt-get install libhdf5-serial-dev"
 install:
-  - "pip install pep8 pylint tables>=3.1.1 bokeh>=0.5.0 scipy"
-  # TODO: Move tables, etc. to requirements.txt
+  - "pip install pep8 pylint tables bokeh scipy"
+  # TODO: Move tables, etc. to requirements.txt, specify versions.
 script:
   - "pylint --rcfile=.pylintrc --disable=fixme bamliquidator_internal/"
   #  - "pep8 --ignore=E501,E302,E303 ."
