@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>HockeyStick Viz</title>
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/css/main.css"></link>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+  <script src="/js/tablesorter.js"></script>
+  
+</head>
+<body>
+  <div id="page_header">
+    <div id="page_title"> </div>
+    <div id="page_description">
+      Cheesy acronym name here
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+        Select Dataset <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu" role="menu" id="selector">
+        <li><a href="#">MM1S_H3K27AC_DMSO_HOCKEY.csv</a></li>
+        <li><a href="#">U87_H3K27AC_HOCKEY.csv</a></li>
+        <li><a href="#">MS1_H3K27Ac_HOCKEY.csv</a></li>
+      </ul>
+    </div>
+
+      <div class="col-lg-3">
+        <div class="input-group input-sm">
+          <input type="text" class="form-control">
+          <span class="input-group-btn">
+            <button class="btn btn-default" type="button">Find</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="page_content">
+    <div id="linegraph"></div>
+
+    <div id="table_div">
+      <br>
+      <div class="titular">Data Table</div>
+      <div class="instruct">Click on table headers to sort the rows. Select a row and press "Delete Row" to delete. 
+        <br> Press "Clear table" to clear the entire table.
+        <br> Hovering over a row will highlight the corresponding circle above.</div>
+    
+      <input id="del_button" class="btn btn-default" type="button" value="Delete Row" onclick="deleteRow('tbody')"/>  
+      <input id="clear_button" class="btn btn-default" type="button" value="Clear Table" onclick="clearTable('tbody')"/>
+
+      <a href="#" id="export_button" class="btn btn-default">Export</a>
+      <!-- <input id="export_button" class="btn btn-default" type="button" value="Export"/> -->
+
+      <table id="table" class="tablesorter">
+        
+        <thead>
+          <tr class="header">
+            <th class="select">Select</th>
+            <th class="dataset">Dataset</th>
+            <th class="peak">Peak Number</th>
+            <th class="rank">Rank</th>
+            <th class="super">Superenhancer</th>
+            <th class="chromosome">Chromosome</th>
+            <th class="start">Start</th>
+            <th class="end">End</th>
+            <th class="nearby">Nearby Genes</th>
+            <th class="functional">Functional Categories</th>
+          </tr>
+        </thead>
+
+        <tbody id="tbody">
+        </tbody>
+      
+      </table>
+
+    </div>
+
+  </div>
+	<script src="/js/main.js"></script>
+</body>
