@@ -171,7 +171,7 @@ function update_linegraph(file) {
 		.y(function(d) {return linegraph_y(d.val)});
 
 	//data
-	d3.csv("/Users/AngelaFan/Documents/Bradner_work/hockey-sticks" + string(file), function(error, data) {
+	d3.csv("/Documents/Bradner_work/hockey-sticks/" + file, function(error, data) {
 		data.forEach(function(d) {
 			d.super = +d.IS_SUPER;
 			d.val = +d.SIGNAL;
@@ -409,7 +409,7 @@ function update_linegraph(file) {
 
 					//console.log(file)
 //output_name[0] + "plots/" +
-					var pdf_name = output_name[0] + "_plots/" + "SE_plots_" + output_name[0] + "_" + d.REGION_ID + ".pdf";
+					var pdf_name = "/Documents/Bradner_work/hockey-sticks/" + output_name[0] + "_plots/" + "SE_plots_" + output_name[0] + "_" + d.REGION_ID + ".pdf";
 
 					//console.log(output_name)
 
