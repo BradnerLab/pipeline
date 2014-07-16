@@ -451,6 +451,12 @@ function update_linegraph(file) {
 						clicks = 0;
 						//console.log("happen")
 						screenshotPreview(pdf_name);
+
+						// d3.selectAll(".pdf_image", function(d) {
+						// 	console.log("here")
+						// 	this.attr("transform", "translate(" + d.rank + "0)");
+						// })
+						
 					}, delay);
 				}
 

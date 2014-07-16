@@ -4,7 +4,7 @@
 
 this.screenshotPreview = function(filename){    
 
-    $("#linegraph").append("<p><embed src=" + filename + "#zoom=50" + " scale='tofit' type='application/pdf' width='100px' height='100px' style='position:absolute; left: 300px; top: 100px' class='pdf_image'></p>");                           
+    $("#linegraph").append("<p><embed src=" + filename + " scale='tofit' type='application/pdf' width='25%' height='60%' class='pdf_image'></p>");                           
                                                                                    
 };
 

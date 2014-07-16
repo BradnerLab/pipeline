@@ -323,3 +323,9 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   bottom: 15px;
   left: 0px;
 }
+
+.pdf_image {
+  position: absolute;
+  left: 850px;
+  top: 100px;
+}
