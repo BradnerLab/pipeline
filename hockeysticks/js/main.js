@@ -451,7 +451,6 @@ function update_linegraph(file) {
 						clicks = 0;
 						//console.log("happen")
 						screenshotPreview(pdf_name);
-
 					}, delay);
 				}
 
@@ -468,6 +467,11 @@ function update_linegraph(file) {
 					addRow("tbody", d);
 				}
 			});
+
+			d3.select("#linegraph")
+				.on("click", function() {
+					d3.select(".pdf_image").remove();
+				})
 
 		// console.log(data)
 
