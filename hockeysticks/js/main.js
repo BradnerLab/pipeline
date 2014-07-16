@@ -595,7 +595,7 @@ function update_linegraph(file) {
 
 				linegraph_clear_button
 					.append('text')
-					.attr("y", -1)
+					.attr("y", -2)
 					.attr("x", 10)
 					.text("Clear Zoom")
 					.style("fill", "black");
@@ -798,7 +798,7 @@ $(".dropdown-menu li a").click(function () {
 				.range([15, 3])
 
 		    var node_color_scale = d3.scale.linear()
-		    	.range(["white", "black"])
+		    	.range(["white", "red"])
 		    	.domain([0, 1])
 
 
@@ -924,22 +924,22 @@ $(".dropdown-menu li a").click(function () {
 
 		    stroke_gradient.append("svg:stop")
 		    	.attr("offset", "0%")
-		    	.attr("stop-color", "red")
+		    	.attr("stop-color", "black")
 		    	.attr("stop-opacity", 1);
 
 		    stroke_gradient.append("svg:stop")
 		    	.attr("offset", "20%")
-		    	.attr("stop-color", "red")
+		    	.attr("stop-color", "black")
 		    	.attr("stop-opacity", .2);
 
 		    stroke_gradient.append("svg:stop")
 		    	.attr("offset", "80%")
-		    	.attr("stop-color", "red")
+		    	.attr("stop-color", "black")
 		    	.attr("stop-opacity", .2);
 
 		    stroke_gradient.append("svg:stop")
 		    	.attr("offset", "100%")
-		    	.attr("stop-color", "red")
+		    	.attr("stop-color", "black")
 		    	.attr("stop-opacity", 1);
 
 			var stroke_width_scale = d3.scale.linear()
@@ -970,10 +970,10 @@ $(".dropdown-menu li a").click(function () {
 			    		return 1;
 			    	}
 
-			    	if (d.weight < 20) {
+			    	if (d.weight < 25) {
 			    		return 0;
 			    	} 
-			    	else if (d.weight < 40) {
+			    	else if (d.weight < 35) {
 			    		return .5;
 			    	} 
 			    	else if (d.weight < 60) {
@@ -1054,33 +1054,38 @@ $(".dropdown-menu li a").click(function () {
 		      	//.attr("dy", ".35em")
 				.attr("x", function(d) {
 
-					if (d.x > 0) {
-						return d.x + 1;
-					} 
+					return d.x - 18
 
-					if (d.x < 0) {
-						return d.x - 20;
-					}
+					// if (d.x > 0) {
+					// 	return d.x + 10;
+					// } 
+
+					// if (d.x < 0) {
+					// 	return d.x - 30;
+					// }
 
 
 					//return d.x - 18
 				})
 				.attr("y", function(d) {
 
-					if (d.y > 0) {
-						return d.y + 40;
-					}
+					return d.y + 5
 
-					if (d.y < 0) {
-						return d.y - 35;
-					}
+					// if (d.y > 0) {
+					// 	return d.y + 10;
+					// }
+
+					// if (d.y < 0) {
+					// 	return d.y - 10;
+					// }
 					//return d.y + 5
 				})
 				.text(function(d) {
 					return d.name;
 				})
 				.attr("class", "node_text")
-				.attr("fill", "black");
+				.attr("fill", "black")
+				.style("font-size", "12px");
 
 
 			var gradient = svg.append("svg:defs")
@@ -1099,7 +1104,7 @@ $(".dropdown-menu li a").click(function () {
 
 		    gradient.append("svg:stop")
 		    	.attr("offset", "100%")
-		    	.attr("stop-color", "black")
+		    	.attr("stop-color", "red")
 		    	.attr("stop-opacity", 1);
 
 		    svg.append("svg:rect")
