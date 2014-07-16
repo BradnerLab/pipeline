@@ -456,7 +456,7 @@ function update_linegraph(file) {
 						// 	console.log("here")
 						// 	this.attr("transform", "translate(" + d.rank + "0)");
 						// })
-						
+
 					}, delay);
 				}
 
@@ -730,4 +730,9 @@ $(document).ready(function () {
     });	
 });
 
+screenshotPreview = function(filename){    
+
+    $("#linegraph").append("<p><embed src=" + filename + " scale='tofit' type='application/pdf' width='25%' height='60%' class='pdf_image'></p>");                           
+                                                                                   
+};
 
