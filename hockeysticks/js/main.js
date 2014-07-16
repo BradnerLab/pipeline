@@ -150,10 +150,19 @@ function draw_linegraph() {
 
 	$("#search_button").click(function() {
 		//console.log("hello")
-		var input = $( "#search" ).val()
+		var input = $("#search").val()
+		
+		d3.csv("/Documents/Bradner_work/hockey-sticks/result.csv", function(error, data) {
+			
+			var data_length = data.length;
 
-		//var bla = $('#txt_name').val();
-		console.log(input)
+			for (var i = 0; i < data.length; i++) {
+				if (i == 1) {
+					console.log(data[1])
+				}
+			}
+
+		})
 	})
 
 
