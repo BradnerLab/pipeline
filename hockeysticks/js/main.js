@@ -148,15 +148,12 @@ function draw_linegraph() {
 			.attr("class", "page_title");
 	});
 
-	$("#search_button").click(function() {
-		//console.log("hello")
-		var input = $("#search").val()
-		
-		d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data) {
-			
-			var data_length = data.length;
+	d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data){
+		$("#search_button").click(function() {
+			//console.log("hello")
+			var input = $("#search").val()
 
-			//console.log(input)
+			var data_length = data.length;
 
 			for (var i = 0; i < data.length; i++) {
 				if (data[i].gene == input) {
@@ -165,16 +162,17 @@ function draw_linegraph() {
 						break;
 					}
 					else {
-						alert("Sorry " + input + " is not super in any current dataset.")
+						alert("Sorry " + input + " is in the dataset but is not super.")
 						break;
 					}
 				}
 			}
 
 		})
+
+
+
 	})
-
-
 
 };
 
