@@ -22,13 +22,13 @@ bb_linegraph = {
 svg_linegraph = d3.select("#linegraph").append("svg")
 	.attr("class", "linegraph_svg")
 	.attr({
-		width: bb_linegraph.w + bb_linegraph.margin.left + bb_linegraph.margin.right + 220,
+		width: bb_linegraph.w + bb_linegraph.margin.left + bb_linegraph.margin.right + 400,
 		height: bb_linegraph.h + bb_linegraph.margin.bottom + bb_linegraph.margin.top
 	});
 
 var linegraph = svg_linegraph.append("g")
 	.attr("class", "linegraph")
-	.attr("transform", "translate(" + (bb_linegraph.margin.left+10) + "," + bb_linegraph.margin.top + ")");
+	.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
 
 //tip call
 var graph_tip = d3.tip()
