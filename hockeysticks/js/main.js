@@ -782,10 +782,10 @@ $(".dropdown-menu li a").click(function () {
 
 			var svg = d3.select("#crcgraph").append("svg")
 			    .attr("width", width)
-			    .attr("height", width)
+			    .attr("height", width + 50)
 			    .attr("class", "crc_svg")
 			    .append("g")
-			    .attr("transform", "translate(" + (width/2 + margin)  + "," + (width / 2 + margin) + ")");
+			    .attr("transform", "translate(" + (width/2 + margin)  + "," + (width / 2 + margin + 50) + ")");
 
 			var positions = [];
 
@@ -1037,12 +1037,6 @@ $(".dropdown-menu li a").click(function () {
 			d3.selectAll(".spacer").moveToFront();
 			d3.selectAll(".node").moveToFront();
 
-			// var title = d3.select("#page_title")
-			// 	.append("text")
-			// 	.attr("x", width/2 + margin)
-			// 	.attr("y", 10)
-			// 	.text("Super-enhancer and TF Interaction Network");
-
 			function computeTextRotation(d) {
 			  var angle = d.x - Math.PI / 2;
 			  return angle / Math.PI * 180;
@@ -1054,30 +1048,29 @@ $(".dropdown-menu li a").click(function () {
 		      	//.attr("dy", ".35em")
 				.attr("x", function(d) {
 
-					return d.x - 18
+					//return d.x - 18
 
-					// if (d.x > 0) {
-					// 	return d.x + 10;
-					// } 
+					if (d.x > 0) {
+						return d.x + 8;
+					} 
 
-					// if (d.x < 0) {
-					// 	return d.x - 30;
-					// }
+					if (d.x < 0) {
+						return d.x - 30;
+					}
 
 
 					//return d.x - 18
 				})
 				.attr("y", function(d) {
 
-					return d.y + 5
+					if (d.y > 0) {
+						return d.y + 8;
+					}
 
-					// if (d.y > 0) {
-					// 	return d.y + 10;
-					// }
+					if (d.y < 0) {
+						return d.y - 8;
+					}
 
-					// if (d.y < 0) {
-					// 	return d.y - 10;
-					// }
 					//return d.y + 5
 				})
 				.text(function(d) {
@@ -1107,30 +1100,36 @@ $(".dropdown-menu li a").click(function () {
 		    	.attr("stop-color", "red")
 		    	.attr("stop-opacity", 1);
 
+			svg.append("text")
+				.attr("x", width/3 - 330)
+				.attr("y", -270)
+				.text("Super-enhancer and TF Interaction Network")
+				.style("font-weight", "bold");
+
 		    svg.append("svg:rect")
-		    	.attr("width", 200)
+		    	.attr("width", 150)
 		    	.attr("height", 30)
-		    	.attr("x", 200)
-		    	.attr("y", -550)
+		    	.attr("x", -40)
+		    	.attr("y", -260)
 		        .attr("class", "legend_gradient")
 		    	.style("fill", "url(#gradient)")
 		    	.style("stroke-width", "2px")
 		    	.style("stroke", "white");
 
 		    svg.append("text")
-		    	.attr("x", 245)
-		    	.attr("y", -530)
+		    	.attr("x", -25)
+		    	.attr("y", -240)
 		    	.style("font-weight", "bold")
 		    	.text("Clique Percentage")
 
 		    svg.append("text")
-		    	.attr("x", 180)
-		    	.attr("y", -530)
+		    	.attr("x", -60)
+		    	.attr("y", -240)
 		    	.text("0%")
 
 		    svg.append("text")
-		    	.attr("x", 400)
-		    	.attr("y", -530)
+		    	.attr("x", 110)
+		    	.attr("y", -240)
 		    	.text("100%");
 
 		});
