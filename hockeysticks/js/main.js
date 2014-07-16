@@ -112,20 +112,20 @@ function draw_linegraph() {
 		.attr("font-size", "16px")
 		.attr("font-weight", "bold")
 		.attr("text-anchor", "middle")
-		.attr("x", bb_linegraph.w/2)
+		.attr("x", bb_linegraph.w/2 + 30)
 		.text("Hockey Stick");
 
 	linegraph.append("text")
 		.attr("y", -21)
 		.attr("text-anchor", "middle")
-		.attr("x", bb_linegraph.w/2)
+		.attr("x", bb_linegraph.w/2 + 30)
 		.style("font-size", "12px")
 		.text("Select a region to zoom in. Click 'Clear Zoom' to zoom out.");
 
 	linegraph.append("text")
 		.attr("y", -8)
 		.attr("text-anchor", "middle")
-		.attr("x", bb_linegraph.w/2)
+		.attr("x", bb_linegraph.w/2 + 30)
 		.style("font-size", "12px")
 		.text("Mouseover a circle more information, click to bring up a PDF, double-click to add to the table.");
 
@@ -495,7 +495,7 @@ function update_linegraph(file) {
 			.enter()
 			.append("g")
 			.attr("transform", function(d,i) {
-				return "translate(850," + i*20 + ")";
+				return "translate(-10," + -1.5*(i*20) + ")";
 			});
 
 		legend.append("rect")
@@ -505,8 +505,8 @@ function update_linegraph(file) {
 
 		legend.append("text")
 			.attr("x", 25)
-			.attr("y", 9)
-			.attr("dy", ".35em")
+			.attr("y", 0)
+			.attr("dy", "1.15em")
 			.text(function(d) {
 				if (d == 1) {
 					return "Super-enhancer"
@@ -517,8 +517,8 @@ function update_linegraph(file) {
 			});
 
 		linegraph.append("text")
-			.attr("x", 885)
-			.attr("y", -10)
+			.attr("x", 25)
+			.attr("y", -40)
 			.text("Legend")
 			.style("font-weight", "bold")
 			.style("font-size", "14px");
