@@ -3,24 +3,12 @@
 
 
 this.screenshotPreview = function(filename){    
-                               
-    xOffset = 10;
-    yOffset = 30;
-       // these 2 variable determine popup's distance from the cursor
-    console.log("here")
 
 
-    $("#linegraph").append("<p><embed src=" + filename + " type='application/pdf'></p>");                           
+    $("#linegraph").append("<p><embed src=" + filename + " type='application/pdf' width='80%' height='80%' style='position:absolute; left: 100px'></p>");                           
                                                                                    
-    // $("#screenshot")
-    //     .css("top",(e.pageY - xOffset) + "px")
-    //     .css("left",(e.pageX + yOffset) + "px")
-    //     .fadeIn("fast");                                                                                                                       
-};
- 
- 
-// // starting the script on page load
-// $(document).ready(function(){
-//     screenshotPreview();
-// });
 
+};
+
+ 
+ 
