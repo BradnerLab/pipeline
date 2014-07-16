@@ -940,7 +940,7 @@ $(".dropdown-menu li a").click(function () {
 		    stroke_gradient.append("svg:stop")
 		    	.attr("offset", "100%")
 		    	.attr("stop-color", "black")
-		    	.attr("stop-opacity", 1);
+		    	.attr("stop-opacity", .05);
 
 			var stroke_width_scale = d3.scale.linear()
 				.range([1, 15])
