@@ -736,3 +736,406 @@ screenshotPreview = function(filename){
                                                                                    
 };
 
+
+$(".dropdown-menu li a").click(function () {
+	file = $(this).text()
+	output_name = file.split("_HOCKEY");
+
+		d3.csv("/Documents/Bradner_work/hockey-sticks/" + output_name[0] + "_CRC.csv", function(links) {
+
+			var nodes = {};
+
+			var node_list = [];
+
+			var node_names = [];
+
+			// Compute the distinct nodes from the links.
+			links.forEach(function(link) {
+
+				link.source = nodes[link.source] || (nodes[link.source] = {name: link.source, fixed: true, weight: +link.weight});
+			  	link.target = nodes[link.target] || (nodes[link.target] = {name: link.target, fixed: true, weight: +link.weight});
+
+			  	if (link.node_list) {
+			  		node_list.push({name: link.node_list, degree: +link.degree, clique: +link.clique_percentage, enhancerRank: +link.enhancerRank});
+			  	}
+
+			});
+
+			var node_length = node_list.length;
+
+			while (node_length--) {
+				if (node_list[node_length].degree < 120) {
+					node_list.splice(node_length,1)
+				}
+				else if (node_list[node_length].clique == 0) {
+					node_list.splice(node_length,1)
+				}
+				else {
+					node_names.push(node_list[node_length].name)
+				}
+			}
+
+
+			var width = 400,
+			    margin = 50;
+
+			var radius = 150;
+
+			var svg = d3.select("#crcgraph").append("svg")
+			    .attr("width", width)
+			    .attr("height", width)
+			    .attr("class", "svg")
+			    .append("g")
+			    .attr("transform", "translate(" + (width / 2 + margin) + "," + (width / 2 + margin) + ")");
+
+			var positions = [];
+
+
+			var node_opacity_scale = d3.scale.linear()
+				.domain(d3.extent(node_list, function(d) { return +d.degree; }))
+				.range([1,1])
+
+			var node_size_scale = d3.scale.linear()
+				.domain(d3.extent(node_list, function(d) { return +d.enhancerRank; }))
+				.range([25, 10])
+
+		    var node_color_scale = d3.scale.linear()
+		    	.range(["white", "black"])
+		    	.domain([0, 1])
+
+
+			var node = svg.selectAll("circle")
+			    .data(node_list)
+			  .enter().append("circle")
+			  	.attr("class", "node")
+			  	//.style("stroke-width", "20px")
+			  	//.style("stroke", "white")
+			    .attr("transform", function(d, i) {
+
+			    	positions.push({name: d.name, x: Math.cos(2*Math.PI/node_list.length*i)*radius - 50, y: Math.sin(2*Math.PI/node_list.length*i)*radius - 50, degree: +d.degree});
+
+				  	return "translate(" + (Math.cos(2*Math.PI/node_list.length*i)*radius - 50) +
+		 			         "," + (Math.sin(2*Math.PI/node_list.length*i)*radius - 50) + ")";
+				})
+				.attr("fill", function(d) {
+					//console.log(d.clique_percentage)
+					return node_color_scale(+d.clique)
+				})
+				.attr("id", function(d) {
+					return d.name;
+				})
+				.attr("r", function(d) {
+					//console.log(d)
+					if (d.enhancerRank == 0) {
+						return 0;
+					}
+
+					else {
+						return node_size_scale(d.enhancerRank);
+					}
+				})
+				.attr("opacity", function(d) {
+
+					return node_opacity_scale(d.degree);
+
+				});
+
+			//add whitespace around each circle
+			var spacer = svg.selectAll(".spacer")
+				.data(node_list)
+				.enter().append("circle")
+				.attr("class", "spacer")
+				.attr("transform", function(d,i) {
+					return "translate(" + (Math.cos(2*Math.PI/node_list.length*i)*radius - 50) +
+					         "," + (Math.sin(2*Math.PI/node_list.length*i)*radius - 50) + ")";
+				})
+				.attr("fill", "white")
+				.attr("opacity", 1)
+				.attr("r", function(d) {
+					if (d.degree < 80) {
+						return 5;
+					}
+					else if (d.enhancerRank == 0) {
+						return 10;
+					}
+					else {
+						return node_size_scale(d.enhancerRank) + 5
+					}
+				});
+
+			d3.selection.prototype.moveToFront = function() {
+			  return this.each(function(){
+			    this.parentNode.appendChild(this);
+			  });
+			};
+
+			var link_length = links.length;
+
+			while (link_length--) {
+
+				if (node_names.indexOf(links[link_length].target.name) == -1) {
+					links.splice(link_length, 1)
+					//console.log("hello")
+				}
+
+				else if (node_names.indexOf(links[link_length].source.name) == -1) {
+					links.splice(link_length, 1)
+					//console.log("hello")
+				}
+
+				// else {
+				// 	console.log("hello")
+				// }
+			}
+
+
+			var link_length_2 = links.length;
+
+			//console.log(link_length_2)
+
+			//console.log(links)
+
+			for (var i = 0; i < link_length_2; i++) {
+				//console.log(links[i])
+
+				for (var j = 0; j < positions.length; j++) {
+
+					if (links[i].source.name == positions[j].name) {
+						links[i].source.x = positions[j].x
+						links[i].source.y = positions[j].y
+					}
+					if (links[i].target.name == positions[j].name) {
+						links[i].target.x = positions[j].x
+						links[i].target.y = positions[j].y
+					}
+				}
+
+				//if (i == 1) {console.log(links[i])}
+			}
+
+			//console.log(links)
+
+			var stroke_gradient = svg.append("svg:defs")
+		    	.append("svg:linearGradient")
+		    	.attr("id", "stroke_gradient")
+		    	.attr("x1", "0%")
+		    	.attr("y1", "0%")
+		    	.attr("x2", "100%")
+		    	.attr("y2", "0%")
+		    	.attr("spreadMethod", "pad");
+
+		    stroke_gradient.append("svg:stop")
+		    	.attr("offset", "0%")
+		    	.attr("stop-color", "red")
+		    	.attr("stop-opacity", 1);
+
+		    stroke_gradient.append("svg:stop")
+		    	.attr("offset", "20%")
+		    	.attr("stop-color", "red")
+		    	.attr("stop-opacity", .2);
+
+		    stroke_gradient.append("svg:stop")
+		    	.attr("offset", "80%")
+		    	.attr("stop-color", "red")
+		    	.attr("stop-opacity", .2);
+
+		    stroke_gradient.append("svg:stop")
+		    	.attr("offset", "100%")
+		    	.attr("stop-color", "red")
+		    	.attr("stop-opacity", 1);
+
+			var stroke_width_scale = d3.scale.linear()
+				.range([1, 15])
+				.domain(d3.extent(links, function(d) { return +d.weight; }));
+
+			var stroke_opacity_scale = d3.scale.linear()
+				.range([0, 1])
+				.domain([30, d3.max(links, function(d) { return +d.weight; })]);
+
+			svg.selectAll(".link_line")
+				.data(links)
+			  .enter()
+				.append("path")
+			    .attr("class", "link_line")
+			    .attr("fill", "url(#stroke_gradient)")
+			    .attr("id", function(i, d) { return "link_line" + d; } )
+			    .attr("d", function(d){ return drawCurve(d); })
+			    .attr("opacity", function(d) {
+
+			    	//console.log(d)
+
+			    	if (d.source.name == "NANOG" || d.source.name == "SOX2" || d.source.name == "POU5F1") {
+			    		return 1;
+			    	}
+
+			    	if (d.target.name == "NANOG" || d.target.name  == "SOX2" || d.target.name  == "POU5F1") {
+			    		return 1;
+			    	}
+
+			    	if (d.weight < 20) {
+			    		return 0;
+			    	} 
+			    	else if (d.weight < 40) {
+			    		return .5;
+			    	} 
+			    	else if (d.weight < 60) {
+			    		return .7;
+			    	}
+			    	else { 
+			    		return 1; 
+			    	}
+
+			    });
+
+		    function drawCurve(d) {
+
+		    	var d3LineLinear = d3.svg.line().interpolate("linear");
+
+			    var slope = Math.atan2((d.target.y - d.source.y), (d.target.x - d.source.x));
+			    var slopePlus90 = Math.atan2((d.target.y - d.source.y), (d.target.x - d.source.x)) + (Math.PI/2);
+
+			    var sourceX = d.source.x;
+			    var sourceY = d.source.y;
+			    var targetX = d.target.x;
+			    var targetY = d.target.y;
+
+			    var points = [];
+
+			    var bothDirections = -1;
+			    $.each(links, function(index, value) {
+			      if(value.source == d.target && value.target == d.source) {
+			        bothDirections = index;
+			        return false;
+			      }
+			    });
+
+			    if(bothDirections >= 0) {
+			      	points.push([sourceX - 0.001*radius*Math.cos(slope), sourceY - 0.001*radius*Math.sin(slope)]);
+			      	points.push([targetX + radius*Math.cos(slope) + (stroke_width_scale(links[bothDirections].weight)) * Math.cos(slopePlus90), targetY + radius*Math.sin(slope) + (stroke_width_scale(links[bothDirections].weight)) * Math.sin(slopePlus90)]);
+			      	points.push([sourceX - 0.001*radius*Math.cos(slope) + 2 * stroke_width_scale(links[bothDirections].weight) * Math.cos(slopePlus90), sourceY - 0.001*radius*Math.sin(slope) + 2 * stroke_width_scale(links[bothDirections].weight) * Math.sin(slopePlus90)]);
+			    } 
+
+			    else {
+			      	points.push([sourceX - radius*Math.cos(slope) - stroke_width_scale(d.weight) * Math.cos(slopePlus90), sourceY - radius*Math.sin(slope) - stroke_width_scale(d.weight) * Math.sin(slopePlus90)]);
+			      	points.push([targetX  + radius * Math.cos(slope), targetY + radius * Math.sin(slope)]);
+			      	points.push([sourceX - radius*Math.cos(slope) + stroke_width_scale(d.weight) * Math.cos(slopePlus90), sourceY - radius*Math.sin(slope) + stroke_width_scale(d.weight) * Math.sin(slopePlus90)]);
+			    }
+
+			    return d3LineLinear(points) //+ "Z";
+		  	}
+
+			var arc = d3.svg.arc()
+				.innerRadius(450)
+				.outerRadius(800)
+				.startAngle(0)
+				.endAngle(360);
+
+			svg.append("path")
+				.attr("d", arc)
+			    .attr("transform", "translate(-45, -47)")
+			    .attr("fill", "white")
+			    .attr("class", "circleclear");
+
+			d3.selectAll(".spacer").moveToFront();
+			d3.selectAll(".node").moveToFront();
+
+			// var title = d3.select("#page_title")
+			// 	.append("text")
+			// 	.attr("x", width/2 + margin)
+			// 	.attr("y", 10)
+			// 	.text("Super-enhancer and TF Interaction Network");
+
+			function computeTextRotation(d) {
+			  var angle = d.x - Math.PI / 2;
+			  return angle / Math.PI * 180;
+			}
+
+			var text = svg.selectAll(".node_text")
+				.data(positions)
+				.enter().append("text")
+		      	//.attr("dy", ".35em")
+				.attr("x", function(d) {
+
+					if (d.x > 0) {
+						return d.x + 1;
+					} 
+
+					if (d.x < 0) {
+						return d.x - 20;
+					}
+
+
+					//return d.x - 18
+				})
+				.attr("y", function(d) {
+
+					if (d.y > 0) {
+						return d.y + 40;
+					}
+
+					if (d.y < 0) {
+						return d.y - 35;
+					}
+					//return d.y + 5
+				})
+				.text(function(d) {
+					return d.name;
+				})
+				.attr("class", "node_text")
+				.attr("fill", "black");
+
+
+			var gradient = svg.append("svg:defs")
+		    	.append("svg:linearGradient")
+		    	.attr("id", "gradient")
+		    	.attr("x1", "0%")
+		    	.attr("y1", "0%")
+		    	.attr("x2", "100%")
+		    	.attr("y2", "10%")
+		    	.attr("spreadMethod", "pad");
+
+		    gradient.append("svg:stop")
+		    	.attr("offset", "0%")
+		    	.attr("stop-color", "white")
+		    	.attr("stop-opacity", 1);
+
+		    gradient.append("svg:stop")
+		    	.attr("offset", "100%")
+		    	.attr("stop-color", "black")
+		    	.attr("stop-opacity", 1);
+
+		    svg.append("svg:rect")
+		    	.attr("width", 200)
+		    	.attr("height", 30)
+		    	.attr("x", 200)
+		    	.attr("y", -550)
+		        .attr("class", "legend_gradient")
+		    	.style("fill", "url(#gradient)")
+		    	.style("stroke-width", "2px")
+		    	.style("stroke", "white");
+
+		    svg.append("text")
+		    	.attr("x", 245)
+		    	.attr("y", -530)
+		    	.style("font-weight", "bold")
+		    	.text("Clique Percentage")
+
+		    svg.append("text")
+		    	.attr("x", 180)
+		    	.attr("y", -530)
+		    	.text("0%")
+
+		    svg.append("text")
+		    	.attr("x", 400)
+		    	.attr("y", -530)
+		    	.text("100%");
+
+		});
+	//d3.select("").remove();
+
+});
+
+
+
+
+
