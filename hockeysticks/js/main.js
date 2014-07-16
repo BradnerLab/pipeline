@@ -152,13 +152,22 @@ function draw_linegraph() {
 		//console.log("hello")
 		var input = $("#search").val()
 		
-		d3.csv("/Documents/Bradner_work/hockey-sticks/result.csv", function(error, data) {
+		d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data) {
 			
 			var data_length = data.length;
 
+			//console.log(input)
+
 			for (var i = 0; i < data.length; i++) {
-				if (i == 1) {
-					console.log(data[1])
+				if (data[i].gene == input) {
+					if (data[i].file) {
+						alert(data[i].file)
+						break;
+					}
+					else {
+						alert("Sorry " + input + " is not super in any current dataset.")
+						break;
+					}
 				}
 			}
 
