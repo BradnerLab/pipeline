@@ -148,6 +148,16 @@ function draw_linegraph() {
 			.attr("class", "page_title");
 	});
 
+	$("#search_button").click(function() {
+		//console.log("hello")
+		var input = $( "#search" ).val()
+
+		//var bla = $('#txt_name').val();
+		console.log(input)
+	})
+
+
+
 };
 
 d3.selection.prototype.moveToFront = function() {
