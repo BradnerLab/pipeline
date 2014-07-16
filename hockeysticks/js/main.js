@@ -449,7 +449,9 @@ function update_linegraph(file) {
 
 					timer = setTimeout(function() {
 						clicks = 0;
-						javascript:window.open(pdf_name);
+						console.log("happen")
+						screenshotPreview(pdf_name);
+
 					}, delay);
 				}
 
