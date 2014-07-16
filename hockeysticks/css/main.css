@@ -329,3 +329,16 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   left: 850px;
   top: 100px;
 }
+
+.crc_svg {
+  margin-top: 50px;
+  margin-bottom: 50px;
+  margin-left: 50px;
+  margin-right: 50px;
+}
+
+#crcgraph {
+  position: absolute;
+  left: 750px;
+  top: 50px;
+}

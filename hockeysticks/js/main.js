@@ -775,7 +775,6 @@ $(".dropdown-menu li a").click(function () {
 				}
 			}
 
-
 			var width = 400,
 			    margin = 50;
 
@@ -784,12 +783,11 @@ $(".dropdown-menu li a").click(function () {
 			var svg = d3.select("#crcgraph").append("svg")
 			    .attr("width", width)
 			    .attr("height", width)
-			    .attr("class", "svg")
+			    .attr("class", "crc_svg")
 			    .append("g")
-			    .attr("transform", "translate(" + (width / 2 + margin) + "," + (width / 2 + margin) + ")");
+			    .attr("transform", "translate(" + (width/2 + margin)  + "," + (width / 2 + margin) + ")");
 
 			var positions = [];
-
 
 			var node_opacity_scale = d3.scale.linear()
 				.domain(d3.extent(node_list, function(d) { return +d.degree; }))
@@ -797,7 +795,7 @@ $(".dropdown-menu li a").click(function () {
 
 			var node_size_scale = d3.scale.linear()
 				.domain(d3.extent(node_list, function(d) { return +d.enhancerRank; }))
-				.range([25, 10])
+				.range([15, 3])
 
 		    var node_color_scale = d3.scale.linear()
 		    	.range(["white", "black"])
@@ -1025,8 +1023,8 @@ $(".dropdown-menu li a").click(function () {
 		  	}
 
 			var arc = d3.svg.arc()
-				.innerRadius(450)
-				.outerRadius(800)
+				.innerRadius(150)
+				.outerRadius(380)
 				.startAngle(0)
 				.endAngle(360);
 
