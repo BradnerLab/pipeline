@@ -14,7 +14,7 @@ bb_linegraph = {
 	margin: {
 		top: 50,
 		right: 50,
-		bottom: 50,
+		bottom: 20,
 		left: 50
 	}
 };
@@ -149,6 +149,7 @@ function draw_linegraph() {
 	});
 
 	d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data){
+
 		$("#search_button").click(function() {
 			//console.log("hello")
 			var input = $("#search").val()

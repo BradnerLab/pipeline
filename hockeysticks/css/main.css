@@ -87,10 +87,10 @@ label {
   margin-top: 5px;
 }
 
-/*#data_table>div {
-  margin-right: auto;
-  margin-left: auto;
-}*/
+#table_div {
+  position: absolute;
+  left: 100px;
+}
 
 .linegraph_svg {
   margin: 0px auto 0px auto;
