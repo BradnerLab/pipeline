@@ -943,7 +943,7 @@ $(".dropdown-menu li a").click(function () {
 		    	.attr("stop-opacity", .05);
 
 			var stroke_width_scale = d3.scale.linear()
-				.range([1, 15])
+				.range([3, 15])
 				.domain(d3.extent(links, function(d) { return +d.weight; }));
 
 			var stroke_opacity_scale = d3.scale.linear()
@@ -960,25 +960,9 @@ $(".dropdown-menu li a").click(function () {
 			    .attr("d", function(d){ return drawCurve(d); })
 			    .attr("opacity", function(d) {
 
-			    	//console.log(d)
-
-			    	if (d.source.name == "NANOG" || d.source.name == "SOX2" || d.source.name == "POU5F1") {
-			    		return 1;
-			    	}
-
-			    	if (d.target.name == "NANOG" || d.target.name  == "SOX2" || d.target.name  == "POU5F1") {
-			    		return 1;
-			    	}
-
-			    	if (d.weight < 25) {
+			    	if (d.weight < 15) {
 			    		return 0;
 			    	} 
-			    	else if (d.weight < 35) {
-			    		return .5;
-			    	} 
-			    	else if (d.weight < 60) {
-			    		return .7;
-			    	}
 			    	else { 
 			    		return 1; 
 			    	}
