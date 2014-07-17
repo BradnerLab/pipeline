@@ -1085,10 +1085,12 @@ $(".dropdown-menu li a").click(function () {
 		    	.attr("stop-opacity", 1);
 
 			svg.append("text")
-				.attr("x", width/3 - 330)
+				.attr("x", width/3 - 170)
 				.attr("y", -270)
-				.text("Super-enhancer and TF Interaction Network")
-				.style("font-weight", "bold");
+				.attr("font-size", "16px")
+				.attr("font-weight", "bold")
+				.attr("text-anchor", "middle")
+				.text("Super-enhancer and TF Interaction Network");
 
 		    svg.append("svg:rect")
 		    	.attr("width", 150)
