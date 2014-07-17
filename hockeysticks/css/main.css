@@ -324,10 +324,15 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   left: 0px;
 }
 
+.table_div {
+  position: absolute;
+  top: 800px;
+}
+
 .pdf_image {
   position: absolute;
-  left: 850px;
-  top: 100px;
+  left: 20px;
+  top: 150px;
 }
 
 .crc_svg {
