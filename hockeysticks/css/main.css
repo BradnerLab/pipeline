@@ -347,3 +347,9 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   left: 820px;
   top: 40px;
 }
+
+#functional_bubble {
+  position: absolute;
+  left: 820px;
+  top: 500px;
+}

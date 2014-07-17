@@ -30,6 +30,28 @@ var linegraph = svg_linegraph.append("g")
 	.attr("class", "linegraph")
 	.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
 
+bb_functional = {
+	h: 300,
+	w: 300,
+	margin: {
+		top: 20,
+		right: 20,
+		bottom: 20,
+		left: 20
+	}
+};
+
+svg_functional = d3.select("#functional_bubble").append("svg")
+	.attr("class", "functional_bubble")
+	.attr({
+		width: bb_functional.w + bb_functional.margin.left + bb_functional.margin.right,
+		height: bb_functional.h + bb_functional.margin.top + bb_functional.margin.bottom
+	});
+
+var functional = svg_functional.append("g")
+	.attr("class", "functional")
+	.attr("transform", "translate(" + bb_functional.margin.left + "," + bb_functional.margin.top + ")");
+
 //tip call
 var graph_tip = d3.tip()
 	.attr("class", "d3-tip")
@@ -204,6 +226,14 @@ function update_linegraph(file) {
 			d.val = +d.SIGNAL;
 			d.rank = +d.RANK;			
 		});
+
+		functional.append("text")
+			.attr("x", 100)
+			.attr("y", 0)
+			.attr("font-size", "16px")
+			.attr("font-weight", "bold")
+			.attr("text-anchor", "middle")
+			.text("Functional Annotations");
 
 		//console.log(data.length)
 
@@ -1122,6 +1152,7 @@ $(".dropdown-menu li a").click(function () {
 	//d3.select("").remove();
 
 });
+
 
 
 
