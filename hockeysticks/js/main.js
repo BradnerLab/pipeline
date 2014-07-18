@@ -211,7 +211,7 @@ function update_linegraph(file) {
 		data.forEach(function(d) {
 			d.super = +d.IS_SUPER;
 			d.val = +d.SIGNAL;
-			d.rank = +d.RANK;			
+			d.rank = +d.RANK;
 		});
 
 		var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
@@ -521,6 +521,8 @@ function update_linegraph(file) {
 			.attr("opacity", "0.9")
 			.attr("clip-path", "url(#linegraph_clip)")
 			.on("mouseover", function(d) {
+
+				//console.log(d)
 
 				d3.select(this)
 				.moveToFront()

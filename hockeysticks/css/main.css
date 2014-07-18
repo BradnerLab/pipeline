@@ -87,11 +87,6 @@ label {
   margin-top: 5px;
 }
 
-#table_div {
-  position: absolute;
-  left: 100px;
-}
-
 #screenshot{
   position:absolute;
   border:1px solid #ccc;
@@ -160,9 +155,11 @@ label {
 
 /*table css*/
 #table_div {
-    position:relative;
+  left: 100px;
+  position:relative;
     /*height: 675px;*/
-    width: 1000px;
+  width: 1000px;
+  top: 850px;
 }
 
 table, th, td {
@@ -322,11 +319,6 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   position: relative;
   bottom: 15px;
   left: 0px;
-}
-
-#table_div {
-  position: absolute;
-  top: 800px;
 }
 
 .pdf_image {
