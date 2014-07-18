@@ -35,24 +35,6 @@ var linegraph = svg_linegraph.append("g")
 	.attr("class", "linegraph")
 	.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
 
-// bb_functional = {
-// 	h: 300,
-// 	w: 300,
-// 	margin: {
-// 		top: 20,
-// 		right: 20,
-// 		bottom: 20,
-// 		left: 20
-// 	}
-// };
-
-// svg_functional = d3.select("#functional_bubble").append("svg")
-// 	.attr("class", "bubble")
-// 	.attr({
-// 		width: bb_functional.w + bb_functional.margin.left + bb_functional.margin.right,
-// 		height: bb_functional.h + bb_functional.margin.top + bb_functional.margin.bottom
-// 	});
-
 //tip call
 var graph_tip = d3.tip()
 	.attr("class", "d3-tip")
@@ -153,6 +135,10 @@ function draw_linegraph() {
 		.text("Mouseover a circle more information, click to bring up a PDF, double-click to add to the table.");
 
 	$(".dropdown-menu li a").click(function () {
+
+		d3.select(".bubble").remove();
+		d3.select(".crc_svg").remove();
+
 		file = $(this).text()
 		update_linegraph(file);
 
@@ -228,7 +214,7 @@ function update_linegraph(file) {
 			d.rank = +d.RANK;			
 		});
 
-		var possible_categories = ["TxnFactor", "Transporter", "Chromatin_Modifying", "Mitochondrial", "Cancer_Mutated", "GPCR", "Kinase", "Peptidases"];
+		var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
 
 		var functional_dict = []
 
@@ -242,6 +228,8 @@ function update_linegraph(file) {
 				size: 0
 			});
 		}
+
+		//console.log(data)
 
 		for (var i = 0; i < data.length; i++) {
 			var current_categories = data[i].PROXIMAL_FUNCTION
@@ -284,7 +272,7 @@ function update_linegraph(file) {
 
 		var functional_svg = d3.select("body").append("svg")
 		    .attr("width", flare_diameter)
-		    .attr("height", flare_diameter)
+		    .attr("height", flare_diameter+20)
 		    .attr("class", "bubble");
 
 		var func_tip = d3.tip()
@@ -302,7 +290,7 @@ function update_linegraph(file) {
 		      .attr("class", "flare_node")
 		      .attr("transform", function(d) { 
 		      	//console.log(d)
-		      	return "translate(" + d.x + "," + d.y + ")"; });
+		      	return "translate(" + d.x + "," + (d.y+20) + ")"; });
 
 		functional_node.append("title")
 		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
