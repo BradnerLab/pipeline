@@ -1,5 +1,10 @@
 //Angela Fan
 
+
+$(window).load(function() {
+   $('#overlay').fadeOut();
+});
+
 //global variable for data
 var data;
 
@@ -226,6 +231,41 @@ function update_linegraph(file) {
 			d.val = +d.SIGNAL;
 			d.rank = +d.RANK;			
 		});
+
+		var possible_categories = ["TxnFactor", "Transporter", "Chromatin_Modifying", "Mitochondrial", "Cancer_Mutated", "GPCR", "Kinase", "Peptidases"];
+
+		var functional_dict = []
+
+		var number_categories = possible_categories.length;
+
+		var data_length = data.length;
+
+		for (var i = 0; i < number_categories; i++) {
+			functional_dict.push({
+				key: possible_categories[i],
+				value: 0
+			});
+		}
+
+		for (var i = 0; i < data.length; i++) {
+			var current_categories = data[i].PROXIMAL_FUNCTION
+
+			var split_categories = current_categories.split(";");
+
+			var num_split = split_categories.length;
+
+			for (var j = 0; j < num_split; j++) {
+
+				for (var k = 0; k < number_categories; k++) {
+					if (split_categories[j] == functional_dict[k].key) {
+						functional_dict[k].value += 1;
+					}
+
+				}
+			}
+		}
+
+		//console.log(functional_dict)
 
 		functional.append("text")
 			.attr("x", 100)
