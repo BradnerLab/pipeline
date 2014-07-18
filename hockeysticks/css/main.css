@@ -101,10 +101,16 @@ label {
   display: block;
 }
 
-.btn-group {
+#dataswitch {
   position:absolute;
   left: 12px;
   top: 7px;
+}
+
+#closer {
+  position: absolute;
+  top: 7px;
+  left: 1100px;
 }
 
 .col-lg-3 {
@@ -159,7 +165,7 @@ label {
   position:relative;
     /*height: 675px;*/
   width: 1000px;
-  top: 850px;
+  top: 400px;
 }
 
 table, th, td {
@@ -344,4 +350,13 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   position: absolute;
   left: 870px;
   top: 510px;
+}
+
+#loading-mask {
+    background-color: white;
+    height: 100%;
+    left: 0;
+    position: fixed;
+    top: 50px;
+    width: 100%;
 }

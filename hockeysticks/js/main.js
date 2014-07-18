@@ -1,10 +1,5 @@
 //Angela Fan
 
-
-$(window).load(function() {
-   $('#overlay').fadeOut();
-});
-
 //global variable for data
 var data;
 
@@ -197,6 +192,24 @@ var linegraph_brush, linegraph_xdomain, linegraph_ydomain;
 
 function update_linegraph(file) {
 
+	// $("#exit").on("click", function() {
+	// 	// d3.select("#linegraph").html("");		
+	// 	// d3.select("#table_div").html("");
+	// 	d3.select("#crcgraph").html("");
+	// 	d3.select("#functional_bubble").html("");
+	// 	d3.select("#page_title").html("");
+	// })
+
+	$("#minimize").click(function(){
+	    if($(this).html() == "Minimize"){
+	        $(this).html("Maximize");
+	    }
+	    else{
+	        $(this).html("Minimize");
+	    }
+	    $("#dataset_total").slideToggle();
+	});
+
 	$(".tablesorter").trigger("update");
 
 	//reset the clear button 
@@ -270,7 +283,7 @@ function update_linegraph(file) {
 		    .size([flare_diameter, flare_diameter])
 		    .padding(1.5);
 
-		var functional_svg = d3.select("body").append("svg")
+		var functional_svg = d3.select("#functional_bubble").append("svg")
 		    .attr("width", flare_diameter)
 		    .attr("height", flare_diameter+20)
 		    .attr("class", "bubble");
@@ -783,6 +796,10 @@ function update_linegraph(file) {
 			}
 		}
 	});
+
+	d3.select("#loading-mask")
+	    .style("visibility", "hidden");
+
 }
 
 function deleteRow(tableID) {
