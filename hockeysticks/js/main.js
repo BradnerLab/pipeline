@@ -314,9 +314,62 @@ function update_linegraph(file) {
 		      .on("mouseover", function(d) {
 		      	func_tip.html(d.className + ", " + d.value)
 		      	func_tip.show(d);
+
+					for (var i = 0; i < data.length; i++) {
+
+						current_categories = data[i].PROXIMAL_FUNCTION
+
+						var split_categories = current_categories.split(";");
+
+						var num_split = split_categories.length;
+
+						for (var j = 0; j < num_split; j++) {
+
+							for (var k = 0; k < number_categories; k++) {
+								if (split_categories[j] == d.className) {
+									//console.log("here")
+
+									d3.select("[rank='" + data[i].RANK + "']")
+										.moveToFront()
+										.attr("r", 6.5)
+										.attr("stroke", "black")
+										.attr("fill", "#354299")
+										.attr("stroke-width", "2px")
+
+								}
+
+							}
+						}
+					}
+
 		      })
 		      .on("mouseout", function(d) {
 		      	func_tip.hide(d);
+
+		      	for (var i = 0; i < data.length; i++) {
+
+						current_categories = data[i].PROXIMAL_FUNCTION
+
+						var split_categories = current_categories.split(";");
+
+						var num_split = split_categories.length;
+
+						for (var j = 0; j < num_split; j++) {
+
+							for (var k = 0; k < number_categories; k++) {
+								if (split_categories[j] == d.className) {
+									//console.log("here")
+
+									d3.select("[rank='" + data[i].RANK + "']")
+										.attr("stroke", null)
+										.attr("fill", linegraph_color(data[i].super))
+										.attr("r", 4.5);
+
+								}
+
+							}
+						}
+					}
 		      });
 
 		functional_node.append("text")
