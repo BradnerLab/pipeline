@@ -348,8 +348,8 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   top: 40px;
 }
 
-#functional_bubble {
+.bubble {
   position: absolute;
-  left: 820px;
-  top: 500px;
+  left: 870px;
+  top: 510px;
 }

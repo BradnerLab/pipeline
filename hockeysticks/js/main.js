@@ -261,10 +261,10 @@ function update_linegraph(file) {
 			}
 		}
 
-		var flare_dict = [{
+		var flare_dict = {
 			name: "flare",
 			children: functional_dict
-		}]
+		};
 
 		//console.log(flare_dict)
 
@@ -287,28 +287,53 @@ function update_linegraph(file) {
 		    .attr("height", flare_diameter)
 		    .attr("class", "bubble");
 
-		console.log(bubble.nodes(classes(flare_dict)))
+		var func_tip = d3.tip()
+			.attr("class", "d3-tip")
+			.offset([0,0]);
 
-		var functional_node = functional_svg.selectAll(".node")
+		functional_svg.call(func_tip);
+
+		//console.log(bubble.nodes(classes(flare_dict)))
+
+		var functional_node = functional_svg.selectAll(".flare_node")
 		      .data(bubble.nodes(classes(flare_dict))
 		      .filter(function(d) { return !d.children; }))
 		    .enter().append("g")
 		      .attr("class", "flare_node")
-		      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+		      .attr("transform", function(d) { 
+		      	//console.log(d)
+		      	return "translate(" + d.x + "," + d.y + ")"; });
 
 		functional_node.append("title")
 		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
 
 		functional_node.append("circle")
 		      .attr("r", function(d) { return d.r; })
-		      .style("fill", function(d) { return flare_color(d.packageName); });
+		      .style("fill", function(d) { return flare_color(d.className); })
+		      .on("mouseover", function(d) {
+		      	func_tip.html(d.className + ", " + d.value)
+		      	func_tip.show(d);
+		      })
+		      .on("mouseout", function(d) {
+		      	func_tip.hide(d);
+		      });
 
 		functional_node.append("text")
 		      .attr("dy", ".3em")
 		      .style("text-anchor", "middle")
-		      .text(function(d) { return d.className.substring(0, d.r / 3); });
+		      .style("font-weight", "bold")
+		      .style("font-size", "12px")
+		      .text(function(d) { 
+		      	//console.log(d.className.length, d.r/3)
+		      	if (d.className.length < d.r/3) {
+		      		return d.className;
+		      	}
+		      	//return d.className.substring(0, d.r / 3); 
+		      });
+
 
 		function classes(root) {
+
 		  var classes = [];
 
 		  function recurse(name, node) {
@@ -318,13 +343,12 @@ function update_linegraph(file) {
 
 		  recurse(null, root);
 		  return {children: classes};
+
 		}
 
-		//console.log(functional_dict)
-
-		functional.append("text")
-			.attr("x", 100)
-			.attr("y", 0)
+		functional_svg.append("text")
+			.attr("x", 150)
+			.attr("y", 20)
 			.attr("font-size", "16px")
 			.attr("font-weight", "bold")
 			.attr("text-anchor", "middle")
