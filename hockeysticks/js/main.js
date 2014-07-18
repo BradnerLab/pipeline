@@ -35,27 +35,23 @@ var linegraph = svg_linegraph.append("g")
 	.attr("class", "linegraph")
 	.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
 
-bb_functional = {
-	h: 300,
-	w: 300,
-	margin: {
-		top: 20,
-		right: 20,
-		bottom: 20,
-		left: 20
-	}
-};
+// bb_functional = {
+// 	h: 300,
+// 	w: 300,
+// 	margin: {
+// 		top: 20,
+// 		right: 20,
+// 		bottom: 20,
+// 		left: 20
+// 	}
+// };
 
-svg_functional = d3.select("#functional_bubble").append("svg")
-	.attr("class", "functional_bubble")
-	.attr({
-		width: bb_functional.w + bb_functional.margin.left + bb_functional.margin.right,
-		height: bb_functional.h + bb_functional.margin.top + bb_functional.margin.bottom
-	});
-
-var functional = svg_functional.append("g")
-	.attr("class", "functional")
-	.attr("transform", "translate(" + bb_functional.margin.left + "," + bb_functional.margin.top + ")");
+// svg_functional = d3.select("#functional_bubble").append("svg")
+// 	.attr("class", "bubble")
+// 	.attr({
+// 		width: bb_functional.w + bb_functional.margin.left + bb_functional.margin.right,
+// 		height: bb_functional.h + bb_functional.margin.top + bb_functional.margin.bottom
+// 	});
 
 //tip call
 var graph_tip = d3.tip()
@@ -242,8 +238,8 @@ function update_linegraph(file) {
 
 		for (var i = 0; i < number_categories; i++) {
 			functional_dict.push({
-				key: possible_categories[i],
-				value: 0
+				name: possible_categories[i],
+				size: 0
 			});
 		}
 
@@ -257,12 +253,71 @@ function update_linegraph(file) {
 			for (var j = 0; j < num_split; j++) {
 
 				for (var k = 0; k < number_categories; k++) {
-					if (split_categories[j] == functional_dict[k].key) {
-						functional_dict[k].value += 1;
+					if (split_categories[j] == functional_dict[k].name) {
+						functional_dict[k].size += 1;
 					}
 
 				}
 			}
+		}
+
+		var flare_dict = [{
+			name: "flare",
+			children: functional_dict
+		}]
+
+		//console.log(flare_dict)
+
+		var flare_diameter = 300,
+		    flare_format = d3.format(",d");
+
+		var flare_color = d3.scale.ordinal()
+		    .domain(d3.extent(functional_dict, function(d) {
+		    	return d.size;
+		    }))
+		    .range(["#3288bd","#66c2a5","#abdda4","#e6f598","#fee08b","#fdae61","#f46d43","#d53e4f"]);
+
+		var bubble = d3.layout.pack()
+		    .sort(null)
+		    .size([flare_diameter, flare_diameter])
+		    .padding(1.5);
+
+		var functional_svg = d3.select("body").append("svg")
+		    .attr("width", flare_diameter)
+		    .attr("height", flare_diameter)
+		    .attr("class", "bubble");
+
+		console.log(bubble.nodes(classes(flare_dict)))
+
+		var functional_node = functional_svg.selectAll(".node")
+		      .data(bubble.nodes(classes(flare_dict))
+		      .filter(function(d) { return !d.children; }))
+		    .enter().append("g")
+		      .attr("class", "flare_node")
+		      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+		functional_node.append("title")
+		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
+
+		functional_node.append("circle")
+		      .attr("r", function(d) { return d.r; })
+		      .style("fill", function(d) { return flare_color(d.packageName); });
+
+		functional_node.append("text")
+		      .attr("dy", ".3em")
+		      .style("text-anchor", "middle")
+		      .text(function(d) { return d.className.substring(0, d.r / 3); });
+
+		function classes(root) {
+		  var classes = [];
+
+		  function recurse(name, node) {
+		    if (node.children) node.children.forEach(function(child) { recurse(node.name, child); });
+		    else classes.push({packageName: name, className: node.name, value: node.size});
+		  }
+
+		  recurse(null, root);
+		  return {children: classes};
 		}
 
 		//console.log(functional_dict)
