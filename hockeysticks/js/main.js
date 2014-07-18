@@ -311,6 +311,29 @@ function update_linegraph(file) {
 		functional_node.append("circle")
 		      .attr("r", function(d) { return d.r; })
 		      .style("fill", function(d) { return flare_color(d.className); })
+		      .on("click", function(d) {
+		      	for (var i = 0; i < data.length; i++) {
+
+						current_categories = data[i].PROXIMAL_FUNCTION
+
+						var split_categories = current_categories.split(";");
+
+						var num_split = split_categories.length;
+
+						for (var j = 0; j < num_split; j++) {
+
+							for (var k = 0; k < number_categories; k++) {
+								if (split_categories[j] == d.className) {
+									//console.log("here")
+									addRow("tbody", data[i])
+									break;
+
+								}
+
+							}
+						}
+					}
+		      })
 		      .on("mouseover", function(d) {
 		      	func_tip.html(d.className + ", " + d.value)
 		      	func_tip.show(d);
@@ -941,7 +964,7 @@ $(document).ready(function () {
 
 screenshotPreview = function(filename){    
 
-    $("#linegraph").append("<p><embed src=" + filename + " scale='tofit' type='application/pdf' width='60%' height='60%' class='pdf_image'></p>");                           
+    $("#linegraph").append("<p><embed src=" + filename + " type='application/pdf' width='60%' height='60%' class='pdf_image'></p>");                           
                                                                                    
 };
 
