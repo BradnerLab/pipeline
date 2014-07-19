@@ -19,33 +19,53 @@ bb_linegraph = {
 	}
 };
 
-svg_linegraph = d3.select("#linegraph").append("svg")
-	.attr("class", "linegraph_svg")
-	.attr({
-		width: bb_linegraph.w + bb_linegraph.margin.left + bb_linegraph.margin.right + 400,
-		height: bb_linegraph.h + bb_linegraph.margin.bottom + bb_linegraph.margin.top
-	});
+$(".dropdown-menu li a").click(function () {
 
-var linegraph = svg_linegraph.append("g")
-	.attr("class", "linegraph")
-	.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
+	d3.select(".bubble").remove();
+	d3.select(".crc_svg").remove();
+	d3.select(".linegraph_svg").remove();
+
+	file = $(this).text()
+	update_linegraph(file);
+
+	d3.select(".linegraph_clear_button").remove();
+
+	output_name = file.split("_HOCKEY");
+
+	d3.select(".page_title").remove();
+
+	d3.select("#page_title")
+		.append("text")
+		.attr("y", 0)
+		.attr("text-anchor", "middle")
+		.attr("x", 500)
+		.text(file.split("_HOCKEY")[0])
+		.attr("class", "page_title");
+});
 
 //tip call
 var graph_tip = d3.tip()
 	.attr("class", "d3-tip")
 	.offset([0,0]);
 
-svg_linegraph.call(graph_tip);
-
-//function calls
-draw_linegraph();
-
-
 //linegraph globals
 var linegraph_x, linegraph_y, linegraph_color, linegraph_xAxis, linegraph_yAxis;
 var linegraph_xdomain, linegraph_ydomain;
 
 function draw_linegraph() {
+
+	svg_linegraph = d3.select("#linegraph").append("svg")
+	.attr("class", "linegraph_svg")
+	.attr({
+		width: bb_linegraph.w + bb_linegraph.margin.left + bb_linegraph.margin.right + 400,
+		height: bb_linegraph.h + bb_linegraph.margin.bottom + bb_linegraph.margin.top
+	});
+
+	svg_linegraph.call(graph_tip);
+
+	var linegraph = svg_linegraph.append("g")
+		.attr("class", "linegraph")
+		.attr("transform", "translate(" + (bb_linegraph.margin.left-40) + "," + bb_linegraph.margin.top + ")");
 
 	linegraph_x = d3.scale.linear()
 		.range([bb_linegraph.w, 0]);
@@ -129,29 +149,6 @@ function draw_linegraph() {
 		.style("font-size", "12px")
 		.text("Mouseover a circle more information, click to bring up a PDF, double-click to add to the table.");
 
-	$(".dropdown-menu li a").click(function () {
-
-		d3.select(".bubble").remove();
-		d3.select(".crc_svg").remove();
-
-		file = $(this).text()
-		update_linegraph(file);
-
-		d3.select(".linegraph_clear_button").remove();
-
-		output_name = file.split("_HOCKEY");
-
-		d3.select(".page_title").remove();
-
-		d3.select("#page_title")
-			.append("text")
-			.attr("y", 0)
-			.attr("text-anchor", "middle")
-			.attr("x", 500)
-			.text(file.split("_HOCKEY")[0])
-			.attr("class", "page_title");
-	});
-
 	d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data){
 
 		$("#search_button").click(function() {
@@ -192,13 +189,17 @@ var linegraph_brush, linegraph_xdomain, linegraph_ydomain;
 
 function update_linegraph(file) {
 
-	// $("#exit").on("click", function() {
-	// 	// d3.select("#linegraph").html("");		
-	// 	// d3.select("#table_div").html("");
-	// 	d3.select("#crcgraph").html("");
-	// 	d3.select("#functional_bubble").html("");
-	// 	d3.select("#page_title").html("");
-	// })
+	draw_linegraph();
+
+	$("#exit").on("click", function() {
+		d3.select("#linegraph").html("");		
+		d3.select("#table_div")
+			.attr("visibility", "hidden");
+		clearTable("tbody");
+		d3.select("#crcgraph").html("");
+		d3.select("#functional_bubble").html("");
+		d3.select("#page_title").html("");
+	})
 
 	$("#minimize").click(function(){
 	    if($(this).html() == "Minimize"){
@@ -438,6 +439,9 @@ function update_linegraph(file) {
 		linegraph_y.domain(d3.extent(data, function(d) {
 			return d.val;
 		}));
+
+
+		var linegraph = d3.select(".linegraph");
 
 		var datapoints = linegraph.selectAll(".dot")
 			.data(data, function(d) {return d.rank});
@@ -964,8 +968,7 @@ $(document).ready(function () {
 
 screenshotPreview = function(filename){    
 
-    $("#linegraph").append("<p><embed src=" + filename + " type='application/pdf' width='60%' height='60%' class='pdf_image'></p>");                           
-                                                                                   
+    $("#linegraph").append('<div class="pdf_image"> <object data=' + filename + ' type="application/pdf" width="800px" height="300"> alt : <a href='+ filename + '>test.pdf</a> </object> </div>' )                                                                               
 };
 
 
