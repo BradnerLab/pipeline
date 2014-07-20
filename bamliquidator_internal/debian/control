@@ -7,6 +7,6 @@ Build-Depends: debhelper (>= 9), libbam-dev, libhdf5-serial-dev, libboost-dev, l
 
 Package: bamliquidator
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, python-numpy, python-pandas, python-redis, python-pip, python-software-properties, python-tables, python-numexpr
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-numpy, python-pandas, python-redis, python-pip, python-software-properties, python-tables, python-numexpr, samtools
 Description: Analyzes the density of short DNA sequence read alignments in the BAM file format.
  Read counts across one or more BAM files are grouped, normalized, summarized, and graphed in interactive html files and stored in HDF5 tables and optionally copied into tab delimitted text files. 

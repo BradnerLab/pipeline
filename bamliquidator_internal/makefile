@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.8.2
+VERSION = 0.8.3
 
 # The directory to install in:
 prefix = /usr/local
@@ -84,7 +84,7 @@ setup(
     },
     install_requires=[
         "openpyxl >=1.6.1, <2.0.0",
-        "bokeh >= 0.4.0"
+        "bokeh == 0.4.4"
     ],
 )
 
