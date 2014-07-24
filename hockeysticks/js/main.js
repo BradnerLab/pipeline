@@ -244,11 +244,17 @@ function update_linegraph(file) {
 		}
 
 		//console.log(data)
+		//console.log(data)
 
 		for (var i = 0; i < data.length; i++) {
-			var current_categories = data[i].PROXIMAL_FUNCTION
 
+
+			var current_categories = data[i].PROXIMAL_FUNCTION
 			var split_categories = current_categories.split(";");
+
+			// if (!current_categories) {
+			// 	console.log(data[i])
+			// }
 
 			var num_split = split_categories.length;
 
@@ -803,7 +809,6 @@ function update_linegraph(file) {
 			// console.log(linegraph_y_domain)
 
 			// equal domain ends means click on graph
-			// coerce dates to numbers to check equality
 			if (+linegraph_x_domain[0] == +linegraph_x_domain[1] && +linegraph_y_domain[0] == +linegraph_y_domain[1]) {
 				return;
 			}
@@ -827,7 +832,7 @@ function update_linegraph(file) {
 
 				linegraph_clear_button
 					.append('text')
-					.attr("y", -2)
+					.attr("y", -3)
 					.attr("x", 10)
 					.text("Clear Zoom")
 					.style("fill", "black");
@@ -835,6 +840,30 @@ function update_linegraph(file) {
 
 			linegraph_x.domain(linegraph_x_domain);
 			linegraph_y.domain(linegraph_y_domain);
+
+			add_to_table();
+
+			function add_to_table() {
+
+				//d3.selectAll(".circle")
+
+				// console.log(linegraph_x_domain)
+				// console.log(linegraph_y_domain)
+
+				for (var i = 0; i < data.length; i ++) {
+
+					//console.log(data[i].val)
+					//console.log(linegraph_y_domain)
+					//console.log(data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1])
+
+					if (data[i].rank < linegraph_x_domain[1] && data[i].rank > linegraph_x_domain[0] && data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1]) { 
+						//console.log("true")
+						addRow("tbody", data[i])
+					}
+
+				}
+
+			}
 
 			linegraph_transition();
 
@@ -873,6 +902,7 @@ function update_linegraph(file) {
 					.attr("cy", function(d) {
 						return linegraph_y(d.val);
 					});
+
 			}
 		}
 	});
