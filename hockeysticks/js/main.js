@@ -140,7 +140,7 @@ function draw_linegraph() {
 		.attr("text-anchor", "middle")
 		.attr("x", bb_linegraph.w/2 + 30)
 		.style("font-size", "12px")
-		.text("Select a region to zoom in. Click 'Clear Zoom' to zoom out.");
+		.text("Select a region to zoom in. Click 'Clear Zoom' to zoom out. Click the buttons to add points to the table.");
 
 	linegraph.append("text")
 		.attr("y", -8)
@@ -291,8 +291,8 @@ function update_linegraph(file) {
 		    .padding(1.5);
 
 		var functional_svg = d3.select("#functional_bubble").append("svg")
-		    .attr("width", flare_diameter)
-		    .attr("height", flare_diameter+20)
+		    .attr("width", flare_diameter+80)
+		    .attr("height", flare_diameter+80)
 		    .attr("class", "bubble");
 
 		var func_tip = d3.tip()
@@ -310,7 +310,7 @@ function update_linegraph(file) {
 		      .attr("class", "flare_node")
 		      .attr("transform", function(d) { 
 		      	//console.log(d)
-		      	return "translate(" + d.x + "," + (d.y+20) + ")"; });
+		      	return "translate(" + d.x + "," + (d.y+80) + ")"; });
 
 		functional_node.append("title")
 		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
@@ -414,6 +414,22 @@ function update_linegraph(file) {
 		      	}
 		      	//return d.className.substring(0, d.r / 3); 
 		      });
+
+
+		functional_svg.append("text")
+			.attr("y", 40)
+			.attr("text-anchor", "middle")
+			.attr("x", 150)
+			.style("font-size", "12px")
+			.text("Mouseover for more information.");
+
+		functional_svg.append("text")
+			.attr("y", 55)
+			.attr("text-anchor", "middle")
+			.attr("x", 150)
+			.style("font-size", "12px")
+			.text("Click to add all genes with that annotation to the table");
+		 //Click to add all genes with that annotation to the table.");
 
 
 		function classes(root) {
@@ -824,7 +840,7 @@ function update_linegraph(file) {
 				linegraph_clear_button.append("rect")
 					.attr("width", 102)
 					.attr("height", 20)
-					.attr("y", -17)
+					.attr("y", -20)
 					.attr("x", -4)
 					.attr("rx", "10px")
 					.attr("ry", "10px")
@@ -841,7 +857,12 @@ function update_linegraph(file) {
 			linegraph_x.domain(linegraph_x_domain);
 			linegraph_y.domain(linegraph_y_domain);
 
-			add_to_table();
+			//add_to_table();
+
+			$("#add_all_visible").click(function () {
+
+				return add_to_table();
+			});
 
 			function add_to_table() {
 
