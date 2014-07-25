@@ -319,6 +319,8 @@ function update_linegraph(file) {
 		functional_node.append("title")
 		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
 
+		d3.selectAll("title").remove()
+
 		functional_node.append("circle")
 		      .attr("r", function(d) { return d.r; })
 		      .style("fill", function(d) { return flare_color(d.className); })
@@ -346,8 +348,6 @@ function update_linegraph(file) {
 					}
 		      })
 		      .on("mouseover", function(d) {
-
-			        d3.selectAll("title").remove()
 
 		      	func_tip.html(d.className + ", " + d.value)
 		      	func_tip.show(d);
