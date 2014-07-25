@@ -353,10 +353,16 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
 }
 
 #loading-mask {
-    background-color: white;
-    height: 100%;
-    left: 0;
-    position: fixed;
-    top: 50px;
-    width: 100%;
+  background-color: white;
+  height: 100%;
+  left: 0;
+  position: fixed;
+  top: 50px;
+  width: 100%;
+}
+
+#add_all_visible {
+  position: absolute;
+  top: 0px;
+  left: 100px;
 }
