@@ -363,6 +363,6 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
 
 #add_all_visible {
   position: absolute;
-  top: 0px;
-  left: 100px;
+  top: 150px;
+  left: 10px;
 }
