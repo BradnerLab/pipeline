@@ -252,6 +252,7 @@ table, th, td {
 .functional {
   text-align: center;
   width: 300px;
+  pointer-events: all;
 }
 
 /*table sorting*/

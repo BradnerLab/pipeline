@@ -19,6 +19,10 @@ bb_linegraph = {
 	}
 };
 
+$(document).ready(function() {
+    $('[title]').removeAttr('title');
+});
+
 $(".dropdown-menu li a").click(function () {
 
 	d3.select(".bubble").remove();
@@ -342,6 +346,9 @@ function update_linegraph(file) {
 					}
 		      })
 		      .on("mouseover", function(d) {
+
+			        d3.selectAll("title").remove()
+
 		      	func_tip.html(d.className + ", " + d.value)
 		      	func_tip.show(d);
 
