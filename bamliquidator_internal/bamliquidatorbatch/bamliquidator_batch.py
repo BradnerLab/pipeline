@@ -10,6 +10,7 @@ import errno
 import os
 import subprocess
 import tables
+import logging
 
 from time import time 
 from os.path import basename
@@ -172,32 +173,32 @@ class BaseLiquidator(object):
 
     def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
-            print("Liquidating %s (file %d of %d, %s)" % (
-                bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S')))
+            logging.info("Liquidating %s (file %d of %d)", bam_file_path, i+1, len(self.bam_file_paths))
 
             return_code = self.liquidate(bam_file_path, extension, sense)
             if return_code != 0:
-                print("%s failed with exit code %d" % (self.executable_path, return_code))
-                exit(return_code)
+                raise Exception("%s failed with exit code %d" % (self.executable_path, return_code))
 
         start = time()
         self.normalize()
         duration = time() - start
-        print("Post liquidation processing took %f seconds" % duration)
+        logging.info("Post liquidation processing took %f seconds", duration)
 
     def flatten(self):
-        print("Flattening HDF5 tables into text files")
+        logging.info("Flattening HDF5 tables into text files")
         start = time()
 
         with tables.open_file(self.counts_file_path, mode = "r") as counts_file:
             write_tab_for_all(counts_file, self.output_directory)
 
         duration = time() - start
-        print("Flattening took %f seconds" % duration)
+        logging.info("Flattening took %f seconds" % duration)
 
 class BinLiquidator(BaseLiquidator):
-    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
+    def __init__(self, bin_size, output_directory, bam_file_path,
+                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False):
         self.bin_size = bin_size
+        self.skip_plot = skip_plot
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
         self.batch(extension, sense)
 
@@ -219,13 +220,13 @@ class BinLiquidator(BaseLiquidator):
 
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
-        print("Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate))
+        logging.info("Liquidation completed: %f seconds, %d reads, %f millions of reads per second", duration, reads, rate)
 
         return return_code
        
     def normalize(self):
         with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
-            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size) 
+            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size, self.skip_plot) 
 
     def create_counts_table(self, h5file):
         class BinCount(tables.IsDescription):
@@ -268,7 +269,7 @@ class RegionLiquidator(BaseLiquidator):
         return_code = subprocess.call(args)
         duration = time() - start
 
-        print("Liquidation completed: %f seconds" % (duration))
+        logging.info("Liquidation completed: %f seconds", duration)
 
         return return_code
 
@@ -340,6 +341,7 @@ def main():
                         help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
+    parser.add_argument('--skip_plot', action='store_true', help='skip generating plots (this can speed up execution')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -357,14 +359,15 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
+    logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
-                                   args.counts_file, args.extension, args.sense)
+                                   args.counts_file, args.extension, args.sense, args.skip_plot)
     else:
         if args.counts_file:
-            print("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
-                  " if you need this feature")
-            exit(1)
+            raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
+                            "please email the developer if you need this feature")
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
                                       args.region_format, args.counts_file, args.extension, args.sense)
 
@@ -373,13 +376,13 @@ def main():
 
     if args.match_bamToGFF:
         if args.regions_file is None:
-            print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
+            logging.warning("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
-            print("Writing bamToGff style matrix.gff file")
+            logging.info("Writing bamToGff style matrix.gff file")
             start = time()
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
             duration = time() - start
-            print("Writing matrix.gff took %f seconds" % duration)
+            logging.info("Writing matrix.gff took %f seconds" % duration)
 
 if __name__ == "__main__":
     main()

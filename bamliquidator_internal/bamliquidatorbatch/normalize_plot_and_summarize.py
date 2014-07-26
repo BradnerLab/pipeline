@@ -33,6 +33,7 @@ import bokeh.plotting as bp
 import tables
 import scipy.stats as stats
 import collections
+import logging
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right).
@@ -86,13 +87,13 @@ def file_keys(counts, cell_type):
     if not cell_type in file_keys_memo:
         file_keys = set() 
        
-        #print "Getting file keys for cell type " + cell_type
+        logging.debug("Getting file keys for cell type %s", cell_type)
         for row in counts.where("cell_type == '%s'" % cell_type):
             file_keys.add(row["file_key"])
 
         file_keys_memo[cell_type] = file_keys
 
-        #print "memoizing files for " + cell_type + ": " + str(file_keys_memo[cell_type]) 
+        logging.debug("memoizing files for %s: %s", cell_type, str(file_keys_memo[cell_type]))
         
     return file_keys_memo[cell_type] 
 
@@ -105,7 +106,7 @@ def plot_summaries(output_directory, normalized_counts, chromosomes):
     bp.save()
 
 def plot_summary(normalized_counts, chromosome):
-    #print " - plotting " + chromosome + " summary"
+    logging.debug(" - plotting %s summary", chromosome)
 
     condition = "(file_key == 0) & (chromosome == '%s')" % chromosome
 
@@ -115,7 +116,7 @@ def plot_summary(normalized_counts, chromosome):
   
     num_bins = len(chromosome_count_by_bin)
     if num_bins < 2:
-        print "-- skipping plotting %s because not enough bins (only %d)" % (chromosome, num_bins)
+        logging.info("-- skipping plotting %s because not enough bins (only %d)", chromosome, num_bins)
         return
 
     overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
@@ -127,7 +128,7 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
     plot_summary(normalized_counts, chromosome)
 
     for cell_type in cell_types:
-        #print " - plotting " + cell_type
+        logging.debug(" - plotting %s", cell_type)
 
         bin_number = [] 
         count = [] 
@@ -179,7 +180,7 @@ def length_for_file_key(files, file_key):
     return file_rows[0]["length"]
 
 def normalize_regions(region_counts, files):
-    print "Normalizing"
+    logging.info("Normalizing")
      
     file_key = None
 
@@ -318,7 +319,7 @@ def populate_summary(summary, normalized_counts, chromosome):
             else:
                 lines_lt_low_percentile_by_bin[bin_number] += 1
 
-    #print " - populating summary table with calculated summaries"
+    logging.debug(" - populating summary table with calculated summaries")
 
     for bin_number in xrange(max_bin+1):
         summary.row["bin_number"] = bin_number
@@ -335,7 +336,7 @@ def populate_summary(summary, normalized_counts, chromosome):
         summary.row.append()
     summary.flush()
 
-def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
+def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_plot):
     delete_all_but_bin_counts_and_files_table(counts_file)
 
     # recreating the entirity of the remaining tables is quick and easier than updating prior records correctly
@@ -348,12 +349,10 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
     cell_types = all_cell_types(counts)
     chromosomes = all_chromosomes(counts)
 
-    skip_plots = False # useful if you are just experimenting with normalization and/or summary tables
-
-    print "Cell Types: %s" % ", ".join(cell_types)
+    logging.info("Cell Types: %s", ", ".join(cell_types))
 
     for cell_type in cell_types:
-        print "Normalizing and calculating percentiles for cell type " + cell_type 
+        logging.info("Normalizing and calculating percentiles for cell type %s", cell_type)
         current_file_keys = file_keys(counts, cell_type)
         for file_key in current_file_keys:
            populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files)
@@ -361,19 +360,19 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size):
         populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_keys) 
         populate_percentiles(normalized_counts, cell_type)
 
-    print "Indexing normalized counts"
+    logging.info("Indexing normalized counts")
     normalized_counts.cols.bin_number.create_csindex()
     normalized_counts.cols.percentile.create_csindex()
     normalized_counts.cols.file_key.create_csindex()
     normalized_counts.cols.chromosome.create_csindex()
 
-    if not skip_plots:
-        print "Plotting"
+    if not skip_plot:
+        logging.info("Plotting")
         for chromosome in chromosomes:
             plot(output_directory, normalized_counts, chromosome, cell_types)
         plot_summaries(output_directory, normalized_counts, chromosomes)
 
-    print "Summarizing"
+    logging.info("Summarizing")
     for chromosome in chromosomes:
         populate_summary(summary, normalized_counts, chromosome)
     summary.cols.avg_cell_type_percentile.create_csindex()
@@ -406,10 +405,11 @@ def main():
     parser.add_argument('-v', '--validate', action='store_true',
                         help='validates the previously generated normalization and/or summary tables, returning '
                              'non-zero if any problems detected')
-    parser.add_argument('bin_counts_h5_file', help='the hdf5 file with a "counts" and "files" tables as generated by ' 
-                                                   'bamliquidate_batch')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='enables debugging hooks so ctr-c (SIGINT) enters debugging instead of halting execution')
+    parser.add_argument('--skip_plot', action='store_true', help='skip generating plots (this can speed up execution')
+    parser.add_argument('bin_counts_h5_file', help='the hdf5 file with a "counts" and "files" tables as generated by ' 
+                                                   'bamliquidate_batch')
     args = parser.parse_args()
 
     if args.debug:
@@ -423,7 +423,7 @@ def main():
 
     counts_file = tables.open_file(args.bin_counts_h5_file, "r+")
 
-    normalize_plot_and_summarize(counts_file, args.output_directory, args.bin_size)
+    normalize_plot_and_summarize(counts_file, args.output_directory, args.bin_size, args.skip_plot)
 
     counts_file.close()
 
@@ -439,7 +439,7 @@ def validate(counts_file_path):
     for cell_type in cell_types:
         num_files += len(file_keys(counts, cell_type))
 
-    print "Verifying that summary files add up to %d and cell types add up to %d" % (num_files, num_cell_types)
+    logging.info("Verifying that summary files add up to %d and cell types add up to %d", num_files, num_cell_types)
     
     for row in counts_file.root.summary:
         if (num_cell_types != (row["cell_types_gte_95th_percentile"] + row["cell_types_lt_95th_percentile"])
@@ -447,12 +447,12 @@ def validate(counts_file_path):
          or num_files      != (row["lines_gte_95th_percentile"] + row["lines_lt_95th_percentile"])
          or num_files      != (row["lines_gte_5th_percentile"] + row["lines_lt_5th_percentile"])):
             error_count += 1
-            print "Summary row doesn't add up:", row[:]
+            logging.error("Summary row doesn't add up:", row[:])
 
     counts_file.close()
 
     if error_count != 0:
-        print error_count, "validation errors"
+        logging.error("%d validation errors", error_count)
         return 1
     return 0
         
