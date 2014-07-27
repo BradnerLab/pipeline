@@ -32,6 +32,12 @@ $(".dropdown-menu li a").click(function () {
 	file = $(this).text()
 	update_linegraph(file);
 
+	d3.select("#table_div")
+		.style("visibility", "visible");
+
+	d3.select("#add_all_visible")
+		.style("visibility", "visible");
+
 	d3.select(".linegraph_clear_button").remove();
 
 	output_name = file.split("_HOCKEY");
