@@ -196,13 +196,15 @@ function update_linegraph(file) {
 	draw_linegraph();
 
 	$("#exit").on("click", function() {
-		d3.select("#linegraph").html("");		
+		d3.select("#linegraph").html("");
+		clearTable("#table_div");		
 		d3.select("#table_div")
 			.attr("visibility", "hidden");
-		clearTable("tbody");
 		d3.select("#crcgraph").html("");
 		d3.select("#functional_bubble").html("");
 		d3.select("#page_title").html("");
+		d3.select("#add_all_visible")
+			.attr("visibility", "hidden");
 	})
 
 	$("#minimize").click(function(){
