@@ -261,7 +261,7 @@ function update_linegraph(file) {
 
 
 			var current_categories = data[i].PROXIMAL_FUNCTION
-			console.log(data[i])
+			//console.log(data[i])
 			var split_categories = current_categories.split(";");
 
 			// if (!current_categories) {
