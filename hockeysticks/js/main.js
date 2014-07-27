@@ -28,10 +28,6 @@ $(".dropdown-menu li a").click(function () {
 	d3.select(".bubble").remove();
 	d3.select(".crc_svg").remove();
 	d3.select(".linegraph_svg").remove();
-
-	file = $(this).text()
-	update_linegraph(file);
-
 	d3.select("#table_div")
 		.style("visibility", "visible");
 
@@ -39,6 +35,9 @@ $(".dropdown-menu li a").click(function () {
 		.style("visibility", "visible");
 
 	d3.select(".linegraph_clear_button").remove();
+
+	file = $(this).text()
+	update_linegraph(file);
 
 	output_name = file.split("_HOCKEY");
 
