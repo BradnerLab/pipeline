@@ -11,6 +11,7 @@ import os
 import subprocess
 import tables
 import logging
+import sys
 
 from time import time 
 from os.path import basename
@@ -77,12 +78,6 @@ class BaseLiquidator(object):
         else:
             # just look on standard path
             self.executable_path = executable 
-
-        try:
-            os.mkdir(output_directory)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
 
         if self.counts_file_path is None:
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
@@ -306,6 +301,36 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
                 output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
                     row["strand"], row["start"], row["stop"], round(row["normalized_count"], 4)))
                 
+def configure_logging(args):
+    # Using root logger so we can just do logging.info/warn/error in this and other files.
+    # If people start using bamliquidator_batch as an imported module, then we should probably
+    # change this logging to not use the root logger directly.
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(os.path.join(args.output_directory, 'log.txt'))
+    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s\t%(message)s'))
+    
+    logger.addHandler(file_handler)
+    # todo: add bamliquidator version to the starting log message
+    logging.info("Starting %s with args %s", basename(sys.argv[0]), list(vars(args)))
+
+    # Adding console handler after writing the startup log entry.  The startup log could be useful 
+    # in a file that is being appended to from a prior run, but would be annonying on stdout.
+
+    console_handler = logging.StreamHandler()
+
+    class FormatterNotFormattingInfo(logging.Formatter):
+        def __init__(self, fmt):
+            logging.Formatter.__init__(self, fmt)
+
+        def format(self, record):
+            if record.levelno == logging.INFO:
+                return record.getMessage()
+            return logging.Formatter.format(self, record)
+
+    console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s: %(message)s'))
+    logger.addHandler(console_handler)
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
@@ -321,7 +346,7 @@ def main():
                         help='a region file in either .gff or .bed format')
 
     parser.add_argument('-o', '--output_directory', default='output',
-                        help='Directory to output the h5, gff, tab, and/or html files to.  Creates directory if necessary.  '
+                        help='Directory to output the h5, log, gff, tab, and/or html files to.  Creates directory if necessary.  '
                              'May overwrite prior run results if present. Default is "./output".')
     parser.add_argument('-c', '--counts_file', default=None,
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
@@ -359,7 +384,13 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
-    logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+    try:
+        os.mkdir(args.output_directory)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
+    configure_logging(args)
 
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
