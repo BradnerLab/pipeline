@@ -313,7 +313,7 @@ def configure_logging(args):
     
     logger.addHandler(file_handler)
     # todo: add bamliquidator version to the starting log message
-    logging.info("Starting %s with args %s", basename(sys.argv[0]), list(vars(args)))
+    logging.info("Starting %s with args %s", basename(sys.argv[0]), vars(args))
 
     # Adding console handler after writing the startup log entry.  The startup log could be useful 
     # in a file that is being appended to from a prior run, but would be annonying on stdout.
