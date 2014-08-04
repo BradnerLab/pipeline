@@ -40,16 +40,21 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 						//console.log(genes[j])
 					}
 					if (genes[j] == gene_name) {
-						console.log(d)
+						//console.log(d.REGION_ID)
+
+						var current_file_name = current_file.split("_HOCKEY")[0];
+
+						current_file_name = "/Documents/Bradner_work/hockey-sticks/" + current_file_name + "_plots/" + "SE_plots_" + current_file_name + "_" + d.REGION_ID + ".pdf";
+
+						$("#pdf_window")
+							.append('<div class="gene_pdf"> <object data=' + current_file_name + 
+							' type="application/pdf" width="800px" height="300"> alt : <a href='+ current_file_name + '>test.pdf</a> </object> </div>' )                                                                               
+
+
 					}
 				}
 
 			});
-
-			var current_file_name = current_file.split("_HOCKEY")[0];
-
-			current_file_name = "SE_plots_" + current_file_name;
-
 
 		})
 
