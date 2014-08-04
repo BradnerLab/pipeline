@@ -48,7 +48,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 						$("#pdf_window")
 							.append('<div class="gene_pdf"> <object data=' + current_file_name + 
-							' type="application/pdf" width="800px" height="300"> alt : <a href='+ current_file_name + '>test.pdf</a> </object> </div>' )                                                                               
+							' type="application/pdf" width="840px" height="580"> alt : <a href='+ current_file_name + '>test.pdf</a> </object> </div>' )                                                                               
 
 
 					}
@@ -61,11 +61,4 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 	}
 
 });
-
-// var pdf_name = "/Documents/Bradner_work/hockey-sticks/" + output_name[0] + "_plots/" + "SE_plots_" + output_name[0] + "_" + d.REGION_ID + ".pdf";
-
-// $("#pdf_window")
-// 	.append('<div class="pdf_image"> <object data=' + filename + 
-// 		' type="application/pdf" width="800px" height="300"> alt : <a href='+ filename + '>test.pdf</a> </object> </div>' )                                                                               
-
 
