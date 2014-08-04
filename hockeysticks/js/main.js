@@ -26,7 +26,9 @@ $(document).ready(function() {
 $(".dropdown-menu li a").click(function () {
 
 	d3.select(".bubble").remove();
-	d3.select(".crc_svg").remove();
+	d3.select(".crc_svg").remove();		
+	// d3.select("#slidertext").remove();
+	// d3.select("#slider").remove();
 	d3.select(".linegraph_svg").remove();
 	d3.select("#table_div")
 		.style("visibility", "visible");
@@ -245,27 +247,30 @@ function update_linegraph(file) {
 
 	    d3.select('#slider').call(d3.slider().axis(false).min(1).max(data_length).step(1)
 	    	.on("slide", function(evt, value) {
-	      		d3.select('#slidertext').text(data_length - value);
-	      		
-	      		var new_data = data;
 
-	      		new_data.splice(value, data_length - value);
+	    		if (value != 0) {
 
-	      		d3.selectAll("#slidertext").remove();
-	      		d3.selectAll(".circle").remove();
-	      		d3.selectAll(".legend").remove();
-	      		d3.selectAll(".bubble").remove();
+		    		d3.csv("/Documents/Bradner_work/hockey-sticks/" + file, function(error, data) {
+						data.forEach(function(d) {
+							d.super = +d.IS_SUPER;
+							d.val = +d.SIGNAL;
+							d.rank = +d.RANK;
+						});
 
-	      		//console.log(data)
+		      			d3.select('#slidertext').text(data_length - value);
 
-	      		make_graphs(new_data);
+		      			data.splice(data_length - value, value);
+
+		      			make_graphs(data);
+
+					})
+	    		}
 
 	    	})
 	    );
 
 		function make_graphs(data) {
-			
-			d3.selectAll("#slidertext").remove();
+
       		d3.selectAll(".circle").remove();
       		d3.selectAll(".legend").remove();
       		d3.selectAll(".bubble").remove();
@@ -831,7 +836,7 @@ function update_linegraph(file) {
 				.attr("x", 25)
 				.attr("y", -40)
 				.text("Legend")
-				.class("legend")
+				.attr("class", "legend")
 				.style("font-weight", "bold")
 				.style("font-size", "14px");
 
