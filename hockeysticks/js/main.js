@@ -227,10 +227,6 @@ function update_linegraph(file) {
 	//reset the clear button 
 	d3.select(".clear_button_linegraph").remove();
 
-    d3.select('#slider').call(d3.slider().on("slide", function(evt, value) {
-      d3.select('#slidertext').text(value);
-    }));
-	
 	line = d3.svg.line()
 		.x(function(d) {return linegraph_x(d.rank)})
 		.y(function(d) {return linegraph_y(d.val)});
@@ -242,6 +238,12 @@ function update_linegraph(file) {
 			d.val = +d.SIGNAL;
 			d.rank = +d.RANK;
 		});
+
+	    d3.select('#slider').call(d3.slider().axis(false).min(1).max(data.length).step(1)
+	    	.on("slide", function(evt, value) {
+	      		d3.select('#slidertext').text(value);
+	    	})
+	    );
 
 		var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
 
