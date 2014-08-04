@@ -247,9 +247,12 @@ function update_linegraph(file) {
 	    	.on("slide", function(evt, value) {
 	      		d3.select('#slidertext').text(data_length - value);
 	      		
-	      		data = data.splice(data_length - value, value);
+	      		data = data.splice(value, data_length - value);
 
-	      		d3.selectAll("#linegraph").html("");
+	      		d3.selectAll(".circle").remove();
+	      		d3.selectAll(".bubble").remove();
+
+	      		console.log(data)
 
 	      		make_graphs(data);
 
@@ -258,7 +261,7 @@ function update_linegraph(file) {
 
 		function make_graphs(data) {
 			
-			var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
+			var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_disease", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
 
 			var functional_dict = []
 
