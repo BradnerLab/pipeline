@@ -265,7 +265,6 @@ function update_linegraph(file) {
 
 					})
 	    		}
-
 	    	})
 	    );
 
