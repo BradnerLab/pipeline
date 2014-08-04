@@ -378,14 +378,18 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
 
 #slider_text_box {
   position: absolute;
-  top: 65px;
-  left: 750px;
+  top: 68px;
+  left: 715px;
   width: 200px;
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 12px;
+  font-weight: normal;
 }
 
 #slidertext {
   font-family: Trebuchet, sans-serif;
   color: black;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: normal;
 }
