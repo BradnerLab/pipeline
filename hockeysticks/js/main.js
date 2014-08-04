@@ -247,23 +247,32 @@ function update_linegraph(file) {
 	    	.on("slide", function(evt, value) {
 	      		d3.select('#slidertext').text(data_length - value);
 	      		
-	      		data = data.splice(value, data_length - value);
+	      		var new_data = data;
 
+	      		new_data.splice(value, data_length - value);
+
+	      		d3.selectAll("#slidertext").remove();
 	      		d3.selectAll(".circle").remove();
+	      		d3.selectAll(".legend").remove();
 	      		d3.selectAll(".bubble").remove();
 
-	      		console.log(data)
+	      		//console.log(data)
 
-	      		make_graphs(data);
+	      		make_graphs(new_data);
 
 	    	})
 	    );
 
 		function make_graphs(data) {
 			
+			d3.selectAll("#slidertext").remove();
+      		d3.selectAll(".circle").remove();
+      		d3.selectAll(".legend").remove();
+      		d3.selectAll(".bubble").remove();
+
 			var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_disease", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
 
-			var functional_dict = []
+			var functional_dict = [];
 
 			var number_categories = possible_categories.length;
 
@@ -822,6 +831,7 @@ function update_linegraph(file) {
 				.attr("x", 25)
 				.attr("y", -40)
 				.text("Legend")
+				.class("legend")
 				.style("font-weight", "bold")
 				.style("font-size", "14px");
 
