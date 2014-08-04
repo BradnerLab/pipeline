@@ -28,7 +28,7 @@ $(".dropdown-menu li a").click(function () {
 	d3.select(".bubble").remove();
 	d3.select(".crc_svg").remove();		
 	// d3.select("#slidertext").remove();
-	// d3.select("#slider").remove();
+	d3.select(".slider").remove();
 	d3.select(".linegraph_svg").remove();
 	d3.select("#table_div")
 		.style("visibility", "visible");
