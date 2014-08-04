@@ -239,714 +239,728 @@ function update_linegraph(file) {
 			d.rank = +d.RANK;
 		});
 
-	    d3.select('#slider').call(d3.slider().axis(false).min(1).max(data.length).step(1)
+		var data_length = data.length;
+
+		make_graphs(data);
+
+	    d3.select('#slider').call(d3.slider().axis(false).min(1).max(data_length).step(1)
 	    	.on("slide", function(evt, value) {
-	      		d3.select('#slidertext').text(value);
+	      		d3.select('#slidertext').text(data_length - value);
+	      		
+	      		data = data.splice(data_length - value, value);
+
+	      		d3.selectAll("#linegraph").html("");
+
+	      		make_graphs(data);
+
 	    	})
 	    );
 
-		var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
+		function make_graphs(data) {
+			
+			var possible_categories = ["BloodSurfaceAntigen", "Bromodomain", "Cancer_Mutated", "Cardio_diseas", "CD_Marker", "Chromatin_Modifying", "GPCR", "Kinase", "Methyltransferase", "Peptidases", "PHD_Containing", "Ribosomal", "Secreted_Hormone", "Transporter", "Tudo_Containing", "TxnFactor"];
 
-		var functional_dict = []
+			var functional_dict = []
 
-		var number_categories = possible_categories.length;
-
-		var data_length = data.length;
-
-		for (var i = 0; i < number_categories; i++) {
-			functional_dict.push({
-				name: possible_categories[i],
-				size: 0
-			});
-		}
-
-		//console.log(data)
-		//console.log(data)
-
-		for (var i = 0; i < data.length; i++) {
+			var number_categories = possible_categories.length;
 
 
-			var current_categories = data[i].PROXIMAL_FUNCTION
-			//console.log(data[i])
-			var split_categories = current_categories.split(";");
+			for (var i = 0; i < number_categories; i++) {
+				functional_dict.push({
+					name: possible_categories[i],
+					size: 0
+				});
+			}
 
-			// if (!current_categories) {
-			// 	console.log(data[i])
-			// }
+			//console.log(data)
+			//console.log(data)
 
-			var num_split = split_categories.length;
+			for (var i = 0; i < data.length; i++) {
 
-			for (var j = 0; j < num_split; j++) {
 
-				for (var k = 0; k < number_categories; k++) {
-					if (split_categories[j] == functional_dict[k].name) {
-						functional_dict[k].size += 1;
+				var current_categories = data[i].PROXIMAL_FUNCTION
+				//console.log(data[i])
+				var split_categories = current_categories.split(";");
+
+				// if (!current_categories) {
+				// 	console.log(data[i])
+				// }
+
+				var num_split = split_categories.length;
+
+				for (var j = 0; j < num_split; j++) {
+
+					for (var k = 0; k < number_categories; k++) {
+						if (split_categories[j] == functional_dict[k].name) {
+							functional_dict[k].size += 1;
+						}
+
 					}
-
 				}
 			}
-		}
 
-		var flare_dict = {
-			name: "flare",
-			children: functional_dict
-		};
+			var flare_dict = {
+				name: "flare",
+				children: functional_dict
+			};
 
-		//console.log(flare_dict)
+			//console.log(flare_dict)
 
-		var flare_diameter = 300,
-		    flare_format = d3.format(",d");
+			var flare_diameter = 300,
+			    flare_format = d3.format(",d");
 
-		var flare_color = d3.scale.ordinal()
-		    .domain(d3.extent(functional_dict, function(d) {
-		    	return d.size;
-		    }))
-		    .range(["#3288bd","#66c2a5","#abdda4","#e6f598","#fee08b","#fdae61","#f46d43","#d53e4f"]);
+			var flare_color = d3.scale.ordinal()
+			    .domain(d3.extent(functional_dict, function(d) {
+			    	return d.size;
+			    }))
+			    .range(["#3288bd","#66c2a5","#abdda4","#e6f598","#fee08b","#fdae61","#f46d43","#d53e4f"]);
 
-		var bubble = d3.layout.pack()
-		    .sort(null)
-		    .size([flare_diameter, flare_diameter])
-		    .padding(1.5);
+			var bubble = d3.layout.pack()
+			    .sort(null)
+			    .size([flare_diameter, flare_diameter])
+			    .padding(1.5);
 
-		var functional_svg = d3.select("#functional_bubble").append("svg")
-		    .attr("width", flare_diameter+80)
-		    .attr("height", flare_diameter+80)
-		    .attr("class", "bubble");
+			var functional_svg = d3.select("#functional_bubble").append("svg")
+			    .attr("width", flare_diameter+80)
+			    .attr("height", flare_diameter+80)
+			    .attr("class", "bubble");
 
-		var func_tip = d3.tip()
-			.attr("class", "d3-tip")
-			.offset([0,0]);
+			var func_tip = d3.tip()
+				.attr("class", "d3-tip")
+				.offset([0,0]);
 
-		functional_svg.call(func_tip);
+			functional_svg.call(func_tip);
 
-		//console.log(bubble.nodes(classes(flare_dict)))
+			//console.log(bubble.nodes(classes(flare_dict)))
 
-		var functional_node = functional_svg.selectAll(".flare_node")
-		      .data(bubble.nodes(classes(flare_dict))
-		      .filter(function(d) { return !d.children; }))
-		    .enter().append("g")
-		      .attr("class", "flare_node")
-		      .attr("transform", function(d) { 
-		      	//console.log(d)
-		      	return "translate(" + d.x + "," + (d.y+80) + ")"; });
+			var functional_node = functional_svg.selectAll(".flare_node")
+			      .data(bubble.nodes(classes(flare_dict))
+			      .filter(function(d) { return !d.children; }))
+			    .enter().append("g")
+			      .attr("class", "flare_node")
+			      .attr("transform", function(d) { 
+			      	//console.log(d)
+			      	return "translate(" + d.x + "," + (d.y+80) + ")"; });
 
-		functional_node.append("title")
-		      .text(function(d) { return d.className + ": " + flare_format(d.value); });
+			functional_node.append("title")
+			      .text(function(d) { return d.className + ": " + flare_format(d.value); });
 
-		d3.selectAll("title").remove()
+			d3.selectAll("title").remove()
 
-		functional_node.append("circle")
-		      .attr("r", function(d) { return d.r; })
-		      .style("fill", function(d) { return flare_color(d.className); })
-		      .on("click", function(d) {
-		      	for (var i = 0; i < data.length; i++) {
+			functional_node.append("circle")
+			      .attr("r", function(d) { return d.r; })
+			      .style("fill", function(d) { return flare_color(d.className); })
+			      .on("click", function(d) {
+			      	for (var i = 0; i < data.length; i++) {
 
-						current_categories = data[i].PROXIMAL_FUNCTION
+							current_categories = data[i].PROXIMAL_FUNCTION
 
-						var split_categories = current_categories.split(";");
+							var split_categories = current_categories.split(";");
 
-						var num_split = split_categories.length;
+							var num_split = split_categories.length;
 
-						for (var j = 0; j < num_split; j++) {
+							for (var j = 0; j < num_split; j++) {
 
-							for (var k = 0; k < number_categories; k++) {
-								if (split_categories[j] == d.className) {
-									//console.log("here")
-									addRow("tbody", data[i])
-									break;
+								for (var k = 0; k < number_categories; k++) {
+									if (split_categories[j] == d.className) {
+										//console.log("here")
+										addRow("tbody", data[i])
+										break;
 
-								}
-
-							}
-						}
-					}
-		      })
-		      .on("mouseover", function(d) {
-
-		      	func_tip.html(d.className + ", " + d.value)
-		      	func_tip.show(d);
-
-					for (var i = 0; i < data.length; i++) {
-
-						current_categories = data[i].PROXIMAL_FUNCTION
-
-						var split_categories = current_categories.split(";");
-
-						var num_split = split_categories.length;
-
-						for (var j = 0; j < num_split; j++) {
-
-							for (var k = 0; k < number_categories; k++) {
-								if (split_categories[j] == d.className) {
-									//console.log("here")
-
-									d3.select("[rank='" + data[i].RANK + "']")
-										.moveToFront()
-										.attr("r", 6.5)
-										.attr("stroke", "black")
-										.attr("fill", "#354299")
-										.attr("stroke-width", "2px")
+									}
 
 								}
-
 							}
 						}
-					}
+			      })
+			      .on("mouseover", function(d) {
 
-		      })
-		      .on("mouseout", function(d) {
-		      	func_tip.hide(d);
+			      	func_tip.html(d.className + ", " + d.value)
+			      	func_tip.show(d);
 
-		      	for (var i = 0; i < data.length; i++) {
+						for (var i = 0; i < data.length; i++) {
 
-						current_categories = data[i].PROXIMAL_FUNCTION
+							current_categories = data[i].PROXIMAL_FUNCTION
 
-						var split_categories = current_categories.split(";");
+							var split_categories = current_categories.split(";");
 
-						var num_split = split_categories.length;
+							var num_split = split_categories.length;
 
-						for (var j = 0; j < num_split; j++) {
+							for (var j = 0; j < num_split; j++) {
 
-							for (var k = 0; k < number_categories; k++) {
-								if (split_categories[j] == d.className) {
-									//console.log("here")
+								for (var k = 0; k < number_categories; k++) {
+									if (split_categories[j] == d.className) {
+										//console.log("here")
 
-									d3.select("[rank='" + data[i].RANK + "']")
-										.attr("stroke", null)
-										.attr("fill", linegraph_color(data[i].super))
-										.attr("r", 4.5);
+										d3.select("[rank='" + data[i].RANK + "']")
+											.moveToFront()
+											.attr("r", 6.5)
+											.attr("stroke", "black")
+											.attr("fill", "#354299")
+											.attr("stroke-width", "2px")
+
+									}
 
 								}
-
 							}
 						}
+
+			      })
+			      .on("mouseout", function(d) {
+			      	func_tip.hide(d);
+
+			      	for (var i = 0; i < data.length; i++) {
+
+							current_categories = data[i].PROXIMAL_FUNCTION
+
+							var split_categories = current_categories.split(";");
+
+							var num_split = split_categories.length;
+
+							for (var j = 0; j < num_split; j++) {
+
+								for (var k = 0; k < number_categories; k++) {
+									if (split_categories[j] == d.className) {
+										//console.log("here")
+
+										d3.select("[rank='" + data[i].RANK + "']")
+											.attr("stroke", null)
+											.attr("fill", linegraph_color(data[i].super))
+											.attr("r", 4.5);
+
+									}
+
+								}
+							}
+						}
+			      });
+
+			functional_node.append("text")
+			      .attr("dy", ".3em")
+			      .style("text-anchor", "middle")
+			      .style("font-weight", "bold")
+			      .style("font-size", "12px")
+			      .text(function(d) { 
+			      	//console.log(d.className.length, d.r/3)
+			      	if (d.className.length < d.r/3) {
+			      		return d.className;
+			      	}
+			      	//return d.className.substring(0, d.r / 3); 
+			      });
+
+
+			functional_svg.append("text")
+				.attr("y", 40)
+				.attr("text-anchor", "middle")
+				.attr("x", 150)
+				.style("font-size", "12px")
+				.text("Mouseover for more information.");
+
+			functional_svg.append("text")
+				.attr("y", 55)
+				.attr("text-anchor", "middle")
+				.attr("x", 150)
+				.style("font-size", "12px")
+				.text("Click to add all genes with that annotation to the table");
+			 //Click to add all genes with that annotation to the table.");
+
+
+			function classes(root) {
+
+			  var classes = [];
+
+			  function recurse(name, node) {
+			    if (node.children) node.children.forEach(function(child) { recurse(node.name, child); });
+			    else classes.push({packageName: name, className: node.name, value: node.size});
+			  }
+
+			  recurse(null, root);
+			  return {children: classes};
+
+			}
+
+			functional_svg.append("text")
+				.attr("x", 150)
+				.attr("y", 20)
+				.attr("font-size", "16px")
+				.attr("font-weight", "bold")
+				.attr("text-anchor", "middle")
+				.text("Functional Annotations");
+
+			//console.log(data.length)
+
+			linegraph_x.domain([0, data.length]);
+
+			linegraph_y.domain(d3.extent(data, function(d) {
+				return d.val;
+			}));
+
+
+			var linegraph = d3.select(".linegraph");
+
+			var datapoints = linegraph.selectAll(".dot")
+				.data(data, function(d) {return d.rank});
+
+			datapoints.exit().remove();
+
+
+			//add rows to table
+			function addRow(tableID, d) {
+
+				var table = document.getElementById(tableID);
+
+				//check if the dot has been added before. 
+				var table_row = $("#table tbody tr");
+
+				var rank_array = [];
+
+				table_row.each(function(index, element) {
+					var rank_row = $(this).find("td").eq(2).text();
+					rank_array.push(rank_row);
+				});
+
+				//if not, add it
+				if ($.inArray(d.rank, rank_array) == -1) {
+					// console.log(table)
+
+					var rowCount = table.rows.length;
+					var row = table.insertRow(rowCount);
+
+					var cell0 = row.insertCell(0);
+					var element1 = document.createElement("input");
+					element1.type = "checkbox";
+					element1.name = "check";
+					cell0.appendChild(element1);
+
+					var celladd = row.insertCell(1)
+					celladd.innerHTML = output_name[0];
+
+					var cell1 = row.insertCell(2);
+					var split = d.REGION_ID.split("_");
+					if (split[3] == "lociStitched") {
+						cell1.innerHTML = split[0];
 					}
-		      });
+					else {
+						cell1.innerHTML = split[3];
+					}
 
-		functional_node.append("text")
-		      .attr("dy", ".3em")
-		      .style("text-anchor", "middle")
-		      .style("font-weight", "bold")
-		      .style("font-size", "12px")
-		      .text(function(d) { 
-		      	//console.log(d.className.length, d.r/3)
-		      	if (d.className.length < d.r/3) {
-		      		return d.className;
-		      	}
-		      	//return d.className.substring(0, d.r / 3); 
-		      });
+					// console.log(d.peak)
 
+					var cell2 = row.insertCell(3);
+					cell2.innerHTML = d.RANK;
 
-		functional_svg.append("text")
-			.attr("y", 40)
-			.attr("text-anchor", "middle")
-			.attr("x", 150)
-			.style("font-size", "12px")
-			.text("Mouseover for more information.");
+					var cell3 = row.insertCell(4);
+					if (d.super == 1) {
+						cell3.innerHTML = "Yes";
+						cell3.style.backgroundColor = "#b30000";
+					}
+					else {
+						cell3.innerHTML = "No";
+					}
 
-		functional_svg.append("text")
-			.attr("y", 55)
-			.attr("text-anchor", "middle")
-			.attr("x", 150)
-			.style("font-size", "12px")
-			.text("Click to add all genes with that annotation to the table");
-		 //Click to add all genes with that annotation to the table.");
+					var cell4 = row.insertCell(5);
+					cell4.innerHTML = d.CHROM;
 
+					var cell5 = row.insertCell(6);
+					cell5.innerHTML = d.START;
 
-		function classes(root) {
+					var cell6 = row.insertCell(7);
+					cell6.innerHTML = d.STOP;
 
-		  var classes = [];
+					var cell7 = row.insertCell(8);
+					cell7.innerHTML = d.PROXIMAL_GENES;
 
-		  function recurse(name, node) {
-		    if (node.children) node.children.forEach(function(child) { recurse(node.name, child); });
-		    else classes.push({packageName: name, className: node.name, value: node.size});
-		  }
+					var cell8 = row.insertCell(9);
+					cell8.innerHTML = d.PROXIMAL_FUNCTION;
 
-		  recurse(null, root);
-		  return {children: classes};
+					//highlight rows on the table on mouseover
+					var rows = d3.selectAll("tbody tr")
+						.on("mouseover", function() {
+							d3.select(this).style("background-color", "#354299");
 
-		}
+							var row_rank = $(this).find("td").eq(3).text();
 
-		functional_svg.append("text")
-			.attr("x", 150)
-			.attr("y", 20)
-			.attr("font-size", "16px")
-			.attr("font-weight", "bold")
-			.attr("text-anchor", "middle")
-			.text("Functional Annotations");
+							var here = d3.select("[rank='" + row_rank + "']")
+								.moveToFront()
+								.attr("r", 6.5)
+								.attr("stroke", "black")
+								.attr("fill", "#354299")
+								.attr("stroke-width", "2px");
 
-		//console.log(data.length)
+						})
+						.on("mouseout", function() {
+							d3.select(this).style("background-color", null);
 
-		linegraph_x.domain([0, data.length]);
+							var row_rank = $(this).find("td").eq(3).text();
 
-		linegraph_y.domain(d3.extent(data, function(d) {
-			return d.val;
-		}));
+							var row_super = $(this).find("td").eq(4).text();
 
+							if (row_super == "No") {
+								var superness = 0;
+							}
+							else {
+								var superness = 1;
+							}
 
-		var linegraph = d3.select(".linegraph");
+							var here = d3.select("[rank='" + row_rank + "']")
+								.attr("stroke", null)
+								.attr("fill", linegraph_color(superness))
+								.attr("r", 4.5);
+						});
 
-		var datapoints = linegraph.selectAll(".dot")
-			.data(data, function(d) {return d.rank});
-
-		datapoints.exit().remove();
-
-
-		//add rows to table
-		function addRow(tableID, d) {
-
-			var table = document.getElementById(tableID);
-
-			//check if the dot has been added before. 
-			var table_row = $("#table tbody tr");
-
-			var rank_array = [];
-
-			table_row.each(function(index, element) {
-				var rank_row = $(this).find("td").eq(2).text();
-				rank_array.push(rank_row);
-			});
-
-			//if not, add it
-			if ($.inArray(d.rank, rank_array) == -1) {
-				// console.log(table)
-
-				var rowCount = table.rows.length;
-				var row = table.insertRow(rowCount);
-
-				var cell0 = row.insertCell(0);
-				var element1 = document.createElement("input");
-				element1.type = "checkbox";
-				element1.name = "check";
-				cell0.appendChild(element1);
-
-				var celladd = row.insertCell(1)
-				celladd.innerHTML = output_name[0];
-
-				var cell1 = row.insertCell(2);
-				var split = d.REGION_ID.split("_");
-				if (split[3] == "lociStitched") {
-					cell1.innerHTML = split[0];
-				}
-				else {
-					cell1.innerHTML = split[3];
-				}
-
-				// console.log(d.peak)
-
-				var cell2 = row.insertCell(3);
-				cell2.innerHTML = d.RANK;
-
-				var cell3 = row.insertCell(4);
-				if (d.super == 1) {
-					cell3.innerHTML = "Yes";
-					cell3.style.backgroundColor = "#b30000";
-				}
-				else {
-					cell3.innerHTML = "No";
-				}
-
-				var cell4 = row.insertCell(5);
-				cell4.innerHTML = d.CHROM;
-
-				var cell5 = row.insertCell(6);
-				cell5.innerHTML = d.START;
-
-				var cell6 = row.insertCell(7);
-				cell6.innerHTML = d.STOP;
-
-				var cell7 = row.insertCell(8);
-				cell7.innerHTML = d.PROXIMAL_GENES;
-
-				var cell8 = row.insertCell(9);
-				cell8.innerHTML = d.PROXIMAL_FUNCTION;
-
-				//highlight rows on the table on mouseover
-				var rows = d3.selectAll("tbody tr")
-					.on("mouseover", function() {
-						d3.select(this).style("background-color", "#354299");
-
-						var row_rank = $(this).find("td").eq(3).text();
-
-						var here = d3.select("[rank='" + row_rank + "']")
-							.moveToFront()
-							.attr("r", 6.5)
-							.attr("stroke", "black")
-							.attr("fill", "#354299")
-							.attr("stroke-width", "2px");
-
+					//sorting the table
+					$(function() {
+						$('#table').tablesorter({
+							headers: {
+								0: {
+									sorter: false
+								},
+								1: {
+									sorter: false
+								},
+								2: {
+									sorter: false
+								},
+								5: {
+									sorter: false
+								},
+								6: {
+									sorter: false
+								},
+								7: {
+									sorter: false
+								},
+								8: {
+									sorter: false
+								},
+								9: {
+									sorter: false
+								}
+							}
+						})
 					})
-					.on("mouseout", function() {
-						d3.select(this).style("background-color", null);
+				};  
+			}
 
-						var row_rank = $(this).find("td").eq(3).text();
+			linegraph.select(".x.axis")
+				.transition()
+				.duration(1000)
+				.call(linegraph_xAxis);
 
-						var row_super = $(this).find("td").eq(4).text();
+			linegraph.select(".y.axis")
+				.transition()
+				.duration(1000)
+				.call(linegraph_yAxis);
 
-						if (row_super == "No") {
-							var superness = 0;
-						}
-						else {
-							var superness = 1;
-						}
 
-						var here = d3.select("[rank='" + row_rank + "']")
-							.attr("stroke", null)
-							.attr("fill", linegraph_color(superness))
-							.attr("r", 4.5);
-					});
+			var delay = 700, clicks = 0, timer = null;
 
-				//sorting the table
-				$(function() {
-					$('#table').tablesorter({
-						headers: {
-							0: {
-								sorter: false
-							},
-							1: {
-								sorter: false
-							},
-							2: {
-								sorter: false
-							},
-							5: {
-								sorter: false
-							},
-							6: {
-								sorter: false
-							},
-							7: {
-								sorter: false
-							},
-							8: {
-								sorter: false
-							},
-							9: {
-								sorter: false
-							}
-						}
-					})
+			datapoints
+				.enter()
+				.append("circle")
+				.attr("class", "dot")
+				.attr("rank", function(d) {
+					return d.rank;
 				})
-			};  
-		}
-
-		linegraph.select(".x.axis")
-			.transition()
-			.duration(1000)
-			.call(linegraph_xAxis);
-
-		linegraph.select(".y.axis")
-			.transition()
-			.duration(1000)
-			.call(linegraph_yAxis);
-
-
-		var delay = 700, clicks = 0, timer = null;
-
-		datapoints
-			.enter()
-			.append("circle")
-			.attr("class", "dot")
-			.attr("rank", function(d) {
-				return d.rank;
-			})
-			.attr("super", function(d) {
-				return d.super;
-			})
-			.attr("r", 4.5)
-			.attr("opacity", "0.9")
-			.attr("clip-path", "url(#linegraph_clip)")
-			.on("mouseover", function(d) {
-
-				//console.log(d)
-
-				d3.select(this)
-				.moveToFront()
-				.attr("r", 6.5)
-				.attr("stroke", "black")
-				.attr("stroke-width", "2px");
-
-				if (!d.PROXIMAL_GENES) {
-					var nearby = "None";
-				}
-				else {
-					var nearby = d.PROXIMAL_GENES;
-				}
-				//console.log(d)
-
-				if (d[""]) {
-					var gene = d[""];
-				}
-				else if(!d.top) {
-					var gene = "None";
-				}
-				else {
-					var gene = d.top;
-				}
-
-				// console.log(d[""])
-
-				var split = d.REGION_ID.split("_");
-				//console.log(d)
-				if (split[3] == "lociStitched") {
-					var peak = split[0];
-				}
-				else {
-					var peak = split[3];
-				}
-
-				graph_tip.html("<strong>Peak Number: </strong>" + peak + "<br><strong>Top Gene: </strong>" + gene + "<br><strong>Chromosome: </strong>" + d.CHROM + "<br><strong>Nearby genes: </strong>" + nearby);
-				graph_tip.show(d);
-			})
-			.on("mouseout", function(d) {
-				d3.select(this)
+				.attr("super", function(d) {
+					return d.super;
+				})
 				.attr("r", 4.5)
-				.attr("stroke", null)
+				.attr("opacity", "0.9")
+				.attr("clip-path", "url(#linegraph_clip)")
+				.on("mouseover", function(d) {
 
-				graph_tip.hide(d);
-			})
-			.on("click", function(d) {
-				clicks++;
+					//console.log(d)
 
-				//console.log(d)
+					d3.select(this)
+					.moveToFront()
+					.attr("r", 6.5)
+					.attr("stroke", "black")
+					.attr("stroke-width", "2px");
 
-				if (clicks === 1 & d.super == 1) {
+					if (!d.PROXIMAL_GENES) {
+						var nearby = "None";
+					}
+					else {
+						var nearby = d.PROXIMAL_GENES;
+					}
+					//console.log(d)
 
-					//console.log(file)
-//output_name[0] + "plots/" +
-					var pdf_name = "/Documents/Bradner_work/hockey-sticks/" + output_name[0] + "_plots/" + "SE_plots_" + output_name[0] + "_" + d.REGION_ID + ".pdf";
+					if (d[""]) {
+						var gene = d[""];
+					}
+					else if(!d.top) {
+						var gene = "None";
+					}
+					else {
+						var gene = d.top;
+					}
 
-					//console.log(output_name)
+					// console.log(d[""])
 
-					//console.log(pdf_name)
-					//U87_H3K27AC_plots/SE_plots_U87_H3K27AC_1_MACS_peak_6695_lociStitched.pdf
-					//U87_H3K27AC_plots/SE_plots_U87_H3K27AC6_MACS_peak_4435_lociStitched.pdf
+					var split = d.REGION_ID.split("_");
+					//console.log(d)
+					if (split[3] == "lociStitched") {
+						var peak = split[0];
+					}
+					else {
+						var peak = split[3];
+					}
 
-					timer = setTimeout(function() {
-						clicks = 0;
-						//console.log("happen")
-						screenshotPreview(pdf_name);
-
-						// d3.selectAll(".pdf_image", function(d) {
-						// 	console.log("here")
-						// 	this.attr("transform", "translate(" + d.rank + "0)");
-						// })
-
-					}, delay);
-				}
-
-				else if (clicks === 1) {
-					timer = setTimeout(function() {
-						clicks = 0;
-					}, delay);
-				}
-
-				else {
-
-					clearTimeout(timer);
-					clicks = 0
-					addRow("tbody", d);
-				}
-			});
-
-			d3.select("#linegraph")
-				.on("click", function() {
-					d3.select(".pdf_image").remove();
+					graph_tip.html("<strong>Peak Number: </strong>" + peak + "<br><strong>Top Gene: </strong>" + gene + "<br><strong>Chromosome: </strong>" + d.CHROM + "<br><strong>Nearby genes: </strong>" + nearby);
+					graph_tip.show(d);
 				})
+				.on("mouseout", function(d) {
+					d3.select(this)
+					.attr("r", 4.5)
+					.attr("stroke", null)
 
-		// console.log(data)
+					graph_tip.hide(d);
+				})
+				.on("click", function(d) {
+					clicks++;
 
-		datapoints
-			.attr("cx", linegraph_x(1))
-			.attr("cy", linegraph_y(1))
-			.transition()
-			.duration(1000)
-			.attr("cx", function(d) {
-				return linegraph_x(d.rank);
-			})
-			.attr("cy", function(d) {
-				return linegraph_y(d.val);
-			})
-			.attr("fill", function(d) {
-				return linegraph_color(d.super);
+					//console.log(d)
+
+					if (clicks === 1 & d.super == 1) {
+
+						//console.log(file)
+	//output_name[0] + "plots/" +
+						var pdf_name = "/Documents/Bradner_work/hockey-sticks/" + output_name[0] + "_plots/" + "SE_plots_" + output_name[0] + "_" + d.REGION_ID + ".pdf";
+
+						//console.log(output_name)
+
+						//console.log(pdf_name)
+						//U87_H3K27AC_plots/SE_plots_U87_H3K27AC_1_MACS_peak_6695_lociStitched.pdf
+						//U87_H3K27AC_plots/SE_plots_U87_H3K27AC6_MACS_peak_4435_lociStitched.pdf
+
+						timer = setTimeout(function() {
+							clicks = 0;
+							//console.log("happen")
+							screenshotPreview(pdf_name);
+
+							// d3.selectAll(".pdf_image", function(d) {
+							// 	console.log("here")
+							// 	this.attr("transform", "translate(" + d.rank + "0)");
+							// })
+
+						}, delay);
+					}
+
+					else if (clicks === 1) {
+						timer = setTimeout(function() {
+							clicks = 0;
+						}, delay);
+					}
+
+					else {
+
+						clearTimeout(timer);
+						clicks = 0
+						addRow("tbody", d);
+					}
+				});
+
+				d3.select("#linegraph")
+					.on("click", function() {
+						d3.select(".pdf_image").remove();
+					})
+
+			// console.log(data)
+
+			datapoints
+				.attr("cx", linegraph_x(1))
+				.attr("cy", linegraph_y(1))
+				.transition()
+				.duration(1000)
+				.attr("cx", function(d) {
+					return linegraph_x(d.rank);
+				})
+				.attr("cy", function(d) {
+					return linegraph_y(d.val);
+				})
+				.attr("fill", function(d) {
+					return linegraph_color(d.super);
+				});
+
+
+			//set up the color legend
+			var legend = linegraph.append("g")
+				.attr("class", "legend")
+				.attr("width", 200)
+				.attr("height", 200)
+				.selectAll("g")
+				.data(linegraph_color.domain().slice().reverse())
+				.enter()
+				.append("g")
+				.attr("transform", function(d,i) {
+					return "translate(-10," + -1.5*(i*20) + ")";
+				});
+
+			legend.append("rect")
+				.attr("width", 18)
+				.attr("height", 18)
+				.style("fill", linegraph_color);
+
+			legend.append("text")
+				.attr("x", 25)
+				.attr("y", 0)
+				.attr("dy", "1.15em")
+				.text(function(d) {
+					if (d == 1) {
+						return "Super-enhancer"
+					}
+					else {
+						return "Typical Enhancer"
+					}
+				});
+
+			linegraph.append("text")
+				.attr("x", 25)
+				.attr("y", -40)
+				.text("Legend")
+				.style("font-weight", "bold")
+				.style("font-size", "14px");
+
+			//set up the brush
+			linegraph_brush = d3.svg.brush()
+				.x(linegraph_x)
+				.y(linegraph_y)
+				.on("brushend", linegraph_brushend);
+
+			var max_x = d3.max(data, function(d) {
+				return d.rank;
+			});
+			var max_y = d3.max(data, function(d) {
+				return d.val;
 			});
 
+			//console.log(max_y)
 
-		//set up the color legend
-		var legend = linegraph.append("g")
-			.attr("class", "legend")
-			.attr("width", 200)
-			.attr("height", 200)
-			.selectAll("g")
-			.data(linegraph_color.domain().slice().reverse())
-			.enter()
-			.append("g")
-			.attr("transform", function(d,i) {
-				return "translate(-10," + -1.5*(i*20) + ")";
-			});
+			linegraph_xdomain = [0, max_x];
+			linegraph_ydomain = [0, max_y];
 
-		legend.append("rect")
-			.attr("width", 18)
-			.attr("height", 18)
-			.style("fill", linegraph_color);
+			linegraph_x.domain(linegraph_xdomain);
+			linegraph_y.domain(linegraph_ydomain);
 
-		legend.append("text")
-			.attr("x", 25)
-			.attr("y", 0)
-			.attr("dy", "1.15em")
-			.text(function(d) {
-				if (d == 1) {
-					return "Super-enhancer"
-				}
-				else {
-					return "Typical Enhancer"
-				}
-			});
+			d3.select(".linegraph_brush").call(linegraph_brush);
 
-		linegraph.append("text")
-			.attr("x", 25)
-			.attr("y", -40)
-			.text("Legend")
-			.style("font-weight", "bold")
-			.style("font-size", "14px");
+			//updating the brush based on selected data
 
-		//set up the brush
-		linegraph_brush = d3.svg.brush()
-			.x(linegraph_x)
-			.y(linegraph_y)
-			.on("brushend", linegraph_brushend);
+			var linegraph_clear_button;
 
-		var max_x = d3.max(data, function(d) {
-			return d.rank;
-		});
-		var max_y = d3.max(data, function(d) {
-			return d.val;
-		});
+			function linegraph_brushend() {
 
-		//console.log(max_y)
-
-		linegraph_xdomain = [0, max_x];
-		linegraph_ydomain = [0, max_y];
-
-		linegraph_x.domain(linegraph_xdomain);
-		linegraph_y.domain(linegraph_ydomain);
-
-		d3.select(".linegraph_brush").call(linegraph_brush);
-
-		//updating the brush based on selected data
-
-		var linegraph_clear_button;
-
-		function linegraph_brushend() {
-
-			var linegraph_x_domain = [linegraph_brush.extent()[0][0], linegraph_brush.extent()[1][0]]
-			var linegraph_y_domain = [linegraph_brush.extent()[0][1], linegraph_brush.extent()[1][1]]
-
-			// console.log(linegraph_x_domain)
-			// console.log(linegraph_y_domain)
-
-			// equal domain ends means click on graph
-			if (+linegraph_x_domain[0] == +linegraph_x_domain[1] && +linegraph_y_domain[0] == +linegraph_y_domain[1]) {
-				return;
-			}
-
-			get_button = d3.select(".linegraph_clear_button");
-
-			if (get_button.empty() === true)
-			{
-				linegraph_clear_button = linegraph.append("g")
-					.attr("transform", "translate(" + (bb_linegraph.w - 100) + "," + (bb_linegraph.h - 320) + ")")
-					.attr("class", "linegraph_clear_button");
-
-				linegraph_clear_button.append("rect")
-					.attr("width", 102)
-					.attr("height", 20)
-					.attr("y", -20)
-					.attr("x", -4)
-					.attr("rx", "10px")
-					.attr("ry", "10px")
-					.style("fill", "#9f9f9f");
-
-				linegraph_clear_button
-					.append('text')
-					.attr("y", -3)
-					.attr("x", 10)
-					.text("Clear Zoom")
-					.style("fill", "black");
-			}
-
-			linegraph_x.domain(linegraph_x_domain);
-			linegraph_y.domain(linegraph_y_domain);
-
-			//add_to_table();
-
-			$("#add_all_visible").click(function () {
-
-				return add_to_table();
-			});
-
-			function add_to_table() {
-
-				//d3.selectAll(".circle")
+				var linegraph_x_domain = [linegraph_brush.extent()[0][0], linegraph_brush.extent()[1][0]]
+				var linegraph_y_domain = [linegraph_brush.extent()[0][1], linegraph_brush.extent()[1][1]]
 
 				// console.log(linegraph_x_domain)
 				// console.log(linegraph_y_domain)
 
-				for (var i = 0; i < data.length; i ++) {
+				// equal domain ends means click on graph
+				if (+linegraph_x_domain[0] == +linegraph_x_domain[1] && +linegraph_y_domain[0] == +linegraph_y_domain[1]) {
+					return;
+				}
 
-					//console.log(data[i].val)
-					//console.log(linegraph_y_domain)
-					//console.log(data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1])
+				get_button = d3.select(".linegraph_clear_button");
 
-					if (data[i].rank < linegraph_x_domain[1] && data[i].rank > linegraph_x_domain[0] && data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1]) { 
-						//console.log("true")
-						addRow("tbody", data[i])
+				if (get_button.empty() === true)
+				{
+					linegraph_clear_button = linegraph.append("g")
+						.attr("transform", "translate(" + (bb_linegraph.w - 100) + "," + (bb_linegraph.h - 320) + ")")
+						.attr("class", "linegraph_clear_button");
+
+					linegraph_clear_button.append("rect")
+						.attr("width", 102)
+						.attr("height", 20)
+						.attr("y", -20)
+						.attr("x", -4)
+						.attr("rx", "10px")
+						.attr("ry", "10px")
+						.style("fill", "#9f9f9f");
+
+					linegraph_clear_button
+						.append('text')
+						.attr("y", -3)
+						.attr("x", 10)
+						.text("Clear Zoom")
+						.style("fill", "black");
+				}
+
+				linegraph_x.domain(linegraph_x_domain);
+				linegraph_y.domain(linegraph_y_domain);
+
+				//add_to_table();
+
+				$("#add_all_visible").click(function () {
+
+					return add_to_table();
+				});
+
+				function add_to_table() {
+
+					//d3.selectAll(".circle")
+
+					// console.log(linegraph_x_domain)
+					// console.log(linegraph_y_domain)
+
+					for (var i = 0; i < data.length; i ++) {
+
+						//console.log(data[i].val)
+						//console.log(linegraph_y_domain)
+						//console.log(data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1])
+
+						if (data[i].rank < linegraph_x_domain[1] && data[i].rank > linegraph_x_domain[0] && data[i].val > linegraph_y_domain[0] && data[i].val < linegraph_y_domain[1]) { 
+							//console.log("true")
+							addRow("tbody", data[i])
+						}
+
 					}
 
 				}
 
-			}
-
-			linegraph_transition();
-
-			d3.select(".linegraph_brush").call(linegraph_brush.clear());
-
-			// add the on click events for the button
-			linegraph_clear_button.on('click', function ()
-			{
-			    // reset everything
-				linegraph_x.domain(linegraph_xdomain);
-				linegraph_y.domain(linegraph_ydomain);
-
 				linegraph_transition();
 
-				linegraph_clear_button.remove();
-			});
+				d3.select(".linegraph_brush").call(linegraph_brush.clear());
 
-			function linegraph_transition() {
-				
-				linegraph.select(".x.axis")
-					.transition()
-					.duration(1000)
-					.call(linegraph_xAxis);
+				// add the on click events for the button
+				linegraph_clear_button.on('click', function ()
+				{
+				    // reset everything
+					linegraph_x.domain(linegraph_xdomain);
+					linegraph_y.domain(linegraph_ydomain);
 
-				linegraph.select(".y.axis")
-					.transition()
-					.duration(1000)
-					.call(linegraph_yAxis);
+					linegraph_transition();
 
-				linegraph.selectAll("circle")
-					.transition()
-					.duration(1000)
-					.attr("cx", function(d) {
-						return linegraph_x(d.rank);
-					})
-					.attr("cy", function(d) {
-						return linegraph_y(d.val);
-					});
+					linegraph_clear_button.remove();
+				});
 
+				function linegraph_transition() {
+					
+					linegraph.select(".x.axis")
+						.transition()
+						.duration(1000)
+						.call(linegraph_xAxis);
+
+					linegraph.select(".y.axis")
+						.transition()
+						.duration(1000)
+						.call(linegraph_yAxis);
+
+					linegraph.selectAll("circle")
+						.transition()
+						.duration(1000)
+						.attr("cx", function(d) {
+							return linegraph_x(d.rank);
+						})
+						.attr("cy", function(d) {
+							return linegraph_y(d.val);
+						});
+
+				}
 			}
 		}
+		
 	});
 
 	d3.select("#loading-mask")
