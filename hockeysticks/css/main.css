@@ -367,3 +367,29 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
   top: 150px;
   left: 10px;
 }
+
+
+/*slider*/
+
+  h2 {
+      font-size: 1.2em;
+      margin: 60px 0 5px 0;
+    }
+
+    .wrapper {
+      width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .wrapper > div {
+      margin: 35px 0;
+    }
+
+    #slider8 {
+      height: 250px;
+    }
+
+    #slider9 {
+      height: 250px;
+    }
