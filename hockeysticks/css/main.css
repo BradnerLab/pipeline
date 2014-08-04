@@ -369,9 +369,23 @@ table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSo
 }
 
 /*slider*/
-#slider, #slider_text_box {
+#slider {
   position: absolute;
   top: 70px;
-  left: 550px;
+  left: 500px;
   width: 200px;
+}
+
+#slider_text_box {
+  position: absolute;
+  top: 65px;
+  left: 750px;
+  width: 200px;
+}
+
+#slidertext {
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 14px;
+  font-weight: normal;
 }
