@@ -17,7 +17,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		if (data[i].gene == input) {
 			if (data[i].file) {
 				file_name_array.push(data[i].file);
-				console.log(data[i].file)
+				//console.log(data[i].file)
 				break;
 			}
 		}
@@ -27,11 +27,26 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 		var current_file = file_name_array[i];
 
-		d3.csv(current_file, function(error, current_data) {
+		d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
 			
-			console.log(current_data)
+			current_data.forEach(function(d) {
 
-			var current_file_name = current_file.splice("_HOCKEY")[0];
+				var genes = d.PROXIMAL_GENES.split(";");
+				// if (i==1) {
+				// 	console.log(genes)
+				// }
+				for (var j = 0; j < genes.length; j++) {
+					if (i == 1) {
+						//console.log(genes[j])
+					}
+					if (genes[j] == gene_name) {
+						console.log(d)
+					}
+				}
+
+			});
+
+			var current_file_name = current_file.split("_HOCKEY")[0];
 
 			current_file_name = "SE_plots_" + current_file_name;
 
