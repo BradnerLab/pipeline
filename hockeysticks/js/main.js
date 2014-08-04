@@ -226,6 +226,7 @@ function update_linegraph(file) {
 
 	//reset the clear button 
 	d3.select(".clear_button_linegraph").remove();
+
 	
 	line = d3.svg.line()
 		.x(function(d) {return linegraph_x(d.rank)})
