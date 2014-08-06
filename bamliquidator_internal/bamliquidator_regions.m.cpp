@@ -1,4 +1,5 @@
 #include "bamliquidator.h"
+#include "bamliquidator_logger.h"
 
 #include <cmath>
 #include <fstream>
@@ -240,8 +241,8 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
                                               extension);
     } catch(const std::exception& e)
     {
-      std::cerr << "Warning: skipping region " << i+1 << " (" << regions[i] << ") due to error: "
-                << e.what() << std::endl;
+      Logger::warn() << "skipping region " << i+1 << " (" << regions[i] << ") due to error: "
+                     << e.what();
     }
   }
 }
@@ -292,7 +293,7 @@ int main(int argc, char* argv[])
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
     {
-      std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
+      Logger::error() << "Failed to open H5 file " << hdf5_file_path;
       return 3;
     }
 
@@ -302,7 +303,7 @@ int main(int argc, char* argv[])
                                                 strand);
     if (regions.size() == 0)
     {
-      std::cerr << "Warning: no regions detected in " << region_file_path << std::endl;
+      Logger::warn() << "no regions detected in " << region_file_path;
       return 0;
     }
 
@@ -314,7 +315,7 @@ int main(int argc, char* argv[])
   }
   catch(const std::exception& e)
   {
-    std::cerr << "Unhandled exception: " << e.what() << std::endl;
+    Logger::error() << "Unhandled exception: " << e.what();
 
     return 4; 
   }

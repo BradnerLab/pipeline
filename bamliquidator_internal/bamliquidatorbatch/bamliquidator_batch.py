@@ -309,16 +309,21 @@ def configure_logging(args):
     logger.setLevel(logging.INFO)
 
     file_handler = logging.FileHandler(os.path.join(args.output_directory, 'log.txt'))
-    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s\t%(message)s'))
+    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s\t%(message)s',
+                                                datefmt='%Y-%m-%d %H:%M:%S'))
     
     logger.addHandler(file_handler)
     # todo: add bamliquidator version to the starting log message
     logging.info("Starting %s with args %s", basename(sys.argv[0]), vars(args))
 
     # Adding console handler after writing the startup log entry.  The startup log could be useful 
-    # in a file that is being appended to from a prior run, but would be annonying on stdout.
+    # in a file that is being appended to from a prior run, but would be annonying on stderr.
 
     console_handler = logging.StreamHandler()
+    if args.quiet:
+        console_handler.setLevel(logging.ERROR)
+    else:
+        console_handler.setLevel(logging.INFO)
 
     class FormatterNotFormattingInfo(logging.Formatter):
         def __init__(self, fmt):
@@ -329,7 +334,7 @@ def configure_logging(args):
                 return record.getMessage()
             return logging.Formatter.format(self, record)
 
-    console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s: %(message)s'))
+    console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s\t%(message)s'))
     logger.addHandler(console_handler)
 
 def main():
@@ -366,7 +371,10 @@ def main():
                         help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
-    parser.add_argument('--skip_plot', action='store_true', help='skip generating plots (this can speed up execution')
+    parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help='Informational and warning output is suppressed so only errors are written to the console (stderr).  '
+                             'All logs are still written to log.txt in the output directory.')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
