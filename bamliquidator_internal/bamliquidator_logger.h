@@ -22,7 +22,7 @@ public:
    *
    *   WARNING	oops 123
    *
-   * It is best to use the returned object as a temporary with << since the actual logging occurs on destruction.
+   * Since copy constructor is private, returned value must be used as an anonymous temporary as in the example.
    */ 
   static Logger warn();
 
@@ -34,7 +34,7 @@ public:
    *
    *   ERROR	oops 123
    *
-   * It is best to use the returned object as a temporary with << since the actual logging occurs on destruction.
+   * Since copy constructor is private, returned value must be used as an anonymous temporary as in the example.
    */
   static Logger error();
 
@@ -49,7 +49,12 @@ public:
 
 private:
   Logger(const std::string& level, bool write_to_stderr);
+
+  // Prevent copy construction so callers of warn() and error() can only use returned object as an anonymous
+  // temporary with <<, which is appropriate since the actual logging occurs on destruction.
   Logger(const Logger& logger);
+
+  Logger& operator=( const Logger& ) = delete;
 
   const std::string level;
   const bool write_to_stderr;
