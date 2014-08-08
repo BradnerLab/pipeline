@@ -59,12 +59,14 @@ def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
 # The concrete classes must define the methods liquidate, normalize, and create_counts_table
 class BaseLiquidator(object):
-    def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
+    def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
+                 include_cpp_warnings_in_stderr = True, counts_file_path = None):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
+        self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
 
         # This script may be run by either a developer install from a git pipeline checkout,
         # or from a user install so that the exectuable is on the path.  First we try to
@@ -190,13 +192,17 @@ class BaseLiquidator(object):
 
         duration = time() - start
         logging.info("Flattening took %f seconds" % duration)
+        
+    def logging_cpp_args(self):
+        return [os.path.join(self.output_directory, "log.txt"), "1" if self.include_cpp_warnings_in_stderr else "0"]
 
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
-                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False):
+                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False, include_cpp_warnings_in_stderr = True):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
-        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
+        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
+                                            include_cpp_warnings_in_stderr, counts_file_path)
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense):
@@ -239,7 +245,8 @@ class BinLiquidator(BaseLiquidator):
 
 class RegionLiquidator(BaseLiquidator):
     def __init__(self, regions_file, output_directory, bam_file_path,
-                 region_format=None, counts_file_path = None, extension = 0, sense = '.'):
+                 region_format=None, counts_file_path = None, extension = 0, sense = '.',
+                 include_cpp_warnings_in_stderr = True):
         self.regions_file = regions_file
         self.region_format = region_format
         if self.region_format is None:
@@ -251,7 +258,7 @@ class RegionLiquidator(BaseLiquidator):
                                % str(self.region_format))
 
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
-                                               bam_file_path, counts_file_path)
+                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path)
         
         self.batch(extension, sense)
 
@@ -259,6 +266,7 @@ class RegionLiquidator(BaseLiquidator):
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
+        args.extend(self.logging_cpp_args())
         if sense is not None:
             args.append(sense)
 
@@ -383,7 +391,9 @@ def main():
     parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
     parser.add_argument('-q', '--quiet', action='store_true',
                         help='Informational and warning output is suppressed so only errors are written to the console (stderr).  '
-                             'All logs are still written to log.txt in the output directory.')
+                             'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
+                             'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
+                             'in log.txt.')
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -407,13 +417,15 @@ def main():
 
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
-                                   args.counts_file, args.extension, args.sense, args.skip_plot)
+                                   args.counts_file, args.extension, args.sense, args.skip_plot,
+                                   not args.quiet)
     else:
         if args.counts_file:
             raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
                             "please email the developer if you need this feature")
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
-                                      args.region_format, args.counts_file, args.extension, args.sense)
+                                      args.region_format, args.counts_file, args.extension, args.sense,
+                                      not args.quiet)
 
     if args.flatten:
         liquidator.flatten()

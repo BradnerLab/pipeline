@@ -11,6 +11,8 @@ class Logger
 {
 public:
   // Configures logging.  If not configured, logs are just written to stderr.
+  // If include_warnings_in_stderr is false, also disables all other writing to stderr
+  // (e.g. so other library call writes to stderr go to /dev/null).
   static void configure(const std::string& log_file_path,
                         bool include_warnings_in_stderr);
   
