@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.8.3
+VERSION := $(shell grep "__version__ =" bamliquidatorbatch/bamliquidator_batch.py | cut -d' ' -f 3 | sed "s/'//g")
 
 # The directory to install in:
 prefix = /usr/local

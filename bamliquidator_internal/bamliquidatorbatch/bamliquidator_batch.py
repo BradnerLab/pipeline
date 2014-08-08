@@ -17,6 +17,8 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
+__version__ = '0.9.0'
+
 def create_files_table(h5file):
     class Files(tables.IsDescription):
         key       = tables.UInt32Col(    pos=0) # is there an easier way to assign keys?
@@ -87,7 +89,7 @@ class BaseLiquidator(object):
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
         
             counts_file = tables.open_file(self.counts_file_path, mode = "w",
-                                           title = "bam liquidator genome bin read counts")
+                                           title = 'bam liquidator genome bin read counts - version %s' % __version__)
         else:
             counts_file = tables.open_file(self.counts_file_path, "r+")
 
@@ -325,7 +327,7 @@ def configure_logging(args):
     
     logger.addHandler(file_handler)
     # todo: add bamliquidator version to the starting log message
-    logging.info("Starting %s with args %s", basename(sys.argv[0]), vars(args))
+    logging.info("Starting %s %s with args %s", basename(sys.argv[0]), __version__, vars(args))
 
     # Adding console handler after writing the startup log entry.  The startup log could be useful 
     # in a file that is being appended to from a prior run, but would be annonying on stderr.
@@ -395,6 +397,7 @@ def main():
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
                              'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
                              'in log.txt.')
+    parser.add_argument('--version', action='version', version='%s %s' % (basename(sys.argv[0]), __version__))
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
