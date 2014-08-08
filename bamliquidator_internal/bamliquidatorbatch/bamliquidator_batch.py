@@ -212,6 +212,7 @@ class BinLiquidator(BaseLiquidator):
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
+        args.extend(self.logging_cpp_args())
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
             args.append(chromosome)
