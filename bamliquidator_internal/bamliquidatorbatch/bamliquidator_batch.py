@@ -79,6 +79,8 @@ class BaseLiquidator(object):
             # just look on standard path
             self.executable_path = executable 
 
+        mkdir_if_not_exists(output_directory)
+
         if self.counts_file_path is None:
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
         
@@ -337,6 +339,13 @@ def configure_logging(args):
     console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s\t%(message)s'))
     logger.addHandler(console_handler)
 
+def mkdir_if_not_exists(directory):
+    try:
+        os.mkdir(directory)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
+
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
                                                  'in the bam file(s) at the given directory, and then normalize, plot bins, '
@@ -392,11 +401,7 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
-    try:
-        os.mkdir(args.output_directory)
-    except OSError as exception:
-        if exception.errno != errno.EEXIST:
-            raise
+    mkdir_if_not_exists(args.output_directory)
 
     configure_logging(args)
 

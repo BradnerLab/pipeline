@@ -79,7 +79,7 @@ class SingleFullReadBamTest(unittest.TestCase):
                                                                   # intersected the bin
 
     def test_bin_liquidation_zero_bin_size(self):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             liquidator = blb.BinLiquidator(bin_size = 0,
                                            output_directory = os.path.join(self.dir_path, 'output'),
                                            bam_file_path = self.bam_file_path)
