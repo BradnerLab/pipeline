@@ -12,5 +12,5 @@ install:
   - "pip install pep8 pylint"
   # TODO: Move tables, etc. to requirements.txt, specify versions.
 script:
-  - "pylint --rcfile=.pylintrc --disable=fixme,import-error bamliquidator_internal/"
-  - "pep8 --ignore=E501,E302,E303 bamliquidator_internal/"
+  - "pylint --rcfile=.pylintrc --disable=fixme,import-error --errors-only bamliquidator_internal/"
+#  - "pep8 --ignore=E501,E302,E303 bamliquidator_internal/"
