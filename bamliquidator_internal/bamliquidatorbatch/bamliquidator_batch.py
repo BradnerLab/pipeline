@@ -12,6 +12,7 @@ import subprocess
 import tables
 import logging
 import sys
+import abc
 
 from time import time 
 from os.path import basename
@@ -59,8 +60,22 @@ def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
     return with_no_counts
 
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
-# The concrete classes must define the methods liquidate, normalize, and create_counts_table
+# that implement the abstract methods.
 class BaseLiquidator(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def liquidate(self, bam_file_path, extension, sense = None):
+        pass
+
+    @abc.abstractmethod
+    def normalize(self):
+        pass
+
+    @abc.abstractmethod
+    def create_counts_table(self, h5file):
+        pass
+
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
                  include_cpp_warnings_in_stderr = True, counts_file_path = None):
         # clear all memoized values from any prior runs
@@ -207,7 +222,7 @@ class BinLiquidator(BaseLiquidator):
                                             include_cpp_warnings_in_stderr, counts_file_path)
         self.batch(extension, sense)
 
-    def liquidate(self, bam_file_path, extension, sense):
+    def liquidate(self, bam_file_path, extension, sense = None):
         if sense is None: sense = '.'
 
         cell_type = basename(dirname(bam_file_path))
