@@ -447,7 +447,7 @@ def validate(counts_file_path):
          or num_files      != (row["lines_gte_95th_percentile"] + row["lines_lt_95th_percentile"])
          or num_files      != (row["lines_gte_5th_percentile"] + row["lines_lt_5th_percentile"])):
             error_count += 1
-            logging.error("Summary row doesn't add up:", row[:])
+            logging.error("Summary row doesn't add up: %s", row[:])
 
     counts_file.close()
 
