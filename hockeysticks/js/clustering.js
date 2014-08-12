@@ -1,4 +1,6 @@
-var margin = {top: 80, right: 0, bottom: 10, left: 80},
+//Angela Fan
+
+var margin = {top: 50, right: 50, bottom: 50, left: 50},
     width = 720,
     height = 720;
 
@@ -13,75 +15,77 @@ var svg = d3.select("body").append("svg")
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-d3.json("miserables.json", function(miserables) {
-  var matrix = [],
-      nodes = miserables.nodes,
-      n = nodes.length;
+d3.csv("/Documents/Bradner_work/hockey-sticks/corr.csv", function(data) {
 
-  // Compute index per node.
-  nodes.forEach(function(node, i) {
-    node.index = i;
-    node.count = 0;
-    matrix[i] = d3.range(n).map(function(j) { return {x: j, y: i, z: 0}; });
-  });
+  console.log(data)
+  // var matrix = [],
+  //     nodes = miserables.nodes,
+  //     n = nodes.length;
 
-  // Convert links to matrix; count character occurrences.
-  miserables.links.forEach(function(link) {
-    matrix[link.source][link.target].z += link.value;
-    matrix[link.target][link.source].z += link.value;
-    matrix[link.source][link.source].z += link.value;
-    matrix[link.target][link.target].z += link.value;
-    nodes[link.source].count += link.value;
-    nodes[link.target].count += link.value;
-  });
+  // // Compute index per node.
+  // nodes.forEach(function(node, i) {
+  //   node.index = i;
+  //   node.count = 0;
+  //   matrix[i] = d3.range(n).map(function(j) { return {x: j, y: i, z: 0}; });
+  // });
 
-  // Precompute the orders.
-  var orders = {
-    name: d3.range(n).sort(function(a, b) { return d3.ascending(nodes[a].name, nodes[b].name); }),
-    count: d3.range(n).sort(function(a, b) { return nodes[b].count - nodes[a].count; }),
-    group: d3.range(n).sort(function(a, b) { return nodes[b].group - nodes[a].group; })
-  };
+  // // Convert links to matrix; count character occurrences.
+  // miserables.links.forEach(function(link) {
+  //   matrix[link.source][link.target].z += link.value;
+  //   matrix[link.target][link.source].z += link.value;
+  //   matrix[link.source][link.source].z += link.value;
+  //   matrix[link.target][link.target].z += link.value;
+  //   nodes[link.source].count += link.value;
+  //   nodes[link.target].count += link.value;
+  // });
 
-  // The default sort order.
-  x.domain(orders.name);
+  // // Precompute the orders.
+  // var orders = {
+  //   name: d3.range(n).sort(function(a, b) { return d3.ascending(nodes[a].name, nodes[b].name); }),
+  //   count: d3.range(n).sort(function(a, b) { return nodes[b].count - nodes[a].count; }),
+  //   group: d3.range(n).sort(function(a, b) { return nodes[b].group - nodes[a].group; })
+  // };
 
-  svg.append("rect")
-      .attr("class", "background")
-      .attr("width", width)
-      .attr("height", height);
+  // // The default sort order.
+  // x.domain(orders.name);
 
-  var row = svg.selectAll(".row")
-      .data(matrix)
-    .enter().append("g")
-      .attr("class", "row")
-      .attr("transform", function(d, i) { return "translate(0," + x(i) + ")"; })
-      .each(row);
+  // svg.append("rect")
+  //     .attr("class", "background")
+  //     .attr("width", width)
+  //     .attr("height", height);
 
-  row.append("line")
-      .attr("x2", width);
+  // var row = svg.selectAll(".row")
+  //     .data(matrix)
+  //   .enter().append("g")
+  //     .attr("class", "row")
+  //     .attr("transform", function(d, i) { return "translate(0," + x(i) + ")"; })
+  //     .each(row);
 
-  row.append("text")
-      .attr("x", -6)
-      .attr("y", x.rangeBand() / 2)
-      .attr("dy", ".32em")
-      .attr("text-anchor", "end")
-      .text(function(d, i) { return nodes[i].name; });
+  // row.append("line")
+  //     .attr("x2", width);
 
-  var column = svg.selectAll(".column")
-      .data(matrix)
-    .enter().append("g")
-      .attr("class", "column")
-      .attr("transform", function(d, i) { return "translate(" + x(i) + ")rotate(-90)"; });
+  // row.append("text")
+  //     .attr("x", -6)
+  //     .attr("y", x.rangeBand() / 2)
+  //     .attr("dy", ".32em")
+  //     .attr("text-anchor", "end")
+  //     .text(function(d, i) { return nodes[i].name; });
 
-  column.append("line")
-      .attr("x1", -width);
+  // var column = svg.selectAll(".column")
+  //     .data(matrix)
+  //   .enter().append("g")
+  //     .attr("class", "column")
+  //     .attr("transform", function(d, i) { return "translate(" + x(i) + ")rotate(-90)"; });
 
-  column.append("text")
-      .attr("x", 6)
-      .attr("y", x.rangeBand() / 2)
-      .attr("dy", ".32em")
-      .attr("text-anchor", "start")
-      .text(function(d, i) { return nodes[i].name; });
+  // column.append("line")
+  //     .attr("x1", -width);
+
+  // column.append("text")
+  //     .attr("x", 6)
+  //     .attr("y", x.rangeBand() / 2)
+  //     .attr("dy", ".32em")
+  //     .attr("text-anchor", "start")
+  //     .text(function(d, i) { return nodes[i].name; });
 
   function row(row) {
     var cell = d3.select(this).selectAll(".cell")
@@ -128,8 +132,8 @@ d3.json("miserables.json", function(miserables) {
         .attr("transform", function(d, i) { return "translate(" + x(i) + ")rotate(-90)"; });
   }
 
-  var timeout = setTimeout(function() {
-    order("group");
-    d3.select("#order").property("selectedIndex", 2).node().focus();
-  }, 5000);
+  // var timeout = setTimeout(function() {
+  //   order("group");
+  //   d3.select("#order").property("selectedIndex", 2).node().focus();
+  // }, 5000);
 });
