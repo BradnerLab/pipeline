@@ -17,7 +17,18 @@ var svg = d3.select("body").append("svg")
 
 d3.csv("/Documents/Bradner_work/hockey-sticks/corr.csv", function(data) {
 
-  console.log(data)
+  //console.log(data)
+
+  d = {nodes: [], links: []}
+
+  for(var k in data[0]) d.nodes.push(k);
+
+  console.log(d)
+
+  data.forEach(function(d) {
+
+    //d.nodes.append("")
+  })
   // var matrix = [],
   //     nodes = miserables.nodes,
   //     n = nodes.length;

@@ -81,3 +81,13 @@ label {
   color: black;
   font-family: Trebuchet, sans-serif;
 }
+
+#del_button {
+  position: relative;
+  bottom: 15px;
+}
+
+#clear_button {
+  position: relative;
+  bottom: 15px;
+}
