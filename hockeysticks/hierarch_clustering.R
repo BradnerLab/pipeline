@@ -16,3 +16,7 @@ hclust.ave <- function(x) hclust(x, method="complete")
 heatmap(t, Colv=T,Rowv=T, scale='none', col=hmcols, hclustfun=hclust.ave)
 
 write.table(t, file="corr.csv")
+
+svg("mymap.svg")
+heatmap(...)
+dev.off()
