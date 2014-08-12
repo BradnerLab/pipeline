@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>HockeyStick Viz</title>
+  <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="/Documents/Bradner_work/pipeline/hockeysticks/css/clustering.css"></link>
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+  <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+  <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+
+</head>
+<body>
+  <div id="page_header">
+    <div id="page_title"> </div>
+  </div>
+
+  <div id="page_content">
+
+    <div class="btn-group" id="dataswitch">
+        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+          Select Dataset <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu" role="menu" id="selector">
+          <li><a href="#">MM1S_H3K27AC_DMSO_HOCKEY.csv</a></li>
+          <li><a href="#">U87_H3K27AC_HOCKEY.csv</a></li>
+          <li><a href="#">MS1_H3K27Ac_HOCKEY.csv</a></li>
+        </ul>
+      </div>
+
+        <div class="col-lg-3">
+          <div class="input-group input-sm">
+            <input type="text" class="form-control" id="search">
+            <span class="input-group-btn">
+              <button class="btn btn-default" id="search_button" type="button">Find</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="btn-group" id="closer">
+          <button type="button" class="btn btn-default" id="minimize">Minimize</button>
+          <button type="button" class="btn btn-default" id="exit">Exit</button>
+        </div>
+
+    </div>
+
+	<script src="/Documents/Bradner_work/pipeline/hockeysticks/js/clustering.js"></script>
+</body>
