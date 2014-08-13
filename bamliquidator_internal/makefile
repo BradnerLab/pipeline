@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION = 0.8.3
+VERSION := $(shell grep "__version__ =" bamliquidatorbatch/bamliquidator_batch.py | cut -d' ' -f 3 | sed "s/'//g")
 
 # The directory to install in:
 prefix = /usr/local
@@ -96,12 +96,12 @@ all: bamliquidator bamliquidator_bins bamliquidator_regions
 bamliquidator: bamliquidator.m.o bamliquidator.o
 	$(CC) $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
-bamliquidator_bins: bamliquidator_bins.m.o
-	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o \
+bamliquidator_bins: bamliquidator_bins.m.o bamliquidator.o bamliquidator_logger.o
+	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o bamliquidator_logger.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS)
 
-bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o
-	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o \
+bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o bamliquidator_logger.o
+	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o bamliquidator_logger.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
 bamliquidator.m.o: bamliquidator.m.cpp
@@ -115,6 +115,9 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
   
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
 	$(CC) $(CPPFLAGS) -pthread -c bamliquidator.cpp
+
+bamliquidator_logger.o: bamliquidator_logger.cpp bamliquidator_logger.h
+	$(CC) $(CPPFLAGS) -c bamliquidator_logger.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
 
