@@ -122,8 +122,10 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			    .data(ranking_array)
 			    .enter().append("rect")
 			    .attr("class", "bar")
-			    .attr("x", function(d) { return x(d.filename); })
-			    .attr("width", x.rangeBand())
+			    .attr("x", function(d, i) {
+			    	return x(i)
+			    })
+			    .attr("width", x.rangeBand()-2)
 			    .attr("y", function(d) { return y(d.rank); })
 			    .attr("height", function(d) { return height - y(d.rank); })
 			    .on("mouseover", function(d) {
