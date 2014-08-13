@@ -66,6 +66,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 			//console.log(ranking_array)
 
+			tip = d3.tip().attr('class', 'd3-tip');
+
 			var margin = {top: 50, right: 50, bottom: 50, left: 100},
 			    width = 1200 - margin.left - margin.right,
 			    height = 300 - margin.top - margin.bottom;
@@ -92,6 +94,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			  .append("g")
 			    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+			svg.call(tip)
+
 			x.domain([0, ranking_array.length]);
 			y.domain([0, d3.max(ranking_array, function(d) { return d.rank; })]);
 
@@ -117,7 +121,17 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			    .attr("x", function(d) { return x(d.filename); })
 			    .attr("width", x.rangeBand())
 			    .attr("y", function(d) { return y(d.rank); })
-			    .attr("height", function(d) { return height - y(d.rank); });
+			    .attr("height", function(d) { return height - y(d.rank); })
+			    .on("mouseover", function(d) {
+
+			    	tip.html("File: " + d.filename + "<br>Rank: " + d.rank)
+
+			    	return tip.show(d)
+
+			    })
+			    .on("mouseout", function(d) {
+			    	return tip.hide(d)
+			    });
 
 			function type(d) {
 			  d.frequency = +d.rank;
