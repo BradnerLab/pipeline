@@ -66,7 +66,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 			//console.log(ranking_array)
 
-			var margin = {top: 50, right: 50, bottom: 50, left: 50},
+			var margin = {top: 50, right: 50, bottom: 50, left: 100},
 			    width = 1200 - margin.left - margin.right,
 			    height = 300 - margin.top - margin.bottom;
 
@@ -82,8 +82,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 			var yAxis = d3.svg.axis()
 			    .scale(y)
-			    .orient("left")
-			    .ticks(10, "%");
+			    .orient("left");
 
 			var svg = d3.select("body").append("svg")
 			    .attr("width", width + margin.left + margin.right)
