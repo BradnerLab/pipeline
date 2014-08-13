@@ -78,11 +78,13 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 			var xAxis = d3.svg.axis()
 			    .scale(x)
-			    .orient("bottom");
+			    .orient("bottom")
+			    .tickFormat("");
 
 			var yAxis = d3.svg.axis()
 			    .scale(y)
-			    .orient("left");
+			    .orient("left")
+			    .outerTickSize([0]);
 
 			var svg = d3.select("body").append("svg")
 			    .attr("width", width + margin.left + margin.right)
