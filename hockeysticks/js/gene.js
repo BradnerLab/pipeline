@@ -43,9 +43,12 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 						//console.log(genes[j])
 					}
 					if (genes[j] == gene_name) {
-						console.log("hello")
+
+						//console.log("hello")
 
 						ranking_array.push({"filename": current_file, "rank": +d.RANK});
+
+						//console.log(ranking_array)
 
 						var current_file_name = current_file.split("_HOCKEY")[0];
 
@@ -61,11 +64,11 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 			});
 
+			console.log(ranking_array)
+
 		})
 
 	}
-
-	console.log(ranking_array)
 
 });
 
