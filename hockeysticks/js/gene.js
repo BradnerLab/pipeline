@@ -23,6 +23,9 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		}
 	}
 
+
+	var ranking_array = [];
+
 	for (var i = 0; i < file_name_array.length; i++) {
 
 		var current_file = file_name_array[i];
@@ -40,7 +43,9 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 						//console.log(genes[j])
 					}
 					if (genes[j] == gene_name) {
-						//console.log(d.REGION_ID)
+						console.log("hello")
+
+						ranking_array.push({"filename": current_file, "rank": +d.RANK});
 
 						var current_file_name = current_file.split("_HOCKEY")[0];
 
@@ -59,6 +64,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		})
 
 	}
+
+	console.log(ranking_array)
 
 });
 
