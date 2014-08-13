@@ -102,7 +102,12 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			svg.append("g")
 		      	.attr("class", "x axis")
 		      	.attr("transform", "translate(0," + height + ")")
-		      	.call(xAxis);
+		      	.call(xAxis)
+		      	.append("text")
+		      	.attr("x", 1000)
+		      	.attr("y", 15)
+		      	.style("text-anchor", "middle")
+		      	.text("Files");
 
 			svg.append("g")
 		      	.attr("class", "y axis")
