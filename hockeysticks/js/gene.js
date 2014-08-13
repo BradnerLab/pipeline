@@ -109,8 +109,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		      	.call(yAxis)
 		    	.append("text")
 		      	.attr("transform", "rotate(-90)")
-		      	.attr("y", 6)
-		      	.attr("dy", ".71em")
+		      	.attr("dy", "-3.71em")
 		      	.style("text-anchor", "end")
 		      	.text("Super-enhancer rank");
 
