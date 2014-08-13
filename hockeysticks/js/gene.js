@@ -115,7 +115,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			    .attr("class", "bar")
 			    .attr("x", function(d) { return x(d.filename); })
 			    .attr("width", x.rangeBand())
-			    .attr("y", function(d) { return y(d.frequency); })
+			    .attr("y", function(d) { return y(d.rank); })
 			    .attr("height", function(d) { return height - y(d.rank); });
 
 			function type(d) {
