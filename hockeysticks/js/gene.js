@@ -67,7 +67,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 								"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
 								"start": +d.START, "stop": +d.STOP, "chromosome": d.CHROM});
 
-							console.log(ranking_array)
+							//console.log(ranking_array)
 
 							//console.log(ranking_array)
 
@@ -97,7 +97,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					tip = d3.tip().attr('class', 'd3-tip');
 
 					var margin = {top: 50, right: 50, bottom: 50, left: 100},
-					    width = 1200 - margin.left - margin.right,
+					    width = 1100 - margin.left - margin.right,
 					    height = 300 - margin.top - margin.bottom;
 
 					var x = d3.scale.ordinal()
@@ -120,7 +120,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    .attr("width", width + margin.left + margin.right)
 					    .attr("height", height + margin.top + margin.bottom)
 					  .append("g")
-					    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+					    .attr("transform", "translate(" + (margin.left+100) + "," + margin.top + ")");
 
 					svg.call(tip)
 

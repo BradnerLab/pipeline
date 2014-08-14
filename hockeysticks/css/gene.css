@@ -16,3 +16,11 @@
   stroke: #000;
   shape-rendering: crispEdges;
 }
+
+#bar_chart_sort {
+	position: relative;
+	left: 20px;
+	top: 150px;
+	font-size: 12px;
+	font-family: sans-serif;
+}
