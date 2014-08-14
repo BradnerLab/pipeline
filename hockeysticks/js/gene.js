@@ -122,7 +122,17 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 					svg.call(tip)
 
-					x.domain([0, 1, 2]);
+					function range(start, end) {
+					    var foo = [];
+					    for (var i = start; i <= end; i++) {
+					        foo.push(i);
+					    }
+					    return foo;
+					}
+
+
+
+					x.domain(range(0,ranking_array.length-1));
 					y.domain(d3.extent(ranking_array, function(d) { return d.rank; }));
 
 					console.log(x.domain())
