@@ -8,6 +8,16 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 	//MM1S_H3K27AC_DMSO_HOCKEY.csv 
 	var input = gene_name;
 
+	d3.select(".page_title").remove();
+
+	d3.select("#page_title")
+		.append("text")
+		.attr("y", 0)
+		.attr("text-anchor", "middle")
+		.attr("x", 500)
+		.text(gene_name)
+		.attr("class", "page_title");
+
 	var data_length = data.length;
 
 	var file_name_array = [];
