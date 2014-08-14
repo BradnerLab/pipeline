@@ -199,8 +199,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 						// Copy-on-write since tweens are evaluated after a delay.
 						var x0 = x.domain(ranking_array.sort(this.checked
-						    ? function(a, b) { return b.rank - a.rank; }
-						    : function(a, b) { return d3.ascending(a.number, b.number); })
+						    ? function(a, b) { return a.rank - b.rank; }
+						    : function(a, b) { return d3.descending(a.number, b.number); })
 						    .map(function(d) { 
 						    	console.log(d)
 						    	return d.number; 
