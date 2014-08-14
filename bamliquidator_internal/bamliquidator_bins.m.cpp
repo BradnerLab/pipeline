@@ -1,4 +1,5 @@
 #include "bamliquidator.h"
+#include "bamliquidator_logger.h"
 
 #include <cmath>
 #include <fstream>
@@ -51,7 +52,9 @@ void write(hid_t& file,
                                      record_offset, field_sizes, records.data());
   if (status != 0)
   {
-    std::cerr << "Error appending record, status = " << status << std::endl;
+    std::stringstream ss;
+    ss << "Failed to append records, status = " << status;
+    throw std::runtime_error(ss.str());
   }
 }
 
@@ -142,8 +145,8 @@ void liquidate_bins(std::vector<CountH5Record>& counts, const std::string& bam_f
                                               extension);
     } catch(const std::exception& e)
     {
-      std::cerr << "Skipping " << counts[i].chromosome << " bin " << i << " due to error: "
-                << e.what() << std::endl;
+      Logger::warn() << "Skipping " << counts[i].chromosome << " bin " << i << " due to error: "
+                << e.what();
     }
   }
 }
@@ -207,12 +210,12 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc < 10 || argc % 2 != 0)
+    if (argc < 12 || argc % 2 != 0)
     {
       std::cerr << "usage: " << argv[0] 
-        << " cell_type bin_size extension strand bam_file bam_file_key hdf5_file chr1 length1 ... \n"
+        << " cell_type bin_size extension strand bam_file bam_file_key hdf5_file log_file write_warnings_to_stderr chr1 length1 ... \n"
         << "\ne.g. " << argv[0] << " mm1s 100000 0 . /ifs/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam "
-        << "137 counts.hdf5 chr1 247249719 chr2 242951149 chr3 199501827"
+        << "137 counts.hdf5 output/log.txt 1 chr1 247249719 chr2 242951149 chr3 199501827"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
@@ -226,24 +229,28 @@ int main(int argc, char* argv[])
     const std::string bam_file_path = argv[5];
     const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[6]);
     const std::string hdf5_file_path = argv[7];
+    const std::string log_file_path = argv[8];
+    const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[9]);
 
     std::vector<std::pair<std::string, size_t>> chromosome_lengths;
-    for (int arg = 8; arg < argc && arg + 1 < argc; arg += 2)
+    for (int arg = 10; arg < argc && arg + 1 < argc; arg += 2)
     {
       chromosome_lengths.push_back(
         std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
     }
 
+    Logger::configure(log_file_path, write_warnings_to_stderr);
+
     if (bin_size == 0)
     {
-      std::cerr << "bin size cannot be zero" << std::endl;
+      Logger::error() << "bin size cannot be zero";
       return 2;
     }
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
     {
-      std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
+      Logger::error() << "Failed to open H5 file " << hdf5_file_path;
       return 3;
     }
 
@@ -257,7 +264,7 @@ int main(int argc, char* argv[])
   }
   catch(const std::exception& e)
   {
-    std::cerr << "Unhandled exception: " << e.what() << std::endl;
+    Logger::error() << "Unhandled exception: " << e.what();
 
     return 4; 
   }

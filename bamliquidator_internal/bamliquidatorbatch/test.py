@@ -79,40 +79,11 @@ class SingleFullReadBamTest(unittest.TestCase):
                                                                   # intersected the bin
 
     def test_bin_liquidation_zero_bin_size(self):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(Exception):
             liquidator = blb.BinLiquidator(bin_size = 0,
                                            output_directory = os.path.join(self.dir_path, 'output'),
                                            bam_file_path = self.bam_file_path)
             liquidator.batch(extension = 0, sense = '.')
-
-            specific_bam_file_normalization_records = 0
-            cell_type_normalization_records = 0
-            for record in counts.root.normalized_counts:
-                self.assertEqual(0, record["bin_number"])
-                self.assertEqual(self.chromosome, record["chromosome"])
-                self.assertNotEqual("", record["cell_type"])
-
-                # 50 base pair reads in bin 1, bin size is 50, 1 read total, unit is reads per million per base pair
-                # 50 / 50 / (1 / 1,000,000) = 1,000,000 rpm/bp 
-                # usually there are millions of total reads, which is why the number is sort of odd here
-                expected_normalized_count = 10**6
-                self.assertEqual(expected_normalized_count, record["count"])
-
-                if record["file_key"] == 0:
-                    cell_type_normalization_records += 1
-                elif record["file_key"] == 1:
-                    specific_bam_file_normalization_records += 1
-                else:
-                    self.fail("unexpected file_key %s" % str(record["file_key"]))
-
-            self.assertEqual(specific_bam_file_normalization_records, 1)
-            self.assertEqual(cell_type_normalization_records, 1)
-
-            self.assertEqual(1, len(counts.root.summary))
-            self.assertEqual(1, len(counts.root.sorted_summary))
-            self.assertEqual(str(counts.root.summary[0]), str(counts.root.sorted_summary[0]))
-            # todo: add summary record checks
-
 
     def test_region_liquidation(self):
         start = 1
