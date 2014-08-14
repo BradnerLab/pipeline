@@ -32,7 +32,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 		d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
 
-			console.log(current_data)
+			//console.log(current_data)
 			
 			current_data.forEach(function(d) {
 
@@ -150,6 +150,31 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			  return d;
 			}
 
+
+			d3.select("input#by_rank").on("change", change_rank);
+
+			function change_rank() {
+
+				// Copy-on-write since tweens are evaluated after a delay.
+				var x0 = x.domain(data.sort(this.checked
+				    ? function(a, b) { return b.rank - a.rank; }
+				    : function(a, b) { return d3.ascending(a.file, b.file); })
+				    .map(function(d) { return d.file; }))
+				    .copy();
+
+				var transition = svg.transition().duration(750),
+				    delay = function(d, i) { return i * 50; };
+
+				transition.selectAll(".bar")
+				    .delay(delay)
+				    .attr("x", function(d) { return x0(d.file); });
+
+				transition.select(".x.axis")
+				    .call(xAxis)
+				  .selectAll("g")
+				    .delay(delay);
+
+			}
 
 			// d3.select("input#cost").on("change", change_cost);
 
