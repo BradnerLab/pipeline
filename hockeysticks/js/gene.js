@@ -122,8 +122,11 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 					svg.call(tip)
 
-					x.domain([0, ranking_array.length]);
-					y.domain([0, d3.max(ranking_array, function(d) { return d.rank; })]);
+					x.domain([0, 1, 2]);
+					y.domain(d3.extent(ranking_array, function(d) { return d.rank; }));
+
+					console.log(x.domain())
+					console.log(x.range())
 
 					svg.append("g")
 				      	.attr("class", "x axis")
@@ -148,15 +151,17 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    .data(ranking_array)
 					    .enter().append("rect")
 					    .attr("class", "bar")
-					    .attr("x", function(d, i) {
-					    	return x(i)
+					    .attr("x", function(d, j) {
+					    	console.log(j)
+					    	console.log(x(j))
+					    	return x(j)
 					    })
-					    .attr("width", x.rangeBand()-2)
+					    .attr("width", x.rangeBand())
 					    .attr("y", function(d) { return y(d.rank); })
 					    .attr("height", function(d) { return height - y(d.rank); })
 					    .on("mouseover", function(d) {
 
-					    	console.log(d)
+					    	//console.log(d)
 
 					    	tip.html("File: " + d.filename + "<br>Rank: " + d.rank)
 
