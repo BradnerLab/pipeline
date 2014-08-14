@@ -67,6 +67,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 								"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
 								"start": +d.START, "stop": +d.STOP, "chromosome": d.CHROM});
 
+							console.log(ranking_array)
+
 							//console.log(ranking_array)
 
 							var current_file_name = current_file.split("_HOCKEY")[0];
@@ -131,12 +133,11 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					}
 
 
-
 					x.domain(range(0,ranking_array.length-1));
 					y.domain(d3.extent(ranking_array, function(d) { return d.rank; }));
 
-					console.log(x.domain())
-					console.log(x.range())
+					// console.log(x.domain())
+					// console.log(x.range())
 
 					svg.append("g")
 				      	.attr("class", "x axis")
@@ -162,8 +163,12 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    .enter().append("rect")
 					    .attr("class", "bar")
 					    .attr("x", function(d, j) {
-					    	console.log(j)
-					    	console.log(x(j))
+
+					    	d.number = j
+					    	//console.log(d)
+
+					    	// console.log(j)
+					    	// console.log(x(j))
 					    	return x(j)
 					    })
 					    .attr("width", x.rangeBand())
@@ -193,10 +198,13 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					function change_rank() {
 
 						// Copy-on-write since tweens are evaluated after a delay.
-						var x0 = x.domain(data.sort(this.checked
+						var x0 = x.domain(ranking_array.sort(this.checked
 						    ? function(a, b) { return b.rank - a.rank; }
-						    : function(a, b) { return d3.ascending(a.file, b.file); })
-						    .map(function(d) { return d.file; }))
+						    : function(a, b) { return d3.ascending(a.number, b.number); })
+						    .map(function(d) { 
+						    	console.log(d)
+						    	return d.number; 
+						    }))
 						    .copy();
 
 						var transition = svg.transition().duration(750),
@@ -204,7 +212,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 						transition.selectAll(".bar")
 						    .delay(delay)
-						    .attr("x", function(d) { return x0(d.file); });
+						    .attr("x", function(d) { return x0(d.number); });
 
 						transition.select(".x.axis")
 						    .call(xAxis)
