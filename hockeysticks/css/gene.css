@@ -18,10 +18,10 @@
 }
 
 #bar_chart_sort {
-	position: relative;
+	position: absolute;
 	width: 100px;
 	left: 20px;
-	top: 0px;
+	top: 100px;
 	font-size: 12px;
 	font-family: sans-serif;
 }
