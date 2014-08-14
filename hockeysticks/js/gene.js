@@ -33,9 +33,9 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 		var current_file = file_name_array[0][i];
 
-		console.log(i)
+		// console.log(i)
 
-		console.log(current_file)
+		// console.log(current_file)
 
 		//console.log(current_file)
 
@@ -44,9 +44,9 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		function plot(current_file) {
 			d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
 
-				console.log(current_file)
+				// console.log(current_file)
 
-				console.log(i)
+				// console.log(i)
 				
 				current_data.forEach(function(d) {
 
@@ -60,7 +60,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 						}
 						if (genes[j] == gene_name) {
 
-							console.log(current_file)
+							//console.log(current_file)
 
 
 							ranking_array.push({"filename": current_file, "rank": +d.RANK, "prox_genes": d.PROXIMAL_GENES, 
@@ -71,7 +71,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 							var current_file_name = current_file.split("_HOCKEY")[0];
 
-							console.log(d)
+							//console.log(d)
 
 							current_file_name = "/Documents/Bradner_work/hockey-sticks/" + current_file_name + "_plots/" + "SE_plots_" + current_file_name + "_" + d.REGION_ID + ".pdf";
 
