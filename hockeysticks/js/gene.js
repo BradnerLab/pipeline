@@ -194,6 +194,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 
 					d3.select("input#by_rank").on("change", change_rank);
+					d3.select("input#by_signal").on("change", change_signal);
+					d3.select("input#by_super").on("change", change_super);
 
 					function change_rank() {
 
@@ -202,7 +204,59 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 						    ? function(a, b) { return a.rank - b.rank; }
 						    : function(a, b) { return d3.descending(a.number, b.number); })
 						    .map(function(d) { 
-						    	console.log(d)
+						    	//console.log(d)
+						    	return d.number; 
+						    }))
+						    .copy();
+
+						var transition = svg.transition().duration(750),
+						    delay = function(d, i) { return i * 50; };
+
+						transition.selectAll(".bar")
+						    .delay(delay)
+						    .attr("x", function(d) { return x0(d.number); });
+
+						transition.select(".x.axis")
+						    .call(xAxis)
+						  .selectAll("g")
+						    .delay(delay);
+
+					}
+
+					function change_signal() {
+
+						// Copy-on-write since tweens are evaluated after a delay.
+						var x0 = x.domain(ranking_array.sort(this.checked
+						    ? function(a, b) { return a.signal - b.signal; }
+						    : function(a, b) { return d3.descending(a.number, b.number); })
+						    .map(function(d) { 
+						    	//console.log(d)
+						    	return d.number; 
+						    }))
+						    .copy();
+
+						var transition = svg.transition().duration(750),
+						    delay = function(d, i) { return i * 50; };
+
+						transition.selectAll(".bar")
+						    .delay(delay)
+						    .attr("x", function(d) { return x0(d.number); });
+
+						transition.select(".x.axis")
+						    .call(xAxis)
+						  .selectAll("g")
+						    .delay(delay);
+
+					}
+
+					function change_super() {
+
+						// Copy-on-write since tweens are evaluated after a delay.
+						var x0 = x.domain(ranking_array.sort(this.checked
+						    ? function(a, b) { return a.super - b.super; }
+						    : function(a, b) { return d3.descending(a.number, b.number); })
+						    .map(function(d) { 
+						    	//console.log(d)
 						    	return d.number; 
 						    }))
 						    .copy();
@@ -224,8 +278,6 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 				}
 
 				
-
-
 			})
 		}
 
