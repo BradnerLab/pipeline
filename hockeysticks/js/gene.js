@@ -141,7 +141,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 
 					x.domain(range(0,ranking_array.length-1));
-					y.domain(d3.extent(ranking_array, function(d) { return d.rank; }));
+					y.domain([0, d3.max(ranking_array, function(d) { return d.rank; })]);
 
 					// console.log(x.domain())
 					// console.log(x.range())
@@ -179,8 +179,15 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    	return x(j)
 					    })
 					    .attr("width", x.rangeBand())
-					    .attr("y", function(d) { return y(d.rank); })
-					    .attr("height", function(d) { return height - y(d.rank); })
+					    .attr("y", function(d) { 
+
+					    	return y(d.rank); 
+
+					    })
+					    .attr("height", function(d) { 
+
+					    	return height - y(d.rank); 
+					    })
 					    .on("mouseover", function(d) {
 
 					    	//console.log(d)
