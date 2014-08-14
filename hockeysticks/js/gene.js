@@ -33,189 +33,171 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 		var current_file = file_name_array[0][i];
 
+		console.log(i)
+
+		console.log(current_file)
+
 		//console.log(current_file)
 
-		d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
+		plot(current_file)
 
-			//console.log(current_data)
-			
-			current_data.forEach(function(d) {
+		function plot(current_file) {
+			d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
 
-				var genes = d.PROXIMAL_GENES.split(";");
-				// if (i==1) {
-				// 	console.log(genes)
-				// }
-				for (var j = 0; j < genes.length; j++) {
-					if (i == 1) {
-						//console.log(genes[j])
+				console.log(current_file)
+
+				console.log(i)
+				
+				current_data.forEach(function(d) {
+
+					var genes = d.PROXIMAL_GENES.split(";");
+					// if (i==1) {
+					// 	console.log(genes)
+					// }
+					for (var j = 0; j < genes.length; j++) {
+						if (i == 1) {
+							//console.log(genes[j])
+						}
+						if (genes[j] == gene_name) {
+
+							console.log(current_file)
+
+
+							ranking_array.push({"filename": current_file, "rank": +d.RANK, "prox_genes": d.PROXIMAL_GENES, 
+								"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
+								"start": +d.START, "stop": +d.STOP, "chromosome": d.CHROM});
+
+							//console.log(ranking_array)
+
+							var current_file_name = current_file.split("_HOCKEY")[0];
+
+							console.log(d)
+
+							current_file_name = "/Documents/Bradner_work/hockey-sticks/" + current_file_name + "_plots/" + "SE_plots_" + current_file_name + "_" + d.REGION_ID + ".pdf";
+
+							$("#pdf_window")
+								.append('<div class="gene_pdf"> <object data=' + current_file_name + 
+								' type="application/pdf" width="840px" height="580"> alt : <a href='+ current_file_name + '>test.pdf</a> </object> </div>' )                                                                               
+
+
+						}
 					}
-					if (genes[j] == gene_name) {
 
-						console.log("hello")
+				});
 
-						ranking_array.push({"filename": current_file, "rank": +d.RANK, "prox_genes": d.PROXIMAL_GENES, 
-							"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
-							"start": +d.START, "stop": +d.STOP, "chromosome": d.CHROM});
+				//console.log(ranking_array)
 
-						//console.log(ranking_array)
+				tip = d3.tip().attr('class', 'd3-tip');
 
-						var current_file_name = current_file.split("_HOCKEY")[0];
+				var margin = {top: 50, right: 50, bottom: 50, left: 100},
+				    width = 1200 - margin.left - margin.right,
+				    height = 300 - margin.top - margin.bottom;
 
-						current_file_name = "/Documents/Bradner_work/hockey-sticks/" + current_file_name + "_plots/" + "SE_plots_" + current_file_name + "_" + d.REGION_ID + ".pdf";
+				var x = d3.scale.ordinal()
+				    .rangeRoundBands([0, width], .1);
 
-						$("#pdf_window")
-							.append('<div class="gene_pdf"> <object data=' + current_file_name + 
-							' type="application/pdf" width="840px" height="580"> alt : <a href='+ current_file_name + '>test.pdf</a> </object> </div>' )                                                                               
+				var y = d3.scale.linear()
+				    .range([height, 0]);
 
+				var xAxis = d3.svg.axis()
+				    .scale(x)
+				    .orient("bottom")
+				    .tickFormat("");
 
-					}
+				var yAxis = d3.svg.axis()
+				    .scale(y)
+				    .orient("left")
+				    .outerTickSize([0]);
+
+				var svg = d3.select("body").append("svg")
+				    .attr("width", width + margin.left + margin.right)
+				    .attr("height", height + margin.top + margin.bottom)
+				  .append("g")
+				    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+				svg.call(tip)
+
+				x.domain([0, ranking_array.length]);
+				y.domain([0, d3.max(ranking_array, function(d) { return d.rank; })]);
+
+				svg.append("g")
+			      	.attr("class", "x axis")
+			      	.attr("transform", "translate(0," + height + ")")
+			      	.call(xAxis)
+			      	.append("text")
+			      	.attr("x", 1000)
+			      	.attr("y", 15)
+			      	.style("text-anchor", "middle")
+			      	.text("Files");
+
+				svg.append("g")
+			      	.attr("class", "y axis")
+			      	.call(yAxis)
+			    	.append("text")
+			      	.attr("transform", "rotate(-90)")
+			      	.attr("dy", "-3.71em")
+			      	.style("text-anchor", "end")
+			      	.text("Super-enhancer rank");
+
+				svg.selectAll(".bar")
+				    .data(ranking_array)
+				    .enter().append("rect")
+				    .attr("class", "bar")
+				    .attr("x", function(d, i) {
+				    	return x(i)
+				    })
+				    .attr("width", x.rangeBand()-2)
+				    .attr("y", function(d) { return y(d.rank); })
+				    .attr("height", function(d) { return height - y(d.rank); })
+				    .on("mouseover", function(d) {
+
+				    	console.log(d)
+
+				    	tip.html("File: " + d.filename + "<br>Rank: " + d.rank)
+
+				    	return tip.show(d)
+
+				    })
+				    .on("mouseout", function(d) {
+				    	return tip.hide(d)
+				    });
+
+				function type(d) {
+				  d.frequency = +d.rank;
+				  return d;
 				}
 
-			});
 
-			//console.log(ranking_array)
+				d3.select("input#by_rank").on("change", change_rank);
 
-			tip = d3.tip().attr('class', 'd3-tip');
+				function change_rank() {
 
-			var margin = {top: 50, right: 50, bottom: 50, left: 100},
-			    width = 1200 - margin.left - margin.right,
-			    height = 300 - margin.top - margin.bottom;
+					// Copy-on-write since tweens are evaluated after a delay.
+					var x0 = x.domain(data.sort(this.checked
+					    ? function(a, b) { return b.rank - a.rank; }
+					    : function(a, b) { return d3.ascending(a.file, b.file); })
+					    .map(function(d) { return d.file; }))
+					    .copy();
 
-			var x = d3.scale.ordinal()
-			    .rangeRoundBands([0, width], .1);
+					var transition = svg.transition().duration(750),
+					    delay = function(d, i) { return i * 50; };
 
-			var y = d3.scale.linear()
-			    .range([height, 0]);
+					transition.selectAll(".bar")
+					    .delay(delay)
+					    .attr("x", function(d) { return x0(d.file); });
 
-			var xAxis = d3.svg.axis()
-			    .scale(x)
-			    .orient("bottom")
-			    .tickFormat("");
+					transition.select(".x.axis")
+					    .call(xAxis)
+					  .selectAll("g")
+					    .delay(delay);
 
-			var yAxis = d3.svg.axis()
-			    .scale(y)
-			    .orient("left")
-			    .outerTickSize([0]);
-
-			var svg = d3.select("body").append("svg")
-			    .attr("width", width + margin.left + margin.right)
-			    .attr("height", height + margin.top + margin.bottom)
-			  .append("g")
-			    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-			svg.call(tip)
-
-			x.domain([0, ranking_array.length]);
-			y.domain([0, d3.max(ranking_array, function(d) { return d.rank; })]);
-
-			svg.append("g")
-		      	.attr("class", "x axis")
-		      	.attr("transform", "translate(0," + height + ")")
-		      	.call(xAxis)
-		      	.append("text")
-		      	.attr("x", 1000)
-		      	.attr("y", 15)
-		      	.style("text-anchor", "middle")
-		      	.text("Files");
-
-			svg.append("g")
-		      	.attr("class", "y axis")
-		      	.call(yAxis)
-		    	.append("text")
-		      	.attr("transform", "rotate(-90)")
-		      	.attr("dy", "-3.71em")
-		      	.style("text-anchor", "end")
-		      	.text("Super-enhancer rank");
-
-			svg.selectAll(".bar")
-			    .data(ranking_array)
-			    .enter().append("rect")
-			    .attr("class", "bar")
-			    .attr("x", function(d, i) {
-			    	return x(i)
-			    })
-			    .attr("width", x.rangeBand()-2)
-			    .attr("y", function(d) { return y(d.rank); })
-			    .attr("height", function(d) { return height - y(d.rank); })
-			    .on("mouseover", function(d) {
-
-			    	console.log(d)
-
-			    	tip.html("File: " + d.filename + "<br>Rank: " + d.rank)
-
-			    	return tip.show(d)
-
-			    })
-			    .on("mouseout", function(d) {
-			    	return tip.hide(d)
-			    });
-
-			function type(d) {
-			  d.frequency = +d.rank;
-			  return d;
-			}
-
-
-			d3.select("input#by_rank").on("change", change_rank);
-
-			function change_rank() {
-
-				// Copy-on-write since tweens are evaluated after a delay.
-				var x0 = x.domain(data.sort(this.checked
-				    ? function(a, b) { return b.rank - a.rank; }
-				    : function(a, b) { return d3.ascending(a.file, b.file); })
-				    .map(function(d) { return d.file; }))
-				    .copy();
-
-				var transition = svg.transition().duration(750),
-				    delay = function(d, i) { return i * 50; };
-
-				transition.selectAll(".bar")
-				    .delay(delay)
-				    .attr("x", function(d) { return x0(d.file); });
-
-				transition.select(".x.axis")
-				    .call(xAxis)
-				  .selectAll("g")
-				    .delay(delay);
-
-			}
-
-			// d3.select("input#cost").on("change", change_cost);
-
-			// 	function change_cost() {
-
-			// 	    // Copy-on-write since tweens are evaluated after a delay.
-			// 	    var x0 = item_percent_x.domain(items.sort(this.checked
-			// 	        ? function(a, b) { 
-			// 	        	if (a.dname == "Aegis of the Immortal" || a.dname == "Cheese") {
-			// 	        		a.cost = 100000;
-			// 	        	}
-			// 	        	if (b.dname == "Aegis of the Immortal" || b.dname == "Cheese") {
-			// 	        		b.cost = 100000;
-			// 	        	}
-			// 	        	return d3.ascending(a.cost, b.cost); 
-			// 	        }
-			// 	        : function(a, b) { return d3.ascending(a.name, b.name); })
-			// 	        .map(function(d) { return d.name; }))
-			// 	        .copy();
-
-			// 	    var transition = svg_item_percent.transition().duration(750),
-			// 	        delay = function(d, i) { return i * 10; };
-
-			// 	    transition.selectAll(".bar")
-			// 	        .delay(delay)
-			// 	        .attr("x", function(d) { return x0(d.name); });
-
-			// 	    transition.select(".x.axis")
-			// 	        .call(item_percent_xAxis)
-			// 	      .selectAll("g")
-			// 	        .delay(delay);
-			// 	  }
+				}
 
 
 
-		})
+			})
+		}
+
 
 	}
 
