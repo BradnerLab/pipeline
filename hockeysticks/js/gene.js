@@ -31,6 +31,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		var current_file = file_name_array[i];
 
 		d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
+
+			console.log(current_data)
 			
 			current_data.forEach(function(d) {
 
@@ -46,7 +48,9 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 						//console.log("hello")
 
-						ranking_array.push({"filename": current_file, "rank": +d.RANK});
+						ranking_array.push({"filename": current_file, "rank": +d.RANK, "prox_genes": d.PROXIMAL_GENES, 
+							"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
+							"start": +d.START, "stop": +d.STOP, "chromosome": d.CHROM});
 
 						//console.log(ranking_array)
 
@@ -130,6 +134,8 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			    .attr("height", function(d) { return height - y(d.rank); })
 			    .on("mouseover", function(d) {
 
+			    	console.log(d)
+
 			    	tip.html("File: " + d.filename + "<br>Rank: " + d.rank)
 
 			    	return tip.show(d)
@@ -143,6 +149,41 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 			  d.frequency = +d.rank;
 			  return d;
 			}
+
+
+			// d3.select("input#cost").on("change", change_cost);
+
+			// 	function change_cost() {
+
+			// 	    // Copy-on-write since tweens are evaluated after a delay.
+			// 	    var x0 = item_percent_x.domain(items.sort(this.checked
+			// 	        ? function(a, b) { 
+			// 	        	if (a.dname == "Aegis of the Immortal" || a.dname == "Cheese") {
+			// 	        		a.cost = 100000;
+			// 	        	}
+			// 	        	if (b.dname == "Aegis of the Immortal" || b.dname == "Cheese") {
+			// 	        		b.cost = 100000;
+			// 	        	}
+			// 	        	return d3.ascending(a.cost, b.cost); 
+			// 	        }
+			// 	        : function(a, b) { return d3.ascending(a.name, b.name); })
+			// 	        .map(function(d) { return d.name; }))
+			// 	        .copy();
+
+			// 	    var transition = svg_item_percent.transition().duration(750),
+			// 	        delay = function(d, i) { return i * 10; };
+
+			// 	    transition.selectAll(".bar")
+			// 	        .delay(delay)
+			// 	        .attr("x", function(d) { return x0(d.name); });
+
+			// 	    transition.select(".x.axis")
+			// 	        .call(item_percent_xAxis)
+			// 	      .selectAll("g")
+			// 	        .delay(delay);
+			// 	  }
+
+
 
 		})
 
