@@ -126,11 +126,11 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    .orient("left")
 					    .outerTickSize([0]);
 
-					var svg = d3.select("body").append("svg")
+					var svg = d3.select("#barchart").append("svg")
 					    .attr("width", width + margin.left + margin.right)
 					    .attr("height", height + margin.top + margin.bottom)
 					  .append("g")
-					    .attr("transform", "translate(" + (margin.left+100) + "," + margin.top + ")");
+					    .attr("transform", "translate(" + (margin.left+100) + "," + (-100 + margin.top)+ ")");
 
 					svg.call(tip)
 

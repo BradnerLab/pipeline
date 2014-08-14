@@ -19,8 +19,9 @@
 
 #bar_chart_sort {
 	position: relative;
+	width: 100px;
 	left: 20px;
-	top: 150px;
+	top: 0px;
 	font-size: 12px;
 	font-family: sans-serif;
 }
