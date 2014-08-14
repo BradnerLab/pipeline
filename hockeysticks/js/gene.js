@@ -93,12 +93,12 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 				// console.log(file_name_array[0].length)
 
 				if (number == 0) {
-					
+
 					tip = d3.tip().attr('class', 'd3-tip');
 
 					var margin = {top: 50, right: 50, bottom: 50, left: 100},
 					    width = 1100 - margin.left - margin.right,
-					    height = 300 - margin.top - margin.bottom;
+					    height = 350 - margin.top - margin.bottom;
 
 					var x = d3.scale.ordinal()
 					    .rangeRoundBands([0, width], .1);
@@ -123,6 +123,13 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					    .attr("transform", "translate(" + (margin.left+100) + "," + margin.top + ")");
 
 					svg.call(tip)
+
+					svg.append("text")
+						.attr("x", 350)
+						.attr("y", -20)
+						.text("Comparison across all datasets")
+						.attr("font-size", "18px")
+						.attr("font-weight", "bold")
 
 					function range(start, end) {
 					    var foo = [];
