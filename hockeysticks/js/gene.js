@@ -1,7 +1,7 @@
 //Angela Fan
 
 
-var gene_name = "PRMT7";
+var gene_name = "CKS1B";
 
 //find the files the gene is in
 d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error, data){
@@ -16,7 +16,10 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 		//console.log("hello")
 		if (data[i].gene == input) {
 			if (data[i].file) {
-				file_name_array.push(data[i].file);
+
+				file_name_array.push(String(data[i].file).split(";"))
+
+				//file_name_array.push(data[i].file);
 				//console.log(data[i].file)
 				break;
 			}
@@ -26,9 +29,11 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 
 	var ranking_array = [];
 
-	for (var i = 0; i < file_name_array.length; i++) {
+	for (var i = 0; i < file_name_array[0].length; i++) {
 
-		var current_file = file_name_array[i];
+		var current_file = file_name_array[0][i];
+
+		//console.log(current_file)
 
 		d3.csv("/Documents/Bradner_work/hockey-sticks/" + current_file, function(error, current_data) {
 
@@ -46,7 +51,7 @@ d3.csv("/Documents/Bradner_work/hockey-sticks/lookup_table.csv", function(error,
 					}
 					if (genes[j] == gene_name) {
 
-						//console.log("hello")
+						console.log("hello")
 
 						ranking_array.push({"filename": current_file, "rank": +d.RANK, "prox_genes": d.PROXIMAL_GENES, 
 							"super": +d.IS_SUPER, "signal": +d.SIGNAL, "top_gene": d.TOP_GENE, "function": d.PROXIMAL_FUNCTION,
