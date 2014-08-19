@@ -26,6 +26,7 @@
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
 VERSION := $(shell grep "__version__ =" bamliquidatorbatch/bamliquidator_batch.py | cut -d' ' -f 3 | sed "s/'//g")
+export VERSION
 
 # The directory to install in:
 prefix = /usr/local
@@ -42,28 +43,11 @@ LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
-GIT_DIFF_RC := $(shell git diff --quiet; echo $$?)
-ifeq ($(GIT_DIFF_RC), 0)
-CLEAN := clean
-else
-CLEAN := unclean
-endif
-
 # if someone does a ppa and/or pip upload, first change the name/email and commit it
 UPLOADER := John DiMatteo
 UPLOADER_EMAIL := jdimatteo@gmail.com
-
-define CHANGELOG 
-bamliquidator ($(VERSION)-0ppa1~%s) %s; urgency=low
-
-  * Auto generated from makefile
-  * $(shell git config --get remote.origin.url)
-  * $(shell git rev-parse HEAD) ($(CLEAN)) 
-
- -- $(UPLOADER) <$(UPLOADER_EMAIL)>  $(shell date +"%a, %d %b %G %H:%M:%S %z")
-
-endef
-export CHANGELOG 
+export UPLOADER
+export UPLOADER_EMAIL
 
 define SETUP_PY
 from setuptools import setup
@@ -128,15 +112,7 @@ archive:
 	rm -rf bamliquidator-$(VERSION)
 
 deb: clean archive
-	mv bamliquidator-$(VERSION).tar.gz bamliquidator_$(VERSION).orig.tar.gz 
-	tar xf bamliquidator_$(VERSION).orig.tar.gz
-	cp -R debian bamliquidator-$(VERSION)
-	cp -R bamliquidator-$(VERSION) bamliquidator-$(VERSION)-precise
-	mv bamliquidator-$(VERSION) bamliquidator-$(VERSION)-trusty
-	printf "$$CHANGELOG" precise precise > bamliquidator-$(VERSION)-precise/debian/changelog 
-	printf "$$CHANGELOG" trusty trusty > bamliquidator-$(VERSION)-trusty/debian/changelog 
-	cd bamliquidator-$(VERSION)-precise/debian; debuild -S
-	cd bamliquidator-$(VERSION)-trusty/debian; debuild -S
+	./make_deb.sh
 
 dput: deb
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
