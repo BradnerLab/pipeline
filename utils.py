@@ -132,7 +132,7 @@ def parseTable(fn, sep, header = False, excel = False):
     if header == True:
         lines = lines[1:]
     for i in lines:
-        table.append(i[:-1].split(sep))
+        table.append(i.rstrip().split(sep))
 
     return table
 
