@@ -372,15 +372,19 @@ def mapMergedGFF(dataFile,nameDict,mergedGFFFile,analysisName,outputFolder,maskF
         else:
             extraMap+=[name]
 
-
+    print extraMap
+    
     #first check to see if this has already been done
     mergedRegionMap = "%srose/%s_ROSE/%s_0KB_STITCHED_ENHANCER_REGION_MAP.txt" % (outputFolder,namesList[0],gffName)
+    print("LOOKING FOR REGION MAP AT %s" % (mergedRegionMap))
+
     if utils.checkOutput(mergedRegionMap,1,1):
         print("FOUND PREVIOUS REGION MAP")
+
         return mergedRegionMap
 
 
-
+    
     bashFileName = pipeline_dfci.callRose2(dataFile,'',roseParentFolder,[namesList[0]],extraMap,mergedGFFFile,0,0,bashFileName,mask=maskFile) 
     
     bashCommand = "bash %s" % (bashFileName)
@@ -408,6 +412,8 @@ def makeEnhancerSignalTable(nameDict,mergedRegionMap,medianDict,analysisName,gen
     namesList.sort()
     signalTable = [['REGION_ID','CHROM','START','STOP','NUM_LOCI','CONSTITUENT_SIZE'] + namesList]
 
+    print("len of %s for namesList" % (len(namesList)))
+    print(namesList)
     for line in regionMap[1:]:
 
         newLine = line[0:6]
@@ -422,7 +428,14 @@ def makeEnhancerSignalTable(nameDict,mergedRegionMap,medianDict,analysisName,gen
                 i +=1
                 controlIndex = int(i)
                 i +=1
-                enhancerSignal = float(line[enhancerIndex]) - float(line[controlIndex])
+                try:
+                    enhancerSignal = float(line[enhancerIndex]) - float(line[controlIndex])
+                except IndexError:
+                    print line
+                    print len(line)
+                    print enhancerIndex
+                    print controlIndex
+                    sys.exit()
                 
             else:
                 enhancerIndex = int(i)
@@ -616,7 +629,7 @@ def main():
         medianDict = makeMedianDict(nameDict)
 
         print medianDict
-
+        #sys.exit()
         #=====================================================
         #====================MERGING ENHANCERS================
         #=====================================================
@@ -624,7 +637,7 @@ def main():
         print "\n\n\nIDENTIFYING CONSENSUS ENHANCER REGIONS"
 
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
-        #mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
+        mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
@@ -639,7 +652,7 @@ def main():
 
         print "\n\n\nCREATING ENHANCER SIGNAL TABLE"
         signalTableFile = makeEnhancerSignalTable(nameDict,mergedRegionMap,medianDict,analysisName,genome,outputFolder)
-        #sys.exit()
+      
         #=====================================================
         #===============CALL CLUSTERING R SCRIPT==============
         #=====================================================
