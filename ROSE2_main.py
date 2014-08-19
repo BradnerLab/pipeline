@@ -50,6 +50,23 @@ def getBamChromList(bamFileList):
     return utils.uniquify(finalChromList)
 
 
+def checkRefCollection(referenceCollection):
+
+    '''
+    makes sure the names of all loci in the reference collection are unique
+    '''
+
+    namesList = [locus.ID() for locus in referenceCollection.getLoci()]
+    
+    if len(namesList) != len(utils.uniquify(namesList)):
+        print("ERROR: REGIONS HAVE NON-UNIQUE IDENTIFIERS")
+        sys.exit()
+    else:
+        print("REFERENCE COLLECTION PASSES QC")
+        return
+
+    
+
 def filterGFF(gffFile,chromList):
 
     '''
@@ -283,6 +300,8 @@ def mapCollection(stitchedCollection, referenceCollection, bamFileList, mappedFo
         locusTable.append([locus.ID(), locus.chr(), locus.start(), locus.end(), stitchCount, refEnrichSize])
 
     print('GETTING MAPPED DATA')
+    print("USING A BAMFILE LIST:")
+    print(bamFileList)
     for bamFile in bamFileList:
 
         bamFileName = bamFile.split('/')[-1]
@@ -402,7 +421,7 @@ def main():
 
     if options.bams:
         bamFileList += options.bams.split(',')
-        bamFileList = utils.uniquify(bamFileList)
+        #bamFileList = utils.uniquify(bamFileList) # makes sad when you have the same control bam over and over again
     # optional args
 
     # Stitch parameter
@@ -456,6 +475,10 @@ def main():
     # LOADING IN THE BOUND REGION REFERENCE COLLECTION
     print('LOADING IN GFF REGIONS')
     referenceCollection = utils.gffToLocusCollection(inputGFF)
+
+    print('CHECKING REFERENCE COLLECTION:')
+    checkRefCollection(referenceCollection):
+        
 
     # MASKING REFERENCE COLLECTION
     # see if there's a mask
@@ -526,8 +549,12 @@ def main():
     bamliquidator_path = 'bamliquidator_batch'
 
 
-
-    for bamFile in bamFileList:
+    bamFileListUnique = list(bamFileList)
+    bamFileListUnique = utils.uniquify(bamFileListUnique)
+    #prevent redundant mapping
+    print("MAPPING TO THE FOLLOWING BAMS:")
+    print(bamFileListUnique)
+    for bamFile in bamFileListUnique:
 
         bamFileName = bamFile.split('/')[-1]
 
