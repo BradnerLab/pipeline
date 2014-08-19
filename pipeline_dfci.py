@@ -748,47 +748,49 @@ def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,misma
 
 
 
+###
+### DEPRECATED FUNCTION FROM TAK
+###
+# def callBowtie(dataFile,dataList = [],overwrite = False,pairedEnd = False):
 
-def callBowtie(dataFile,dataList = [],overwrite = False,pairedEnd = False):
-
-    '''
-    calls bowtie for the dataset names specified. if blank, calls everything
-    '''
+#     '''
+#     calls bowtie for the dataset names specified. if blank, calls everything
+#     '''
     
-    dataDict = loadDataTable(dataFile)
+#     dataDict = loadDataTable(dataFile)
 
-    if len(dataList) == 0:
-        dataList = dataDict.keys()
+#     if len(dataList) == 0:
+#         dataList = dataDict.keys()
     
-    for name in dataList:
+#     for name in dataList:
         
-        #make sure the output folder exists
-        try:
-            foo = os.listdir(dataDict[name]['folder'])
-        except OSError:
-            print('no output folder %s for dataset %s. Creating directory %s now.' % (dataDict[name]['folder'],name,dataDict[name]['folder']))
-            os.system('mkdir %s' % (dataDict[name]['folder']))
+#         #make sure the output folder exists
+#         try:
+#             foo = os.listdir(dataDict[name]['folder'])
+#         except OSError:
+#             print('no output folder %s for dataset %s. Creating directory %s now.' % (dataDict[name]['folder'],name,dataDict[name]['folder']))
+#             os.system('mkdir %s' % (dataDict[name]['folder']))
 
             
-        if string.upper(dataDict[name]['genome']) == 'HG18' or string.upper(dataDict[name]['genome']) == 'MM8':
-            cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -G -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
-        elif string.upper(dataDict[name]['genome']) == 'RN5':
-            cmd = 'perl /nfs/young_ata/CYL_code/generateSam_rat.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
-        else:
-            cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
+#         if string.upper(dataDict[name]['genome']) == 'HG18' or string.upper(dataDict[name]['genome']) == 'MM8':
+#             cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -G -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
+#         elif string.upper(dataDict[name]['genome']) == 'RN5':
+#             cmd = 'perl /nfs/young_ata/CYL_code/generateSam_rat.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
+#         else:
+#             cmd = 'perl /nfs/young_ata/scripts/generateSAM_file.pl -R -c 4 -B -i %s -o %s' % (dataDict[name]['uniqueID'],dataDict[name]['folder'])
         
-        #first check if the bam exists
-        if overwrite:
-            print(cmd)
-            os.system(cmd)
-        else:
-            try:
-                foo = open(dataDict[name]['bam'],'r')
-                print('BAM file already exists for %s. OVERWRITE = FALSE' % (name))
-            except IOError:
-                print('no bam file found for %s, mapping now' % (name))
-                print(cmd)
-                os.system(cmd)
+#         #first check if the bam exists
+#         if overwrite:
+#             print(cmd)
+#             os.system(cmd)
+#         else:
+#             try:
+#                 foo = open(dataDict[name]['bam'],'r')
+#                 print('BAM file already exists for %s. OVERWRITE = FALSE' % (name))
+#             except IOError:
+#                 print('no bam file found for %s, mapping now' % (name))
+#                 print(cmd)
+#                 os.system(cmd)
 
 
 
@@ -988,8 +990,8 @@ def filterBams(dataFile,namesList = [],tempFolder = '/raider/BOWTIE_TEMP/',bamFo
         bashFile.write(symBaiCommand + '\n')
 
         #now the cleanup
-        #cleanCommand = 'rm -rf %s' % (tempOutFolder)
-        #bashFile.write(cleanCommand + '\n')
+        cleanCommand = 'rm -rf %s' % (tempOutFolder)
+        bashFile.write(cleanCommand + '\n')
         bashFile.close()
         runCommand = 'bash %s &' %(bashFileName) 
         print("Run command: %s" % (runCommand))
