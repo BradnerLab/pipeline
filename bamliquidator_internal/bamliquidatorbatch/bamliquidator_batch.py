@@ -10,10 +10,15 @@ import errno
 import os
 import subprocess
 import tables
+import logging
+import sys
+import abc
 
 from time import time 
 from os.path import basename
 from os.path import dirname
+
+__version__ = '0.9.3'
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
@@ -55,14 +60,30 @@ def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
     return with_no_counts
 
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
-# The concrete classes must define the methods liquidate, normalize, and create_counts_table
+# that implement the abstract methods.
 class BaseLiquidator(object):
-    def __init__(self, executable, counts_table_name, output_directory, bam_file_path, counts_file_path = None):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def liquidate(self, bam_file_path, extension, sense = None):
+        pass
+
+    @abc.abstractmethod
+    def normalize(self):
+        pass
+
+    @abc.abstractmethod
+    def create_counts_table(self, h5file):
+        pass
+
+    def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
+                 include_cpp_warnings_in_stderr = True, counts_file_path = None):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
+        self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
 
         # This script may be run by either a developer install from a git pipeline checkout,
         # or from a user install so that the exectuable is on the path.  First we try to
@@ -77,17 +98,13 @@ class BaseLiquidator(object):
             # just look on standard path
             self.executable_path = executable 
 
-        try:
-            os.mkdir(output_directory)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
+        mkdir_if_not_exists(output_directory)
 
         if self.counts_file_path is None:
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
         
             counts_file = tables.open_file(self.counts_file_path, mode = "w",
-                                           title = "bam liquidator genome bin read counts")
+                                           title = 'bam liquidator genome bin read counts - version %s' % __version__)
         else:
             counts_file = tables.open_file(self.counts_file_path, "r+")
 
@@ -172,42 +189,47 @@ class BaseLiquidator(object):
 
     def batch(self, extension, sense):
         for i, bam_file_path in enumerate(self.bam_file_paths):
-            print("Liquidating %s (file %d of %d, %s)" % (
-                bam_file_path, i+1, len(self.bam_file_paths), datetime.datetime.now().strftime('%H:%M:%S')))
+            logging.info("Liquidating %s (file %d of %d)", bam_file_path, i+1, len(self.bam_file_paths))
 
             return_code = self.liquidate(bam_file_path, extension, sense)
             if return_code != 0:
-                print("%s failed with exit code %d" % (self.executable_path, return_code))
-                exit(return_code)
+                raise Exception("%s failed with exit code %d" % (self.executable_path, return_code))
 
         start = time()
         self.normalize()
         duration = time() - start
-        print("Post liquidation processing took %f seconds" % duration)
+        logging.info("Post liquidation processing took %f seconds", duration)
 
     def flatten(self):
-        print("Flattening HDF5 tables into text files")
+        logging.info("Flattening HDF5 tables into text files")
         start = time()
 
         with tables.open_file(self.counts_file_path, mode = "r") as counts_file:
             write_tab_for_all(counts_file, self.output_directory)
 
         duration = time() - start
-        print("Flattening took %f seconds" % duration)
+        logging.info("Flattening took %f seconds" % duration)
+        
+    def logging_cpp_args(self):
+        return [os.path.join(self.output_directory, "log.txt"), "1" if self.include_cpp_warnings_in_stderr else "0"]
 
 class BinLiquidator(BaseLiquidator):
-    def __init__(self, bin_size, output_directory, bam_file_path, counts_file_path = None, extension = 0, sense = '.'):
+    def __init__(self, bin_size, output_directory, bam_file_path,
+                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False, include_cpp_warnings_in_stderr = True):
         self.bin_size = bin_size
-        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path, counts_file_path)
+        self.skip_plot = skip_plot
+        super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
+                                            include_cpp_warnings_in_stderr, counts_file_path)
         self.batch(extension, sense)
 
-    def liquidate(self, bam_file_path, extension, sense):
+    def liquidate(self, bam_file_path, extension, sense = None):
         if sense is None: sense = '.'
 
         cell_type = basename(dirname(bam_file_path))
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
+        args.extend(self.logging_cpp_args())
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
             args.append(chromosome)
@@ -219,13 +241,13 @@ class BinLiquidator(BaseLiquidator):
 
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
-        print("Liquidation completed: %f seconds, %d reads, %f millions of reads per second" % (duration, reads, rate))
+        logging.info("Liquidation completed: %f seconds, %d reads, %f millions of reads per second", duration, reads, rate)
 
         return return_code
        
     def normalize(self):
         with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
-            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size) 
+            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size, self.skip_plot) 
 
     def create_counts_table(self, h5file):
         class BinCount(tables.IsDescription):
@@ -241,7 +263,8 @@ class BinLiquidator(BaseLiquidator):
 
 class RegionLiquidator(BaseLiquidator):
     def __init__(self, regions_file, output_directory, bam_file_path,
-                 region_format=None, counts_file_path = None, extension = 0, sense = '.'):
+                 region_format=None, counts_file_path = None, extension = 0, sense = '.',
+                 include_cpp_warnings_in_stderr = True):
         self.regions_file = regions_file
         self.region_format = region_format
         if self.region_format is None:
@@ -253,7 +276,7 @@ class RegionLiquidator(BaseLiquidator):
                                % str(self.region_format))
 
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
-                                               bam_file_path, counts_file_path)
+                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path)
         
         self.batch(extension, sense)
 
@@ -261,6 +284,7 @@ class RegionLiquidator(BaseLiquidator):
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
+        args.extend(self.logging_cpp_args())
         if sense is not None:
             args.append(sense)
 
@@ -268,7 +292,7 @@ class RegionLiquidator(BaseLiquidator):
         return_code = subprocess.call(args)
         duration = time() - start
 
-        print("Liquidation completed: %f seconds" % (duration))
+        logging.info("Liquidation completed: %f seconds", duration)
 
         return return_code
 
@@ -305,6 +329,48 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
                 output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
                     row["strand"], row["start"], row["stop"], round(row["normalized_count"], 4)))
                 
+def configure_logging(args):
+    # Using root logger so we can just do logging.info/warn/error in this and other files.
+    # If people start using bamliquidator_batch as an imported module, then we should probably
+    # change this logging to not use the root logger directly.
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    file_handler = logging.FileHandler(os.path.join(args.output_directory, 'log.txt'))
+    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s\t%(message)s',
+                                                datefmt='%Y-%m-%d %H:%M:%S'))
+    
+    logger.addHandler(file_handler)
+    # todo: add bamliquidator version to the starting log message
+    logging.info("Starting %s %s with args %s", basename(sys.argv[0]), __version__, vars(args))
+
+    # Adding console handler after writing the startup log entry.  The startup log could be useful 
+    # in a file that is being appended to from a prior run, but would be annonying on stderr.
+
+    console_handler = logging.StreamHandler()
+    if args.quiet:
+        console_handler.setLevel(logging.ERROR)
+    else:
+        console_handler.setLevel(logging.INFO)
+
+    class FormatterNotFormattingInfo(logging.Formatter):
+        def __init__(self, fmt):
+            logging.Formatter.__init__(self, fmt)
+
+        def format(self, record):
+            if record.levelno == logging.INFO:
+                return record.getMessage()
+            return logging.Formatter.format(self, record)
+
+    console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s\t%(message)s'))
+    logger.addHandler(console_handler)
+
+def mkdir_if_not_exists(directory):
+    try:
+        os.mkdir(directory)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
 
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
@@ -320,7 +386,7 @@ def main():
                         help='a region file in either .gff or .bed format')
 
     parser.add_argument('-o', '--output_directory', default='output',
-                        help='Directory to output the h5, gff, tab, and/or html files to.  Creates directory if necessary.  '
+                        help='Directory to output the h5, log, gff, tab, and/or html files to.  Creates directory if necessary.  '
                              'May overwrite prior run results if present. Default is "./output".')
     parser.add_argument('-c', '--counts_file', default=None,
                         help='HDF5 counts file from a prior run to be appended to.  If unspecified, defaults to '
@@ -340,6 +406,13 @@ def main():
                         help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
+    parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help='Informational and warning output is suppressed so only errors are written to the console (stderr).  '
+                             'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
+                             'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
+                             'in log.txt.')
+    parser.add_argument('--version', action='version', version='%s %s' % (basename(sys.argv[0]), __version__))
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
@@ -357,29 +430,34 @@ def main():
 
     assert(tables.__version__ >= '3.0.0')
 
+    mkdir_if_not_exists(args.output_directory)
+
+    configure_logging(args)
+
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
-                                   args.counts_file, args.extension, args.sense)
+                                   args.counts_file, args.extension, args.sense, args.skip_plot,
+                                   not args.quiet)
     else:
         if args.counts_file:
-            print("Appending to a prior regions counts.h5 file is not supported at this time -- please email the developer"
-                  " if you need this feature")
-            exit(1)
+            raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
+                            "please email the developer if you need this feature")
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
-                                      args.region_format, args.counts_file, args.extension, args.sense)
+                                      args.region_format, args.counts_file, args.extension, args.sense,
+                                      not args.quiet)
 
     if args.flatten:
         liquidator.flatten()
 
     if args.match_bamToGFF:
         if args.regions_file is None:
-            print("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
+            logging.warning("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
-            print("Writing bamToGff style matrix.gff file")
+            logging.info("Writing bamToGff style matrix.gff file")
             start = time()
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
             duration = time() - start
-            print("Writing matrix.gff took %f seconds" % duration)
+            logging.info("Writing matrix.gff took %f seconds" % duration)
 
 if __name__ == "__main__":
     main()

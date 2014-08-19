@@ -1,0 +1,27 @@
+.bar {
+  fill: steelblue;
+}
+
+.bar:hover {
+  fill: brown;
+}
+
+.axis {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+#bar_chart_sort {
+	position: absolute;
+	width: 100px;
+	left: 20px;
+	top: 100px;
+	font-size: 12px;
+	font-family: sans-serif;
+}

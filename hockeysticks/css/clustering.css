@@ -1,0 +1,93 @@
+/*default tooltip styles*/
+.d3-tip {
+  z-index: 101;
+  line-height: 1;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 1px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.d3-tip.n:after {
+/*content: "\25BC";*/
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+.d3-tip.s:after {
+margin: 0 0 1px 0;
+top: -8px;
+left: 0;
+text-align: center;
+}
+
+.d3-tip.e:after {
+  margin: -4px 0 0 0;
+  top: 50%;
+  left: -8px;
+}
+
+.d3-tip.w:after {
+  margin: -4px 0 0 -1px;
+  top: 50%;
+  left: 100%;
+}
+
+/*page styles*/
+body {
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 14px;
+  font-weight: normal;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+label {
+  font-weight: normal;
+}
+
+#page_header {
+  background-color: #a6a6a6;
+  height: 50px;
+  margin: 0px auto 20px auto;
+  border-bottom: 2px black solid;
+}
+
+#page_title {
+  margin: 0px auto 0px auto;
+  line-height: 50px;
+  font-size: 24px;
+  text-align: center;
+  color: black;
+  font-family: Trebuchet, sans-serif;
+}
+
+#page_description {
+  margin: 0px auto 0px auto;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  line-height: 25px;
+  text-align: center;
+  color: black;
+  font-family: Trebuchet, sans-serif;
+}
+
+#del_button {
+  position: relative;
+  bottom: 15px;
+}
+
+#clear_button {
+  position: relative;
+  bottom: 15px;
+}

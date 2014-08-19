@@ -1,0 +1,416 @@
+/*default tooltip styles*/
+.d3-tip {
+  z-index: 101;
+  line-height: 1;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 1px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.d3-tip.n:after {
+/*content: "\25BC";*/
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+.d3-tip.s:after {
+margin: 0 0 1px 0;
+top: -8px;
+left: 0;
+text-align: center;
+}
+
+.d3-tip.e:after {
+  margin: -4px 0 0 0;
+  top: 50%;
+  left: -8px;
+}
+
+.d3-tip.w:after {
+  margin: -4px 0 0 -1px;
+  top: 50%;
+  left: 100%;
+}
+
+/*page styles*/
+body {
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 14px;
+  font-weight: normal;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+label {
+  font-weight: normal;
+}
+
+#page_header {
+  background-color: #a6a6a6;
+  height: 50px;
+  margin: 0px auto 20px auto;
+  border-bottom: 2px black solid;
+}
+
+#page_title {
+  margin: 0px auto 0px auto;
+  line-height: 50px;
+  font-size: 24px;
+  text-align: center;
+  color: black;
+  font-family: Trebuchet, sans-serif;
+}
+
+#page_description {
+  margin: 0px auto 0px auto;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  line-height: 25px;
+  text-align: center;
+  color: black;
+  font-family: Trebuchet, sans-serif;
+}
+
+/*centering the page content*/
+#page_content {
+  margin-top: 5px;
+}
+
+#screenshot{
+  position:absolute;
+  border:1px solid #ccc;
+  background:#333;
+  padding:5px;
+  display:none;
+  color:#fff;
+}
+
+.linegraph_svg {
+  margin: 0px auto 0px auto;
+  display: block;
+}
+
+#dataswitch {
+  position:absolute;
+  left: 12px;
+  top: 7px;
+}
+
+#closer {
+  position: absolute;
+  top: 7px;
+  left: 1100px;
+}
+
+.col-lg-3 {
+  position: absolute;
+  left: 130px;
+  top: 2px;
+}
+
+/*linegraph css*/
+
+.axis line,
+.axis path {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.axis text {
+  font: 10px sans-serif;
+}
+
+/*brush*/
+.linegraph_brush .extent{
+      fill: #868686;
+      opacity: .3;
+}
+
+.linegraph_clear_button {
+  cursor: pointer;
+}
+
+/*legend*/
+.legend {
+  font-size: 12px;
+}
+
+/*hover*/
+.dot:hover {
+  fill: #354299;
+  clip-path: none;
+}
+
+
+.hidden { 
+    display: none; 
+}
+
+
+/*table css*/
+#table_div {
+  left: 100px;
+  position:relative;
+    /*height: 675px;*/
+  width: 1000px;
+  top: 400px;
+}
+
+table, th, td {
+  border: 1px solid black;
+}
+
+#table_div .header {
+    font-size: 8pt;
+}
+
+#table {
+    position: relative;
+    margin: 0px;
+    margin-bottom: 10px;
+}
+
+#table table {
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0px;
+}
+
+#table td, #table th {
+    padding: 3px;
+    white-space: nowrap;
+}
+
+#table tr.header {
+    height: 26px;
+    background-color: #a6a6a6;
+    text-align: center;
+}
+
+#table td {
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+#table td * {
+    vertical-align: middle;
+}
+
+.select {
+  text-align: left;
+  width: 20px;
+}
+
+.dataset {
+  text-align: center;
+  width: 300px;
+}
+
+.peak {
+    text-align: left;
+    width: 100px;
+}
+
+.rank {
+    text-align: left;
+    width: 80px;
+}
+
+.super {
+  text-align: left;
+  width: 120px;
+}
+
+.chromosome {
+  text-align: center;
+  width: 30px;
+}
+
+.start .end {
+  text-align: center;
+  width: 30px;
+}
+
+.nearby {
+  text-align: center;
+  width: 200px;
+}
+
+.functional {
+  text-align: center;
+  width: 300px;
+  pointer-events: all;
+}
+
+/*table sorting*/
+
+/* tables */
+table.tablesorter {
+  font-family:arial;
+  background-color: #a6a6a6;
+  margin:10px 0pt 15px;
+  font-size: 8pt;
+  width: 100%;
+  text-align: left;
+}
+table.tablesorter thead tr th, table.tablesorter tfoot tr th {
+  background-color: #a6a6a6;
+  border: 1px solid black;
+  font-size: 8pt;
+  padding: 4px;
+}
+table.tablesorter thead tr .header {
+  background-image: url(bg.gif);
+  background-repeat: no-repeat;
+  background-position: center right;
+  cursor: pointer;
+}
+
+table.tablesorter tbody td {
+  color: black;
+  padding: 4px;
+  vertical-align: top;
+}
+
+table.tablesorter tbody tr{
+  background-color: white;
+}
+
+table.tablesorter thead tr .headerSortUp {
+  background-image: url(asc.gif);
+}
+
+table.tablesorter thead tr .headerSortDown {
+  background-image: url(desc.gif);
+}
+
+table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSortUp {
+  background-color: #8dbdd8;
+}
+
+.titular {
+  font-weight: bold;
+  font-size: 16px;
+  text-align: center;
+}
+
+.instruct {
+  font-size: 12px;
+  text-align: center;
+}
+
+#del_button {
+  position: relative;
+  bottom: 15px;
+}
+
+#clear_button {
+  position: relative;
+  bottom: 15px;
+}
+
+#export_button{
+  position: relative;
+  bottom: 15px;
+  left: 0px;
+}
+
+.pdf_image {
+  position: absolute;
+  left: 20px;
+  top: 480px;
+}
+
+.crc_svg {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#crcgraph {
+  position: absolute;
+  left: 820px;
+  top: 40px;
+}
+
+.bubble {
+  position: absolute;
+  left: 870px;
+  top: 510px;
+}
+
+#loading-mask {
+  background-color: white;
+  height: 100%;
+  left: 0;
+  position: fixed;
+  top: 50px;
+  width: 100%;
+}
+
+#add_all_visible {
+  position: absolute;
+  top: 150px;
+  left: 10px;
+}
+
+/*slider*/
+#slider {
+  position: absolute;
+  top: 70px;
+  left: 500px;
+  width: 200px;
+}
+
+#slider_text_box {
+  position: absolute;
+  top: 68px;
+  left: 715px;
+  width: 200px;
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+#slidertext {
+  font-family: Trebuchet, sans-serif;
+  color: black;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+
+/*Gene page*/
+
+#pdf_window {
+  margin-left: 10px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

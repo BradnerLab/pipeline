@@ -1,4 +1,5 @@
 #include "bamliquidator.h"
+#include "bamliquidator_logger.h"
 
 #include <cmath>
 #include <fstream>
@@ -240,8 +241,8 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
                                               extension);
     } catch(const std::exception& e)
     {
-      std::cerr << "Warning: skipping region " << i+1 << " (" << regions[i] << ") due to error: "
-                << e.what() << std::endl;
+      Logger::warn() << "skipping region " << i+1 << " (" << regions[i] << ") due to error: "
+                     << e.what();
     }
   }
 }
@@ -268,11 +269,13 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 7 && argc != 8)
+    if (argc != 9 && argc != 10)
     {
-      std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file [strand]\n"
+      std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file "
+                << "log_file write_warnings_to_stderr [strand]\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff gff"
-        << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 \n"
+        << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 "
+        << "\n      output/log.txt 1\n"
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
@@ -285,14 +288,18 @@ int main(int argc, char* argv[])
     const std::string bam_file_path = argv[4];
     const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[5]);
     const std::string hdf5_file_path = argv[6];
-    const char strand = argc == 8
-                      ? boost::lexical_cast<char>(argv[7])
+    const std::string log_file_path = argv[7];
+    const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[8]);
+    const char strand = argc == 10 
+                      ? boost::lexical_cast<char>(argv[9])
                       : ' ';
+
+    Logger::configure(log_file_path, write_warnings_to_stderr);
 
     hid_t h5file = H5Fopen(hdf5_file_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     if (h5file < 0)
     {
-      std::cerr << "Failed to open H5 file " << hdf5_file_path << std::endl;
+      Logger::error() << "Failed to open H5 file " << hdf5_file_path;
       return 3;
     }
 
@@ -302,7 +309,7 @@ int main(int argc, char* argv[])
                                                 strand);
     if (regions.size() == 0)
     {
-      std::cerr << "Warning: no regions detected in " << region_file_path << std::endl;
+      Logger::warn() << "no regions detected in " << region_file_path;
       return 0;
     }
 
@@ -314,7 +321,7 @@ int main(int argc, char* argv[])
   }
   catch(const std::exception& e)
   {
-    std::cerr << "Unhandled exception: " << e.what() << std::endl;
+    Logger::error() << "Unhandled exception: " << e.what();
 
     return 4; 
   }
