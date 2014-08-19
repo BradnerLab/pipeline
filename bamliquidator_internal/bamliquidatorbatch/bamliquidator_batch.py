@@ -18,7 +18,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '0.9.1'
+__version__ = '0.9.2'
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
