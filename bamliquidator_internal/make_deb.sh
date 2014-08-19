@@ -11,6 +11,8 @@ else
 CLEAN=unclean
 fi
 
+set -ex
+
 CHANGELOG="bamliquidator ($VERSION-0ppa1~%s) %s; urgency=low
 
   * Auto generated from makefile
@@ -28,5 +30,11 @@ cp -R bamliquidator-$VERSION bamliquidator-$VERSION-precise
 mv bamliquidator-$VERSION bamliquidator-$VERSION-trusty
 printf "$CHANGELOG" precise precise > bamliquidator-$VERSION-precise/debian/changelog 
 printf "$CHANGELOG" trusty trusty > bamliquidator-$VERSION-trusty/debian/changelog 
-cd bamliquidator-$VERSION-precise/debian; debuild -S
-cd bamliquidator-$VERSION-trusty/debian; debuild -S
+
+pushd bamliquidator-$VERSION-precise/debian
+debuild -S
+popd
+
+pushd bamliquidator-$VERSION-trusty/debian
+debuild -S
+popd
