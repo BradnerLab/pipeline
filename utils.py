@@ -963,7 +963,9 @@ def locusCollectionToBed(locusCollection):
     lociList = locusCollection.getLoci()
     bed = []
     for locus in lociList:
-        newLine = [locus.chr(),locus.coords()[0],locus.coords()[1],locus.sense(),locus.ID()]
+        coords = locus.coords()
+        coords.sort()
+        newLine = [locus.chr(),coords[0],coords[1],locus.sense(),locus.ID()]
         bed.append(newLine)
     return bed
 
@@ -992,9 +994,9 @@ def gffToLocusCollection(gff,window =500):
         gff = parseTable(gff,'\t')
 
     for line in gff:
-        #USE line[2] as the locus ID.  If that is empty use line[8]
-        if len(line[2]) > 0:
-            name = line[2]
+        #USE line[1] as the locus ID.  If that is empty use line[8]
+        if len(line[1]) > 0:
+            name = line[1]
         elif len(line[8]) >0:
             name = line[8]
         else:
