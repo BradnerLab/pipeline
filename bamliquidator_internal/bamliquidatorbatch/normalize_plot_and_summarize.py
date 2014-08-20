@@ -98,7 +98,7 @@ def file_keys(counts, cell_type):
     return file_keys_memo[cell_type] 
 
 def plot_summaries(output_directory, normalized_counts, chromosomes):
-    bp.output_file(output_directory + "/summary.html")
+    bp.output_file(output_directory + "/summary.html", autosave=False)
     
     for chromosome in chromosomes:
         plot_summary(normalized_counts, chromosome)
@@ -123,7 +123,7 @@ def plot_summary(normalized_counts, chromosome):
     overall.title = chromosome + " counts per bin across all bam files"
 
 def plot(output_directory, normalized_counts, chromosome, cell_types):
-    bp.output_file(output_directory + "/" + chromosome + ".html")
+    bp.output_file(output_directory + "/" + chromosome + ".html", autosave=False)
 
     plot_summary(normalized_counts, chromosome)
 
