@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import division
+
 from os import sys, path
 from itertools import izip
 
@@ -48,12 +50,13 @@ def create_single_region_gff_file(dir_path, chromosome, start, stop, strand='.',
 
 class SingleFullReadBamTest(unittest.TestCase):
     def setUp(self):
-        self.dir_path = tempfile.mkdtemp()
+        self.dir_path = tempfile.mkdtemp(prefix='blt_')
         self.chromosome = 'chr1'
         self.sequence = 'ATTTAAAAATTAATTTAATGCTTGGCTAAATCTTAATTACATATATAATT'
         self.bam_file_path = create_single_full_read_bam(self.dir_path, self.chromosome, self.sequence)
 
     def tearDown(self):
+        #print self.dir_path
         shutil.rmtree(self.dir_path)
 
     def test_bin_liquidation(self):
@@ -172,6 +175,38 @@ class SingleFullReadBamTest(unittest.TestCase):
             self.assertEqual(start, record["start"])
             self.assertEqual(stop,  record["stop"])
             self.assertEqual(0, record["count"]) # 0 since region doesn't intersect sequence
+
+    def helper_test_region_with_chromosome(self, chromosome):
+        start = 1 
+        stop = 8 
+        regions_file_path = create_single_region_gff_file(self.dir_path, chromosome, start, stop)
+        bam_file_path = create_single_full_read_bam(self.dir_path, chromosome, self.sequence)
+
+        liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
+                                          output_directory = os.path.join(self.dir_path, 'output'),
+                                          bam_file_path = bam_file_path)
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]["length"]) # 1 since only a single read 
+
+            record = counts.root.region_counts[0]
+            self.assertEqual(start, record["start"])
+            self.assertEqual(stop,  record["stop"])
+            self.assertEqual(stop-start, record["count"]) # count represents how many base pair reads intersected
+                                                          # the region
+            counts.root.files[0]["length"]
+            factor = (1 / (stop-start)) * (1 / (1 / 10**6))
+            self.assertEqual(record["count"] * factor, record["normalized_count"])
+
+    def test_region_with_long_chromosome(self):
+        self.helper_test_region_with_chromosome('chr7_1234567890_1234567890')
+
+    def test_region_with_non_canonical_chromosome(self):
+        self.helper_test_region_with_chromosome('chr7_blah_a')
+
+    def test_region_with_black_listed_chromosome_pattern(self):
+        self.helper_test_region_with_chromosome('chr7_random')
 
     def test_bin_long_bam_file_name(self):
         long_file_name = "x" * 65 # more than Float64Col 
