@@ -1,6 +1,7 @@
 #ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
 #define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
 
+#include <algorithm>
 #include <ostream>
 #include <sstream>
 #include <string>
