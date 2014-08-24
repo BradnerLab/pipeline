@@ -18,7 +18,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '0.9.3'
+__version__ = '0.9.4'
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
@@ -27,7 +27,7 @@ def create_files_table(h5file):
         # file_name would be included here, but pytables doesn't support variable length strings as table column
         # so it is instead in a vlarray "file_names" 
 
-    table = h5file.create_table("/", "files", Files, "File names, keys, and reference sequence lengths corresponding, "
+    table = h5file.create_table("/", "files", Files, "File keys and reference sequence lengths corresponding "
                                                      "to the counts table")
     table.flush()
 
@@ -152,9 +152,6 @@ class BaseLiquidator(object):
             next_file_key = max(next_file_key, file_record["key"])
         next_file_key += 1
 
-        # this skip list is somewhat arbitrary and can be emptied/removed if desired
-        chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
-
         for bam_file_path in self.bam_file_paths:
             args = ["samtools", "idxstats", bam_file_path]
             output = subprocess.check_output(args)
@@ -166,8 +163,6 @@ class BaseLiquidator(object):
             chromosome_length_pairs = []
             for row in reader:
                 chromosome = row[chr_col]
-                if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
-                    continue
                 file_count += int(row[mapped_read_col])
                 chromosome_length_pairs.append((chromosome, int(row[length_col])))
             
@@ -231,7 +226,12 @@ class BinLiquidator(BaseLiquidator):
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
 
+        # this skip list is somewhat arbitrary and can be emptied/removed if desired
+        chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
+
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
+            if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
+                continue
             args.append(chromosome)
             args.append(str(length))
 
