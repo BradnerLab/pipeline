@@ -277,7 +277,7 @@ class MultipleChromosomeTest(TempDirTest):
                 self.assertEqual(len(sequence), record['count']) # count represents how many base pair reads 
                                                                       # intersected the bin
 
-    def testBlackList(self):
+    def testDefaultBlackList(self):
         chromosomes_that_should_be_liquidated = ['chr1', 'chr2']
         all_chromosomes = chromosomes_that_should_be_liquidated + ['chr2_random']
 
@@ -298,6 +298,32 @@ class MultipleChromosomeTest(TempDirTest):
             self.assertEqual(2, len(counts.root.bin_counts)) # 1 for each chromosome that should be liquidated
            
             for record_index, chromosome in enumerate(chromosomes_that_should_be_liquidated):
+                record = counts.root.bin_counts[record_index]
+                self.assertEqual(0, record['bin_number'])
+                self.assertEqual(chromosome, record['chromosome'])
+                self.assertEqual(len(sequence), record['count']) # count represents how many base pair reads 
+
+    def testOverridingBlackList(self):
+        chromosomes = ['chr1', 'chr2', 'chr2_random']
+
+        sequence = 'ATTTAAAAATTAATTTAATGCTTGGCTAAATCTTAATTACATATATAATT'
+        bam_file_path = create_bam(self.dir_path, chromosomes, sequence, file_name='multiple.bam')
+        bin_size = len(sequence)
+
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = os.path.join(self.dir_path, 'output'),
+                                       bam_file_path = bam_file_path,
+                                       blacklist = [])
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            file_record = counts.root.files[0] 
+            self.assertEqual(3, file_record['length']) # 1 read for each chromosome
+            self.assertEqual(1, file_record['key'])
+
+            self.assertEqual(3, len(counts.root.bin_counts)) # 1 for each chromosome that should be liquidated
+           
+            for record_index, chromosome in enumerate(chromosomes):
                 record = counts.root.bin_counts[record_index]
                 self.assertEqual(0, record['bin_number'])
                 self.assertEqual(chromosome, record['chromosome'])

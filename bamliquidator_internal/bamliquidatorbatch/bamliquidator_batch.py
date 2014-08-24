@@ -18,7 +18,9 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '0.9.4'
+__version__ = '0.9.5'
+
+default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
@@ -210,9 +212,11 @@ class BaseLiquidator(object):
 
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
-                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False, include_cpp_warnings_in_stderr = True):
+                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False,
+                 include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
+        self.chromosome_patterns_to_skip = blacklist
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
                                             include_cpp_warnings_in_stderr, counts_file_path)
         self.batch(extension, sense)
@@ -226,11 +230,8 @@ class BinLiquidator(BaseLiquidator):
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
 
-        # this skip list is somewhat arbitrary and can be emptied/removed if desired
-        chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
-
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
-            if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
+            if any(pattern in chromosome for pattern in self.chromosome_patterns_to_skip):
                 continue
             args.append(chromosome)
             args.append(str(length))
@@ -407,6 +408,9 @@ def main():
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
     parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
+    parser.add_argument('--black_list', nargs='+', type=str, default=default_black_list,
+                        help='One or more (space separated) chromosome patterns to skip during bin liquidation. Default is '
+                             'to skip any chromosomes that contain any of the following substrings: %s. ' %  " ".join(default_black_list))
     parser.add_argument('-q', '--quiet', action='store_true',
                         help='Informational and warning output is suppressed so only errors are written to the console (stderr).  '
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
