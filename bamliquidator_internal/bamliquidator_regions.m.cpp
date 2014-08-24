@@ -4,8 +4,10 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -34,8 +36,9 @@ struct Region
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
 {
-  os << "bam file key " << r.bam_file_key << ' ' << r.chromosome << ' ' << r.region_name << ' ' 
-     << r.start << " -> " << r.stop << ' ' << r.strand << ' ' << r.normalized_count;
+  os << "bam file key " << r.bam_file_key << ' ' << max_lengthed_string(r.chromosome, sizeof(r.chromosome)) << ' '
+     << max_lengthed_string(r.region_name, sizeof(r.region_name)) << ' ' << r.start << " -> " << r.stop << ' '
+     << r.strand << ' ' << r.normalized_count;
   return os;
 }
 

@@ -5,8 +5,14 @@
 #include <sstream>
 #include <string>
 
-// these functions are intended to match bamliquidator_batch.py logging output style
+// returns std::string for a char* that has a max length and is only null terminated when less than that length
+inline std::string max_lengthed_string(const char* s, size_t max_length)
+{
+  size_t length = std::find(s, s + max_length, '\0') - s;
+  return std::string(s, length);
+}
 
+// The logger class is intended to be used to match bamliquidator_batch.py logging output style
 class Logger
 {
 public:
