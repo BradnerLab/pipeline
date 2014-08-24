@@ -187,7 +187,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
 
-    def helper_test_region_with_chromosome(self, chromosome):
+    def helper_check_region_with_chromosome(self, chromosome):
         start = 1 
         stop = 8 
         regions_file_path = create_single_region_gff_file(self.dir_path, chromosome, start, stop)
@@ -211,13 +211,13 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(record['count'] * factor, record['normalized_count'])
 
     def test_region_with_long_chromosome(self):
-        self.helper_test_region_with_chromosome('chr7_1234567890_1234567890')
+        self.helper_check_region_with_chromosome('chr7_1234567890_1234567890')
 
     def test_region_with_non_canonical_chromosome(self):
-        self.helper_test_region_with_chromosome('chr7_blah_a')
+        self.helper_check_region_with_chromosome('chr7_blah_a')
 
     def test_region_with_black_listed_chromosome_pattern(self):
-        self.helper_test_region_with_chromosome('chr7_random')
+        self.helper_check_region_with_chromosome('chr7_random')
 
     def test_bin_long_bam_file_name(self):
         long_file_name = 'x' * 65 # more than Float64Col 
