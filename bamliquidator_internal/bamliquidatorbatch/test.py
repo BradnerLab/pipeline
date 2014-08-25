@@ -49,10 +49,10 @@ def create_bam(dir_path, chromosomes, sequence, file_name='single.bam'):
 
     return bam_file_path
 
-def create_single_region_gff_file(dir_path, chromosome, start, stop, strand='.', file_name = 'single.gff'):
+def create_single_region_gff_file(dir_path, chromosome, start, stop, strand='.', file_name = 'single.gff', region_name='region1'):
     region_file_path = os.path.join(dir_path, file_name) 
     with open(region_file_path, 'w') as region_file:
-        region_file.write('%s\tregion1\t\t%d\t%d\t\t%s\t\tregion1\n' % (chromosome, start, stop, strand))
+        region_file.write('%s\t%s\t\t%d\t%d\t\t%s\t\tregion1\n' % (chromosome, region_name, start, stop, strand))
     return region_file_path
 
 class TempDirTest(unittest.TestCase):
@@ -102,7 +102,8 @@ class SingleFullReadBamTest(TempDirTest):
     def test_region_liquidation(self):
         start = 1
         stop  = 8
-        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop)
+        region_name = 'region_f'
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop, region_name=region_name)
 
         liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
                                           output_directory = os.path.join(self.dir_path, 'output'),
@@ -118,6 +119,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
            
             record = counts.root.region_counts[0]
+            self.assertEqual(region_name, record['region_name'])
             self.assertEqual(start, record['start'])
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
@@ -137,8 +139,8 @@ class SingleFullReadBamTest(TempDirTest):
 
            data_cols = matrix_lines[1].split('\t')
            self.assertEqual(3, len(data_cols))
-           self.assertEqual('region1', data_cols[0]) # todo: don't hardcode these values 
-           self.assertEqual('chr1(.):1-8', data_cols[1])
+           self.assertEqual(region_name, data_cols[0])
+           self.assertEqual('chr1(.):1-8', data_cols[1]) # todo: don't hardcode these values 
            self.assertEqual('1000000.0\n', data_cols[2])
 
     def test_region_with_no_reads(self):
@@ -186,6 +188,60 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(start, record['start'])
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
+
+    def test_region_with_long_name(self):
+        start = 1
+        stop  = 8
+        region_name = 'r'*64
+        truncated_region_name = 'r'*63
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop, region_name=region_name)
+
+        liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
+                                          output_directory = os.path.join(self.dir_path, 'output'),
+                                          bam_file_path = self.bam_file_path)
+        liquidator.flatten()
+
+        matrix_path = os.path.join(self.dir_path, 'matrix.gff')
+        blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
+           
+            record = counts.root.region_counts[0]
+            self.assertEqual(truncated_region_name, record['region_name'])
+            self.assertEqual(start, record['start'])
+            self.assertEqual(stop,  record['stop'])
+            self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
+                                                          # the region
+    
+    def test_region_with_really_long_name(self):
+        start = 1
+        stop  = 8
+        region_name = 'r'*84
+        truncated_region_name = 'r'*63
+        regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop, region_name=region_name)
+
+        liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
+                                          output_directory = os.path.join(self.dir_path, 'output'),
+                                          bam_file_path = self.bam_file_path)
+        liquidator.flatten()
+
+        matrix_path = os.path.join(self.dir_path, 'matrix.gff')
+        blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
+            self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
+           
+            record = counts.root.region_counts[0]
+            self.assertEqual(truncated_region_name, record['region_name'])
+            self.assertEqual(start, record['start'])
+            self.assertEqual(stop,  record['stop'])
+            self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
+                                                          # the region
 
     def helper_check_region_with_chromosome(self, chromosome):
         start = 1 

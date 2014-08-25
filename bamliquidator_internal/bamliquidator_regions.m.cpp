@@ -20,13 +20,15 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
+const size_t region_name_length = 64;
+
 // this Region must match exactly the structure in HDF5
 // -- see bamliquidator_batch.py function create_regions_table
 struct Region
 {
   uint32_t bam_file_key;
   char chromosome[64];
-  char region_name[64];
+  char region_name[region_name_length];
   uint64_t start;
   uint64_t stop;
   char strand;
@@ -98,7 +100,11 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     Region region;
     region.bam_file_key = bam_file_key; 
     strncpy(region.chromosome,  columns[chromosome_column].c_str(), sizeof(Region::chromosome));
-    strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name));
+    strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name)-1);
+    if (columns[name_column].size() >= sizeof(Region::region_name))
+    {
+      Logger::warn() << "truncated region '" << columns[name_column] << "' to '" << region.region_name << "'";
+    }
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
     region.stop  = boost::lexical_cast<uint64_t>(columns[stop_column]);
     if (region.start > region.stop)
