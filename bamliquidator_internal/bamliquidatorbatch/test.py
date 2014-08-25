@@ -425,6 +425,44 @@ class AppendingTest(TempDirTest):
                 self.assertEqual(str(together_h5.root.summary[:]), str(appending_h5.root.summary[:]))
                 self.assertEqual(str(together_h5.root.sorted_summary[:]), str(appending_h5.root.sorted_summary[:]))
 
+class LiquidateBamInDifferentDirectories(unittest.TestCase):
+    def setUp(self):
+        self.dir_before = os.getcwd()
+        self.chromosome = 'chr1'
+        self.sequence = 'ATTTAAAAATTAATTTAATGCTTGGCTAAATCTTAATTACATATATAATT'
+        self.dir_path = None
+
+    def tearDown(self):
+        #print 'tearing down', self.dir_path
+        os.chdir(self.dir_before)
+        shutil.rmtree(self.dir_path)
+
+    def test_liquidation_in_current_directory(self):
+        self.dir_path = tempfile.mkdtemp(prefix='blt_')
+        bam_file_name = "current.bam"
+        self.bam_file_path = create_bam(self.dir_path, [self.chromosome], self.sequence, bam_file_name)
+        os.chdir(self.dir_path)
+        bin_size = len(self.sequence)
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = os.path.join(self.dir_path, 'output'),
+                                       bam_file_path = bam_file_name)
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            file_record = counts.root.files[0] 
+            self.assertEqual(1, file_record['length']) # 1 since only a single read 
+            self.assertEqual(1, file_record['key'])
+
+            self.assertEqual(1, len(counts.root.bin_counts)) # 1 since 1 bin accommodates full sequence 
+           
+            record = counts.root.bin_counts[0]
+            self.assertEqual(0, record['bin_number'])
+            self.assertEqual("-", record['cell_type'])
+            self.assertEqual(self.chromosome, record['chromosome'])
+            self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
+                                                                  # intersected the bin
+
+
 if __name__ == '__main__':
     unittest.main()
 

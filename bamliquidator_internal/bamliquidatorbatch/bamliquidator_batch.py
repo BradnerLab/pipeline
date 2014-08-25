@@ -246,6 +246,8 @@ class BinLiquidator(BaseLiquidator):
         if sense is None: sense = '.'
 
         cell_type = basename(dirname(bam_file_path))
+        if cell_type == '':
+            cell_type = '-'
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
