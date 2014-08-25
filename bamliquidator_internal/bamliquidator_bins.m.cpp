@@ -26,7 +26,7 @@ struct CountH5Record
 {
   uint32_t bin_number;
   char cell_type[16];
-  char chromosome[16];
+  char chromosome[64];
   uint64_t count;
   uint32_t bam_file_key;
 };

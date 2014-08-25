@@ -25,7 +25,7 @@
 struct Region
 {
   uint32_t bam_file_key;
-  char chromosome[16];
+  char chromosome[64];
   char region_name[64];
   uint64_t start;
   uint64_t stop;

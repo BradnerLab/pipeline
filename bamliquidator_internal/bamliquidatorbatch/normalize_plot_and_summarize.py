@@ -53,7 +53,7 @@ def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
         bin_number = tables.UInt32Col(    pos=0)
         cell_type  = tables.StringCol(16, pos=1)
-        chromosome = tables.StringCol(16, pos=2)
+        chromosome = tables.StringCol(64, pos=2)
         count      = tables.Float64Col(   pos=3)
         percentile = tables.Float64Col(   pos=4)
         file_key   = tables.UInt32Col(    pos=5)
@@ -253,7 +253,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
 def create_summary_table(h5file):
     class Summary(tables.IsDescription):
         bin_number = tables.UInt32Col(                    pos=0)
-        chromosome = tables.StringCol(16,                 pos=2)
+        chromosome = tables.StringCol(64,                 pos=2)
         avg_cell_type_percentile = tables.Float64Col(     pos=1)
         cell_types_gte_95th_percentile = tables.UInt32Col(pos=2)
         cell_types_lt_95th_percentile = tables.UInt32Col( pos=3)

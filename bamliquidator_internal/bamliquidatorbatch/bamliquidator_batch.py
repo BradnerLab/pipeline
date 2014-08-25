@@ -270,7 +270,7 @@ class BinLiquidator(BaseLiquidator):
         class BinCount(tables.IsDescription):
             bin_number = tables.UInt32Col(    pos=0)
             cell_type  = tables.StringCol(16, pos=1)
-            chromosome = tables.StringCol(16, pos=2)
+            chromosome = tables.StringCol(64, pos=2)
             count      = tables.UInt64Col(    pos=3)
             file_key   = tables.UInt32Col(    pos=4)
 
@@ -321,7 +321,7 @@ class RegionLiquidator(BaseLiquidator):
     def create_counts_table(self, h5file):
         class Region(tables.IsDescription):
             file_key         = tables.UInt32Col(    pos=0)
-            chromosome       = tables.StringCol(16, pos=1)
+            chromosome       = tables.StringCol(64, pos=1)
             region_name      = tables.StringCol(64, pos=2)
             start            = tables.UInt64Col(    pos=3)
             stop             = tables.UInt64Col(    pos=4)
