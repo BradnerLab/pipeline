@@ -106,7 +106,7 @@ class BaseLiquidator(object):
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
         
             counts_file = tables.open_file(self.counts_file_path, mode = "w",
-                                           title = 'bam liquidator genome bin read counts - version %s' % __version__)
+                                           title = 'bam liquidator genome read counts - version %s' % __version__)
         else:
             counts_file = tables.open_file(self.counts_file_path, "r+")
 
