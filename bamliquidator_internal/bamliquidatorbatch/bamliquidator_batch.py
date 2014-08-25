@@ -13,6 +13,7 @@ import tables
 import logging
 import sys
 import abc
+import collections
 
 from time import time 
 from os.path import basename
@@ -82,6 +83,8 @@ class BaseLiquidator(object):
                  include_cpp_warnings_in_stderr = True, counts_file_path = None):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
+
+        self.timings = collections.OrderedDict()
 
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
@@ -196,6 +199,7 @@ class BaseLiquidator(object):
         self.normalize()
         duration = time() - start
         logging.info("Post liquidation processing took %f seconds", duration)
+        self.log_time('post_liquidation', duration)
 
     def flatten(self):
         logging.info("Flattening HDF5 tables into text files")
@@ -206,9 +210,20 @@ class BaseLiquidator(object):
 
         duration = time() - start
         logging.info("Flattening took %f seconds" % duration)
+        self.log_time('flattening', duration)
         
     def logging_cpp_args(self):
         return [os.path.join(self.output_directory, "log.txt"), "1" if self.include_cpp_warnings_in_stderr else "0"]
+
+    def log_time(self, title, seconds):
+        self.timings[title] = seconds
+
+    def write_timings_to_junit_xml(self):
+        with open(os.path.join(self.output_directory, 'timings.xml'), 'w') as xml:
+            xml.write('<testsuite tests="%d">\n' % len(self.timings.keys()))
+            for title in self.timings:
+                xml.write('\t<testcase classname="bamliquidator" name="%s" time="%f"/>\n' % (title, self.timings[title]))
+            xml.write('</testsuite>\n')
 
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
@@ -243,6 +258,7 @@ class BinLiquidator(BaseLiquidator):
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
         logging.info("Liquidation completed: %f seconds, %d reads, %f millions of reads per second", duration, reads, rate)
+        self.log_time('liquidation', duration)
 
         return return_code
        
@@ -294,6 +310,7 @@ class RegionLiquidator(BaseLiquidator):
         duration = time() - start
 
         logging.info("Liquidation completed: %f seconds", duration)
+        self.log_time('liquidation', duration)
 
         return return_code
 
@@ -416,6 +433,9 @@ def main():
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
                              'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
                              'in log.txt.')
+    parser.add_argument('--xml_timings', action='store_true',
+                        help='Write performance timings to junit style timings.xml in output folder, which is useful for '
+                             'tracking performance over time with automatically generated Jenkins graphs')
     parser.add_argument('--version', action='version', version='%s %s' % (basename(sys.argv[0]), __version__))
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
@@ -462,6 +482,10 @@ def main():
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
             duration = time() - start
             logging.info("Writing matrix.gff took %f seconds" % duration)
+            liquidator.log_time('matrix', duration)
+
+    if args.xml_timings:
+        liquidator.write_timings_to_junit_xml()
 
 if __name__ == "__main__":
     main()
