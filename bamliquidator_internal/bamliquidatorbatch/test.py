@@ -462,6 +462,31 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
 
+    def test_liquidation_in_long_directory(self):
+        self.dir_path = tempfile.mkdtemp(prefix='blt_' + 'a'*16)
+        truncated_cell_type = os.path.basename(self.dir_path)[:16]
+        print  self.dir_path, truncated_cell_type
+        self.bam_file_path = create_bam(self.dir_path, [self.chromosome], self.sequence)
+        bin_size = len(self.sequence)
+        liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                       output_directory = os.path.join(self.dir_path, 'output'),
+                                       bam_file_path = self.bam_file_path)
+
+        with tables.open_file(liquidator.counts_file_path) as counts:
+            self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+            file_record = counts.root.files[0] 
+            self.assertEqual(1, file_record['length']) # 1 since only a single read 
+            self.assertEqual(1, file_record['key'])
+
+            self.assertEqual(1, len(counts.root.bin_counts)) # 1 since 1 bin accommodates full sequence 
+           
+            record = counts.root.bin_counts[0]
+            self.assertEqual(0, record['bin_number'])
+            self.assertEqual(truncated_cell_type, record['cell_type'])
+            self.assertEqual(self.chromosome, record['chromosome'])
+            self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
+                                                                  # intersected the bin
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -448,8 +448,8 @@ def main():
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
-                             'provide the .bam file path instead of a directory.  The parent directory of each .bam '
-                             'file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
+                             'provide the .bam file path instead of a directory.  The parent directory (up to 16 char) of each '
+                             '.bam file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
                              'name).  Bam files in the same directory are grouped together for plotting. Plots use '
                              'normalized counts, such that all .bam files in the same directory have bin '
                              'counts that add up to 1 for each chromosome.  If your .bam files are not in this '
