@@ -211,7 +211,11 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(record['count'] * factor, record['normalized_count'])
 
     def test_region_with_long_chromosome(self):
-        self.helper_check_region_with_chromosome('chr7_1234567890_1234567890')
+        self.helper_check_region_with_chromosome('a'*63)
+
+    def test_region_with_too_long_chromosome(self):
+        with self.assertRaises(Exception):
+            self.helper_check_region_with_chromosome('a'*64)
 
     def test_region_with_non_canonical_chromosome(self):
         self.helper_check_region_with_chromosome('chr7_blah_a')

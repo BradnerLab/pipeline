@@ -168,6 +168,12 @@ class BaseLiquidator(object):
             chromosome_length_pairs = []
             for row in reader:
                 chromosome = row[chr_col]
+                if len(chromosome) >= nps.chromosome_name_length:
+                    raise RuntimeError('Chromosome name "%s" exceeds the max supported chromosome name length (%d). '
+                                       'This max chromosome length may be updated in the code if necessary -- please '
+                                       'contact the bamliquidator developers for additional assistance.'
+                                       % (chromosome, nps.chromosome_name_length))
+                                        
                 file_count += int(row[mapped_read_col])
                 chromosome_length_pairs.append((chromosome, int(row[length_col])))
             
@@ -270,7 +276,7 @@ class BinLiquidator(BaseLiquidator):
         class BinCount(tables.IsDescription):
             bin_number = tables.UInt32Col(    pos=0)
             cell_type  = tables.StringCol(16, pos=1)
-            chromosome = tables.StringCol(64, pos=2)
+            chromosome = tables.StringCol(nps.chromosome_name_length, pos=2)
             count      = tables.UInt64Col(    pos=3)
             file_key   = tables.UInt32Col(    pos=4)
 
@@ -321,7 +327,7 @@ class RegionLiquidator(BaseLiquidator):
     def create_counts_table(self, h5file):
         class Region(tables.IsDescription):
             file_key         = tables.UInt32Col(    pos=0)
-            chromosome       = tables.StringCol(64, pos=1)
+            chromosome       = tables.StringCol(nps.chromosome_name_length, pos=1)
             region_name      = tables.StringCol(64, pos=2)
             start            = tables.UInt64Col(    pos=3)
             stop             = tables.UInt64Col(    pos=4)
