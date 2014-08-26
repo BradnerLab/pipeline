@@ -13,12 +13,15 @@ import tables
 import logging
 import sys
 import abc
+import collections
 
 from time import time 
 from os.path import basename
 from os.path import dirname
 
-__version__ = '0.9.3'
+__version__ = '1.0.0'
+
+default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
@@ -27,7 +30,7 @@ def create_files_table(h5file):
         # file_name would be included here, but pytables doesn't support variable length strings as table column
         # so it is instead in a vlarray "file_names" 
 
-    table = h5file.create_table("/", "files", Files, "File names, keys, and reference sequence lengths corresponding, "
+    table = h5file.create_table("/", "files", Files, "File keys and reference sequence lengths corresponding "
                                                      "to the counts table")
     table.flush()
 
@@ -81,6 +84,8 @@ class BaseLiquidator(object):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
+        self.timings = collections.OrderedDict()
+
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
@@ -104,7 +109,7 @@ class BaseLiquidator(object):
             self.counts_file_path = os.path.join(output_directory, "counts.h5")
         
             counts_file = tables.open_file(self.counts_file_path, mode = "w",
-                                           title = 'bam liquidator genome bin read counts - version %s' % __version__)
+                                           title = 'bam liquidator genome read counts - version %s' % __version__)
         else:
             counts_file = tables.open_file(self.counts_file_path, "r+")
 
@@ -152,9 +157,6 @@ class BaseLiquidator(object):
             next_file_key = max(next_file_key, file_record["key"])
         next_file_key += 1
 
-        # this skip list is somewhat arbitrary and can be emptied/removed if desired
-        chromosome_patterns_to_skip = ["chrUn", "_random", "Zv9_", "_hap"]
-
         for bam_file_path in self.bam_file_paths:
             args = ["samtools", "idxstats", bam_file_path]
             output = subprocess.check_output(args)
@@ -166,8 +168,12 @@ class BaseLiquidator(object):
             chromosome_length_pairs = []
             for row in reader:
                 chromosome = row[chr_col]
-                if any(pattern in chromosome for pattern in chromosome_patterns_to_skip):
-                    continue
+                if len(chromosome) >= nps.chromosome_name_length:
+                    raise RuntimeError('Chromosome name "%s" exceeds the max supported chromosome name length (%d). '
+                                       'This max chromosome length may be updated in the code if necessary -- please '
+                                       'contact the bamliquidator developers for additional assistance.'
+                                       % (chromosome, nps.chromosome_name_length))
+                                        
                 file_count += int(row[mapped_read_col])
                 chromosome_length_pairs.append((chromosome, int(row[length_col])))
             
@@ -199,6 +205,7 @@ class BaseLiquidator(object):
         self.normalize()
         duration = time() - start
         logging.info("Post liquidation processing took %f seconds", duration)
+        self.log_time('post_liquidation', duration)
 
     def flatten(self):
         logging.info("Flattening HDF5 tables into text files")
@@ -209,15 +216,28 @@ class BaseLiquidator(object):
 
         duration = time() - start
         logging.info("Flattening took %f seconds" % duration)
+        self.log_time('flattening', duration)
         
     def logging_cpp_args(self):
         return [os.path.join(self.output_directory, "log.txt"), "1" if self.include_cpp_warnings_in_stderr else "0"]
 
+    def log_time(self, title, seconds):
+        self.timings[title] = seconds
+
+    def write_timings_to_junit_xml(self):
+        with open(os.path.join(self.output_directory, 'timings.xml'), 'w') as xml:
+            xml.write('<testsuite tests="%d">\n' % len(self.timings.keys()))
+            for title in self.timings:
+                xml.write('\t<testcase classname="bamliquidator" name="%s" time="%f"/>\n' % (title, self.timings[title]))
+            xml.write('</testsuite>\n')
+
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
-                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False, include_cpp_warnings_in_stderr = True):
+                 counts_file_path = None, extension = 0, sense = '.', skip_plot = False,
+                 include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
+        self.chromosome_patterns_to_skip = blacklist
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
                                             include_cpp_warnings_in_stderr, counts_file_path)
         self.batch(extension, sense)
@@ -226,12 +246,16 @@ class BinLiquidator(BaseLiquidator):
         if sense is None: sense = '.'
 
         cell_type = basename(dirname(bam_file_path))
+        if cell_type == '':
+            cell_type = '-'
         bam_file_name = basename(bam_file_path)
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
 
         for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
+            if any(pattern in chromosome for pattern in self.chromosome_patterns_to_skip):
+                continue
             args.append(chromosome)
             args.append(str(length))
 
@@ -242,6 +266,7 @@ class BinLiquidator(BaseLiquidator):
         reads = self.file_to_count[bam_file_name]
         rate = reads / (10**6) / duration
         logging.info("Liquidation completed: %f seconds, %d reads, %f millions of reads per second", duration, reads, rate)
+        self.log_time('liquidation', duration)
 
         return return_code
        
@@ -253,7 +278,7 @@ class BinLiquidator(BaseLiquidator):
         class BinCount(tables.IsDescription):
             bin_number = tables.UInt32Col(    pos=0)
             cell_type  = tables.StringCol(16, pos=1)
-            chromosome = tables.StringCol(16, pos=2)
+            chromosome = tables.StringCol(nps.chromosome_name_length, pos=2)
             count      = tables.UInt64Col(    pos=3)
             file_key   = tables.UInt32Col(    pos=4)
 
@@ -293,6 +318,7 @@ class RegionLiquidator(BaseLiquidator):
         duration = time() - start
 
         logging.info("Liquidation completed: %f seconds", duration)
+        self.log_time('liquidation', duration)
 
         return return_code
 
@@ -303,7 +329,7 @@ class RegionLiquidator(BaseLiquidator):
     def create_counts_table(self, h5file):
         class Region(tables.IsDescription):
             file_key         = tables.UInt32Col(    pos=0)
-            chromosome       = tables.StringCol(16, pos=1)
+            chromosome       = tables.StringCol(nps.chromosome_name_length, pos=1)
             region_name      = tables.StringCol(64, pos=2)
             start            = tables.UInt64Col(    pos=3)
             stop             = tables.UInt64Col(    pos=4)
@@ -407,17 +433,23 @@ def main():
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
     parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
+    parser.add_argument('--black_list', nargs='+', type=str, default=default_black_list,
+                        help='One or more (space separated) chromosome patterns to skip during bin liquidation. Default is '
+                             'to skip any chromosomes that contain any of the following substrings: %s. ' %  " ".join(default_black_list))
     parser.add_argument('-q', '--quiet', action='store_true',
                         help='Informational and warning output is suppressed so only errors are written to the console (stderr).  '
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
                              'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
                              'in log.txt.')
+    parser.add_argument('--xml_timings', action='store_true',
+                        help='Write performance timings to junit style timings.xml in output folder, which is useful for '
+                             'tracking performance over time with automatically generated Jenkins graphs')
     parser.add_argument('--version', action='version', version='%s %s' % (basename(sys.argv[0]), __version__))
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
                              'have a corresponding .bai file at the same location.  To count just a single file, '
-                             'provide the .bam file path instead of a directory.  The parent directory of each .bam '
-                             'file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
+                             'provide the .bam file path instead of a directory.  The parent directory (up to 16 char) of each '
+                             '.bam file is interpreted as the cell type (e.g. mm1s might be an appropriate directory '
                              'name).  Bam files in the same directory are grouped together for plotting. Plots use '
                              'normalized counts, such that all .bam files in the same directory have bin '
                              'counts that add up to 1 for each chromosome.  If your .bam files are not in this '
@@ -458,6 +490,10 @@ def main():
             write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
             duration = time() - start
             logging.info("Writing matrix.gff took %f seconds" % duration)
+            liquidator.log_time('matrix', duration)
+
+    if args.xml_timings:
+        liquidator.write_timings_to_junit_xml()
 
 if __name__ == "__main__":
     main()

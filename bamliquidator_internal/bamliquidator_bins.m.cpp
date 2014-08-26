@@ -4,8 +4,9 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -25,7 +26,7 @@ struct CountH5Record
 {
   uint32_t bin_number;
   char cell_type[16];
-  char chromosome[16];
+  char chromosome[64];
   uint64_t count;
   uint32_t bam_file_key;
 };
@@ -145,8 +146,8 @@ void liquidate_bins(std::vector<CountH5Record>& counts, const std::string& bam_f
                                               extension);
     } catch(const std::exception& e)
     {
-      Logger::warn() << "Skipping " << counts[i].chromosome << " bin " << i << " due to error: "
-                << e.what();
+      Logger::warn() << "Skipping " << max_lengthed_string(counts[i].chromosome, sizeof(counts[i].chromosome))
+                     << " bin " << i << " due to error: " << e.what();
     }
   }
 }

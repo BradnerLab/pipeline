@@ -42,6 +42,9 @@ import logging
 # I also found that create_index doesn't always work (this was causing where statements to not work)
 # -- I don't know if this was my fault or a bug in pytables, but I just always use create_csindex instead
 
+chromosome_name_length = 64 # Includes 1 for null terminator, so really max of 63 characters.
+                            # Note that changing this value requires updating C++ code as well.
+
 def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:
         if table.name != "bin_counts" and table.name != "files" and table.name != "file_names":
@@ -53,7 +56,7 @@ def create_normalized_counts_table(h5file):
     class BinCount(tables.IsDescription):
         bin_number = tables.UInt32Col(    pos=0)
         cell_type  = tables.StringCol(16, pos=1)
-        chromosome = tables.StringCol(16, pos=2)
+        chromosome = tables.StringCol(chromosome_name_length, pos=2)
         count      = tables.Float64Col(   pos=3)
         percentile = tables.Float64Col(   pos=4)
         file_key   = tables.UInt32Col(    pos=5)
@@ -253,7 +256,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
 def create_summary_table(h5file):
     class Summary(tables.IsDescription):
         bin_number = tables.UInt32Col(                    pos=0)
-        chromosome = tables.StringCol(16,                 pos=2)
+        chromosome = tables.StringCol(chromosome_name_length, pos=2)
         avg_cell_type_percentile = tables.Float64Col(     pos=1)
         cell_types_gte_95th_percentile = tables.UInt32Col(pos=2)
         cell_types_lt_95th_percentile = tables.UInt32Col( pos=3)
