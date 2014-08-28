@@ -41,7 +41,7 @@ CC=g++
 CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
-ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb -lboost_timer -lboost_system
+ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
 # if someone does a ppa and/or pip upload, first change the name/email and commit it
 UPLOADER := John DiMatteo

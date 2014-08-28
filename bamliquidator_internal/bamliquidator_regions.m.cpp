@@ -1,10 +1,10 @@
 #include "bamliquidator.h"
 #include "bamliquidator_util.h"
 
-#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -21,8 +21,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
-//#define jd_timer
-#ifdef jd_timer
+//#define time_region_parsing
+#ifdef time_region_parsing 
 #include <boost/timer/timer.hpp>
 #endif
 
@@ -55,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& region_format,
                                   const unsigned int bam_file_key,
-                                  const std::vector<std::string>& sorted_chromosomes, 
+                                  const std::set<std::string>& chromosomes, 
                                   const char default_strand = '_') 
 {
   int chromosome_column = 0;
@@ -63,7 +63,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
   int start_column = 0;
   int stop_column = 0;
   int strand_column = 0;
-  int min_columns = 0;
+  unsigned int min_columns = 0;
 
   if (region_format == "gff")
   {
@@ -139,7 +139,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     region.count = 0;
     region.normalized_count = 0.0;
 
-    if (std::binary_search(sorted_chromosomes.begin(), sorted_chromosomes.end(), region.chromosome))
+    if (chromosomes.find(region.chromosome) != chromosomes.end())
     {
       regions.push_back(region);
     }
@@ -328,25 +328,24 @@ int main(int argc, char* argv[])
       return 3;
     }
 
-    #ifdef jd_timer
+    #ifdef time_region_parsing 
     boost::timer::cpu_timer timer; 
     #endif
 
     // we don't need the chromosome lengths, but we might in the future, and it makes the interface
     // consistent with bamliquidator_bins to include the lengths
-    std::vector<std::string> sorted_chromosomes;
+    std::set<std::string> chromosomes;
     for (auto& chr_length : chromosome_lengths)
     {
-      sorted_chromosomes.push_back(chr_length.first);
+      chromosomes.insert(chr_length.first);
     }
-    std::sort(sorted_chromosomes.begin(), sorted_chromosomes.end());
 
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
-                                                sorted_chromosomes,
+                                                chromosomes,
                                                 strand);
-    #ifdef jd_timer
+    #ifdef time_region_parsing 
     timer.stop();
     std::cout << "parsing regions took" << timer.format() << std::endl;
     #endif
