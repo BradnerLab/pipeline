@@ -4,7 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <set>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -40,6 +40,20 @@ struct Region
   char strand;
   uint64_t count;
   double normalized_count;
+
+  bool is_valid(const std::map<std::string, size_t>& chromosome_to_length)
+  {
+    const auto it = chromosome_to_length.find(chromosome);
+    if ( it != chromosome_to_length.end() )
+    {
+      if ( stop <= it->second )
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
@@ -55,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& region_format,
                                   const unsigned int bam_file_key,
-                                  const std::set<std::string>& chromosomes, 
+                                  const std::map<std::string, size_t>& chromosome_to_length, 
                                   const char default_strand = '_') 
 {
   int chromosome_column = 0;
@@ -139,13 +153,13 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     region.count = 0;
     region.normalized_count = 0.0;
 
-    if (chromosomes.find(region.chromosome) != chromosomes.end())
+    if (region.is_valid(chromosome_to_length))
     {
       regions.push_back(region);
     }
     else
     {
-      Logger::warn() << "Excluding region due to invalid chromosome; region on line " << line_number << ": " << region;
+      Logger::warn() << "Excluding invalid region on line " << line_number << ": " << region;
     }
   }
 
@@ -332,18 +346,16 @@ int main(int argc, char* argv[])
     boost::timer::cpu_timer timer; 
     #endif
 
-    // we don't need the chromosome lengths, but we might in the future, and it makes the interface
-    // consistent with bamliquidator_bins to include the lengths
-    std::set<std::string> chromosomes;
+    std::map<std::string, size_t> chromosome_to_length;
     for (auto& chr_length : chromosome_lengths)
     {
-      chromosomes.insert(chr_length.first);
+      chromosome_to_length[chr_length.first] = chr_length.second;
     }
 
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
-                                                chromosomes,
+                                                chromosome_to_length,
                                                 strand);
     #ifdef time_region_parsing 
     timer.stop();
