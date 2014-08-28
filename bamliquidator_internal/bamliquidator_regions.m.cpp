@@ -1,10 +1,10 @@
 #include "bamliquidator.h"
 #include "bamliquidator_util.h"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -21,7 +21,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
-#define jd_timer
+//#define jd_timer
 #ifdef jd_timer
 #include <boost/timer/timer.hpp>
 #endif
@@ -40,25 +40,6 @@ struct Region
   char strand;
   uint64_t count;
   double normalized_count;
-
-  bool is_valid(const std::map<std::string, size_t>& chromosome_to_length)
-  {
-    return chromosome_to_length.find(chromosome) != chromosome_to_length.end();
-    // todo: does bam_parse_region always succeed as long as chr is valid, start >= 0, and stop >= start?
-    // is it OK to report 0 for an invalid start/stop?
-    /*
-    const auto it = chromosome_to_length.find(chromosome);
-    if ( it != chromosome_to_length.end() )
-    {
-        if ( stop <= it->second )
-        {
-            return true;
-        }
-    }
-
-    return false;
-    */
-  }
 };
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
@@ -74,17 +55,9 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& region_format,
                                   const unsigned int bam_file_key,
-                                  const std::vector<std::pair<std::string, size_t>>& chromosome_lengths, 
+                                  const std::vector<std::string>& sorted_chromosomes, 
                                   const char default_strand = '_') 
 {
-  // todo: probably should just pass in the map instead of a vector of pairs
-  // todo: use std::set or a sorted vector, since we aren't using the lengths
-  std::map<std::string, size_t> chromosome_to_length;
-  for (auto& chr_length : chromosome_lengths)
-  {
-    chromosome_to_length[chr_length.first] = chr_length.second;
-  }
-
   int chromosome_column = 0;
   int name_column = 0;
   int start_column = 0;
@@ -166,13 +139,13 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     region.count = 0;
     region.normalized_count = 0.0;
 
-    if (region.is_valid(chromosome_to_length))
+    if (std::binary_search(sorted_chromosomes.begin(), sorted_chromosomes.end(), region.chromosome))
     {
-        regions.push_back(region);
+      regions.push_back(region);
     }
     else
     {
-      Logger::warn() << "Excluding invalid region on line " << line_number << ": " << region;
+      Logger::warn() << "Excluding region due to invalid chromosome; region on line " << line_number << ": " << region;
     }
   }
 
@@ -358,10 +331,20 @@ int main(int argc, char* argv[])
     #ifdef jd_timer
     boost::timer::cpu_timer timer; 
     #endif
+
+    // we don't need the chromosome lengths, but we might in the future, and it makes the interface
+    // consistent with bamliquidator_bins to include the lengths
+    std::vector<std::string> sorted_chromosomes;
+    for (auto& chr_length : chromosome_lengths)
+    {
+      sorted_chromosomes.push_back(chr_length.first);
+    }
+    std::sort(sorted_chromosomes.begin(), sorted_chromosomes.end());
+
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
-                                                chromosome_lengths,
+                                                sorted_chromosomes,
                                                 strand);
     #ifdef jd_timer
     timer.stop();
