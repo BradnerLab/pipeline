@@ -43,6 +43,10 @@ struct Region
 
   bool is_valid(const std::map<std::string, size_t>& chromosome_to_length)
   {
+    return chromosome_to_length.find(chromosome) != chromosome_to_length.end();
+    // todo: does bam_parse_region always succeed as long as chr is valid, start >= 0, and stop >= start?
+    // is it OK to report 0 for an invalid start/stop?
+    /*
     const auto it = chromosome_to_length.find(chromosome);
     if ( it != chromosome_to_length.end() )
     {
@@ -53,6 +57,7 @@ struct Region
     }
 
     return false;
+    */
   }
 };
 
@@ -73,6 +78,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const char default_strand = '_') 
 {
   // todo: probably should just pass in the map instead of a vector of pairs
+  // todo: use std::set or a sorted vector, since we aren't using the lengths
   std::map<std::string, size_t> chromosome_to_length;
   for (auto& chr_length : chromosome_lengths)
   {
