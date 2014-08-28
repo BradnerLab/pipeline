@@ -20,8 +20,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
-//#define timer
-#ifdef timer
+#define jd_timer
+#ifdef jd_timer
 #include <boost/timer/timer.hpp>
 #endif
 
@@ -317,14 +317,14 @@ int main(int argc, char* argv[])
       return 3;
     }
 
-    #ifdef timer
+    #ifdef jd_timer
     boost::timer::cpu_timer timer; 
     #endif
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
                                                 strand);
-    #ifdef timer
+    #ifdef jd_timer
     timer.stop();
     std::cout << "parsing regions took" << timer.format() << std::endl;
     #endif
