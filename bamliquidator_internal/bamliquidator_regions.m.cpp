@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -39,6 +40,20 @@ struct Region
   char strand;
   uint64_t count;
   double normalized_count;
+
+  bool is_valid(const std::map<std::string, size_t>& chromosome_to_length)
+  {
+    const auto it = chromosome_to_length.find(chromosome);
+    if ( it != chromosome_to_length.end() )
+    {
+        if ( stop <= it->second )
+        {
+            return true;
+        }
+    }
+
+    return false;
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
@@ -54,8 +69,16 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& region_format,
                                   const unsigned int bam_file_key,
+                                  const std::vector<std::pair<std::string, size_t>>& chromosome_lengths, 
                                   const char default_strand = '_') 
 {
+  // todo: probably should just pass in the map instead of a vector of pairs
+  std::map<std::string, size_t> chromosome_to_length;
+  for (auto& chr_length : chromosome_lengths)
+  {
+    chromosome_to_length[chr_length.first] = chr_length.second;
+  }
+
   int chromosome_column = 0;
   int name_column = 0;
   int start_column = 0;
@@ -94,7 +117,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
   }
 
   std::vector<Region> regions;
-  for(std::string line; std::getline(region_file, line); )
+  int line_number = 1;
+  for(std::string line; std::getline(region_file, line); ++line_number)
   {
     std::vector<std::string> columns;
     boost::split(columns, line, boost::is_any_of("\t"));
@@ -108,7 +132,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name)-1);
     if (columns[name_column].size() >= sizeof(Region::region_name))
     {
-      Logger::warn() << "truncated region '" << columns[name_column] << "' to '" << region.region_name << "'";
+      Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
     }
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
     region.stop  = boost::lexical_cast<uint64_t>(columns[stop_column]);
@@ -136,7 +160,14 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     region.count = 0;
     region.normalized_count = 0.0;
 
-    regions.push_back(region);
+    if (region.is_valid(chromosome_to_length))
+    {
+        regions.push_back(region);
+    }
+    else
+    {
+      Logger::warn() << "Excluding invalid region on line " << line_number << ": " << region;
+    }
   }
 
   return regions;
@@ -255,8 +286,9 @@ void liquidate_regions(std::vector<Region>& regions, const std::string& bam_file
                                               extension);
     } catch(const std::exception& e)
     {
-      Logger::warn() << "skipping region " << i+1 << " (" << regions[i] << ") due to error: "
-                     << e.what();
+      Logger::error() << "Aborting because failed to parse region " << i+1 << " (" << regions[i] << ") due to error: "
+                      << e.what();
+      throw;
     }
   }
 }
@@ -323,6 +355,7 @@ int main(int argc, char* argv[])
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
+                                                chromosome_lengths,
                                                 strand);
     #ifdef jd_timer
     timer.stop();
@@ -330,7 +363,7 @@ int main(int argc, char* argv[])
     #endif
     if (regions.size() == 0)
     {
-      Logger::warn() << "no regions detected in " << region_file_path;
+      Logger::warn() << "No valid regions detected in " << region_file_path;
       return 0;
     }
 

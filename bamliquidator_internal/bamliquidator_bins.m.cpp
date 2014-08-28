@@ -238,7 +238,7 @@ int main(int argc, char* argv[])
 
     if (bin_size == 0)
     {
-      Logger::error() << "bin size cannot be zero";
+      Logger::error() << "Bin size cannot be zero";
       return 2;
     }
 

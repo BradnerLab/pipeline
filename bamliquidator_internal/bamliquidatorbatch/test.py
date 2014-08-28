@@ -155,11 +155,13 @@ class SingleFullReadBamTest(TempDirTest):
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
             self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
+            self.assertEqual(0, len(counts.root.region_counts)) # no valid regions
 
-            record = counts.root.region_counts[0]
-            self.assertEqual(start, record['start'])
-            self.assertEqual(stop,  record['stop'])
-            self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
+            # todo: consider adding an option to default invalid regions to 0
+            #record = counts.root.region_counts[0]
+            #self.assertEqual(start, record['start'])
+            #self.assertEqual(stop,  record['stop'])
+            #self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
 
     def test_empty_region_file(self):
         empty_file_path = os.path.join(self.dir_path, 'empty.gff')
@@ -183,11 +185,13 @@ class SingleFullReadBamTest(TempDirTest):
         with tables.open_file(liquidator.counts_file_path) as counts:
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
             self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
+            self.assertEqual(0, len(counts.root.region_counts)) # no valid regions
 
-            record = counts.root.region_counts[0]
-            self.assertEqual(start, record['start'])
-            self.assertEqual(stop,  record['stop'])
-            self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
+            # todo: consider adding an option to default invalid regions to 0
+            #record = counts.root.region_counts[0]
+            #self.assertEqual(start, record['start'])
+            #self.assertEqual(stop,  record['stop'])
+            #self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
 
     def test_region_with_long_name(self):
         start = 1
