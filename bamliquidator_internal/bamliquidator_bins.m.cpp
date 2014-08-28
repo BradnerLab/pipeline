@@ -1,5 +1,5 @@
 #include "bamliquidator.h"
-#include "bamliquidator_logger.h"
+#include "bamliquidator_util.h"
 
 #include <cmath>
 #include <fstream>
@@ -232,13 +232,7 @@ int main(int argc, char* argv[])
     const std::string hdf5_file_path = argv[7];
     const std::string log_file_path = argv[8];
     const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[9]);
-
-    std::vector<std::pair<std::string, size_t>> chromosome_lengths;
-    for (int arg = 10; arg < argc && arg + 1 < argc; arg += 2)
-    {
-      chromosome_lengths.push_back(
-        std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
-    }
+    const std::vector<std::pair<std::string, size_t>> chromosome_lengths = extract_chromosome_lengths(argc, argv, 10);
 
     Logger::configure(log_file_path, write_warnings_to_stderr);
 

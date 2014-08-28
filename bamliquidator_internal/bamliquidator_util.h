@@ -1,10 +1,14 @@
-#ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
-#define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
+#ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_UTIL_H
+#define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_UTIL_H
 
 #include <algorithm>
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <utility>
+
+#include <boost/lexical_cast.hpp>
 
 // returns std::string for a char* that has a max length and is only null terminated when less than that length
 inline std::string max_lengthed_string(const char* s, size_t max_length)
@@ -70,6 +74,18 @@ private:
   std::stringstream ss;
   mutable bool copied;
 };
+
+inline std::vector<std::pair<std::string, size_t>>
+extract_chromosome_lengths(int argc, char* argv[], int chr1_arg)
+{
+  std::vector<std::pair<std::string, size_t>> chromosome_lengths;
+  for (int arg = chr1_arg; arg < argc && arg + 1 < argc; arg += 2)
+  {
+    chromosome_lengths.push_back(
+      std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
+  }
+  return chromosome_lengths;
+}
 
 /* The MIT License (MIT) 
 

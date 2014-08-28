@@ -1,5 +1,5 @@
 #include "bamliquidator.h"
-#include "bamliquidator_logger.h"
+#include "bamliquidator_util.h"
 
 #include <cmath>
 #include <fstream>
@@ -283,13 +283,13 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 10)
+    if (argc < 12 || argc % 2 != 0)
     {
       std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file "
-                << "log_file write_warnings_to_stderr strand\n"
+                << "log_file write_warnings_to_stderr strand chr1 length1 ...\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff gff"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 "
-        << "\n      output/log.txt 1 _\n"
+        << "\n      output/log.txt 1 _ chr1 247249719 chr2 242951149 chr3 199501827\n"
         << "\nstrand value of _ means use strand that is specified in region file (and use . if strand not specified in region file)."
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
@@ -306,6 +306,7 @@ int main(int argc, char* argv[])
     const std::string log_file_path = argv[7];
     const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[8]);
     const char strand = boost::lexical_cast<char>(argv[9]);
+    const std::vector<std::pair<std::string, size_t>> chromosome_lengths = extract_chromosome_lengths(argc, argv, 10);
 
     Logger::configure(log_file_path, write_warnings_to_stderr);
 

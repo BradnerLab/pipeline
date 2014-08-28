@@ -319,6 +319,7 @@ class RegionLiquidator(BaseLiquidator):
             args.append('_') # _ means use strand specified in region file (or . if none specified)
         else:
             args.append(sense)
+        args.extend(self.chromosome_args(bam_file_name, skip_non_canonical=False))
 
         start = time()
         return_code = subprocess.call(args)
