@@ -20,6 +20,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
+#include <boost/timer/timer.hpp>
+
 const size_t region_name_length = 64;
 
 // this Region must match exactly the structure in HDF5
@@ -312,10 +314,13 @@ int main(int argc, char* argv[])
       return 3;
     }
 
+    boost::timer::cpu_timer timer; 
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
                                                 strand);
+    timer.stop();
+    std::cout << "parsing regions took" << timer.format() << std::endl;
     if (regions.size() == 0)
     {
       Logger::warn() << "no regions detected in " << region_file_path;
