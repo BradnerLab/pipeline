@@ -20,7 +20,10 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
+//#define timer
+#ifdef timer
 #include <boost/timer/timer.hpp>
+#endif
 
 const size_t region_name_length = 64;
 
@@ -46,12 +49,12 @@ std::ostream& operator<<(std::ostream& os, const Region& r)
   return os;
 }
 
-// default_strand: optional argument, default (space) indicates to use 
+// default_strand: optional argument, default _ indicates to use 
 //                 gff strand column or . (both) for .bed region file
 std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::string& region_format,
                                   const unsigned int bam_file_key,
-                                  const char default_strand = ' ') 
+                                  const char default_strand = '_') 
 {
   int chromosome_column = 0;
   int name_column = 0;
@@ -116,7 +119,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
 
     if (strand_column == -1)
     {
-      region.strand = default_strand == ' '
+      region.strand = default_strand == '_'
                     ? '.'
                     : default_strand; 
     }
@@ -126,7 +129,7 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       {
         throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
       }
-      region.strand = default_strand == ' '
+      region.strand = default_strand == '_'
                     ? columns[strand_column][0]
                     : default_strand;
     }
@@ -280,13 +283,14 @@ int main(int argc, char* argv[])
 
   try
   {
-    if (argc != 9 && argc != 10)
+    if (argc != 10)
     {
       std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file "
-                << "log_file write_warnings_to_stderr [strand]\n"
+                << "log_file write_warnings_to_stderr strand\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff gff"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 "
-        << "\n      output/log.txt 1\n"
+        << "\n      output/log.txt 1 _\n"
+        << "\nstrand value of _ means use strand that is specified in region file (and use . if strand not specified in region file)."
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
@@ -301,9 +305,7 @@ int main(int argc, char* argv[])
     const std::string hdf5_file_path = argv[6];
     const std::string log_file_path = argv[7];
     const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[8]);
-    const char strand = argc == 10 
-                      ? boost::lexical_cast<char>(argv[9])
-                      : ' ';
+    const char strand = boost::lexical_cast<char>(argv[9]);
 
     Logger::configure(log_file_path, write_warnings_to_stderr);
 
@@ -314,13 +316,17 @@ int main(int argc, char* argv[])
       return 3;
     }
 
+    #ifdef timer
     boost::timer::cpu_timer timer; 
+    #endif
     std::vector<Region> regions = parse_regions(region_file_path,
                                                 region_format,
                                                 bam_file_key,
                                                 strand);
+    #ifdef timer
     timer.stop();
     std::cout << "parsing regions took" << timer.format() << std::endl;
+    #endif
     if (regions.size() == 0)
     {
       Logger::warn() << "no regions detected in " << region_file_path;
