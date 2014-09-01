@@ -186,8 +186,8 @@ std::vector<CountH5Record> count_placeholders(
   empty_record.bam_file_key = bam_file_key;
   empty_record.bin_number = 0;
   empty_record.count      = 0;
-  strncpy(empty_record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-  strncpy(empty_record.chromosome, "",                    sizeof(CountH5Record::chromosome));
+  copy(empty_record.cell_type, cell_type, sizeof(CountH5Record::cell_type));
+  copy(empty_record.chromosome, "", sizeof(CountH5Record::chromosome));
 
   std::vector<CountH5Record> records(num_records, empty_record);
 
@@ -195,10 +195,10 @@ std::vector<CountH5Record> count_placeholders(
   for (auto& chr_length : chromosome_lengths)
   {
     int bins = std::ceil(chr_length.second / (double) bin_size);
-    for (size_t j=0; j < bins; ++j, ++i)
+    for (int j=0; j < bins; ++j, ++i)
     {
       records[i].bin_number = j;
-      strncpy(records[i].chromosome, chr_length.first.c_str(), sizeof(CountH5Record::chromosome));
+      copy(records[i].chromosome, chr_length.first, sizeof(CountH5Record::chromosome));
     }
   }
 

@@ -17,6 +17,17 @@ inline std::string max_lengthed_string(const char* s, size_t max_length)
   return std::string(s, length);
 }
 
+// copies str to dest
+// precondition: dest_size > 0
+// postcondition: dest is null terminated, dest isn't overflowed, and any excess in dest is filled with \0 characters
+inline void copy(char* dest, const std::string& str, size_t dest_size)
+{
+  // my hdf5/pytables usage seems to require that any excess space in dest be
+  // filled with null terminators (not random garbage), so strncpy is ideal
+  strncpy(dest, str.c_str(), dest_size - 1);
+  dest[dest_size - 1] = '\0';
+}
+
 // The logger class is intended to be used to match bamliquidator_batch.py logging output style
 class Logger
 {
