@@ -10,12 +10,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-// returns std::string for a char* that has a max length and is only null terminated when less than that length
-inline std::string max_lengthed_string(const char* s, size_t max_length)
-{
-  size_t length = std::find(s, s + max_length, '\0') - s;
-  return std::string(s, length);
-}
+// todo: use a namespace here
 
 // copies str to dest
 // precondition: dest_size > 0

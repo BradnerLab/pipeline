@@ -146,7 +146,7 @@ void liquidate_bins(std::vector<CountH5Record>& counts, const std::string& bam_f
                                               extension);
     } catch(const std::exception& e)
     {
-      Logger::warn() << "Skipping " << max_lengthed_string(counts[i].chromosome, sizeof(counts[i].chromosome))
+      Logger::warn() << "Skipping " << counts[i].chromosome
                      << " bin " << i << " due to error: " << e.what();
     }
   }

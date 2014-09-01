@@ -58,8 +58,8 @@ struct Region
 
 std::ostream& operator<<(std::ostream& os, const Region& r)
 {
-  os << "bam file key " << r.bam_file_key << ' ' << max_lengthed_string(r.chromosome, sizeof(r.chromosome)) << ' '
-     << max_lengthed_string(r.region_name, sizeof(r.region_name)) << ' ' << r.start << " -> " << r.stop << ' '
+  os << "bam file key " << r.bam_file_key << ' ' << r.chromosome << ' '
+     << r.region_name << ' ' << r.start << " -> " << r.stop << ' '
      << r.strand << ' ' << r.normalized_count;
   return os;
 }
