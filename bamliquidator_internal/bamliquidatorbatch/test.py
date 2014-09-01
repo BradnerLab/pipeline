@@ -143,7 +143,7 @@ class SingleFullReadBamTest(TempDirTest):
            self.assertEqual('chr1(.):1-8', data_cols[1]) # todo: don't hardcode these values 
            self.assertEqual('1000000.0\n', data_cols[2])
 
-    def test_region_with_no_reads(self):
+    def test_out_of_range_region(self):
         start = len(self.sequence) + 10
         stop = start + 10
         regions_file_path = create_single_region_gff_file(self.dir_path, self.chromosome, start, stop)
@@ -156,11 +156,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
             self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
             
-            self.assertEqual(1, len(counts.root.region_counts))
-            record = counts.root.region_counts[0]
-            self.assertEqual(start, record['start'])
-            self.assertEqual(stop,  record['stop'])
-            self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
+            self.assertEqual(0, len(counts.root.region_counts))
 
     def test_empty_region_file(self):
         empty_file_path = os.path.join(self.dir_path, 'empty.gff')
@@ -468,7 +464,6 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
     def test_liquidation_in_long_directory(self):
         self.dir_path = tempfile.mkdtemp(prefix='blt_' + 'a'*16)
         truncated_cell_type = os.path.basename(self.dir_path)[:16]
-        print  self.dir_path, truncated_cell_type
         self.bam_file_path = create_bam(self.dir_path, [self.chromosome], self.sequence)
         bin_size = len(self.sequence)
         liquidator = blb.BinLiquidator(bin_size = bin_size,
