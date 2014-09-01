@@ -121,8 +121,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     }
     Region region;
     region.bam_file_key = bam_file_key; 
-    strncpy(region.chromosome,  columns[chromosome_column].c_str(), sizeof(Region::chromosome));
-    strncpy(region.region_name, columns[name_column].c_str(),       sizeof(Region::region_name)-1);
+    copy(region.chromosome,  columns[chromosome_column], sizeof(Region::chromosome));
+    copy(region.region_name, columns[name_column],       sizeof(Region::region_name));
     if (columns[name_column].size() >= sizeof(Region::region_name))
     {
       Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
