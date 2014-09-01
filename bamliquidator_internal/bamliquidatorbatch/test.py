@@ -463,7 +463,7 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
 
     def test_liquidation_in_long_directory(self):
         self.dir_path = tempfile.mkdtemp(prefix='blt_' + 'a'*16)
-        truncated_cell_type = os.path.basename(self.dir_path)[:16]
+        truncated_cell_type = os.path.basename(self.dir_path)[:15]
         self.bam_file_path = create_bam(self.dir_path, [self.chromosome], self.sequence)
         bin_size = len(self.sequence)
         liquidator = blb.BinLiquidator(bin_size = bin_size,
