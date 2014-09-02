@@ -89,6 +89,7 @@ class BaseLiquidator(object):
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
+        self.chromosome_patterns_to_skip = [] 
 
         # This script may be run by either a developer install from a git pipeline checkout,
         # or from a user install so that the exectuable is on the path.  First we try to
@@ -247,9 +248,9 @@ class BinLiquidator(BaseLiquidator):
                  include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
-        self.chromosome_patterns_to_skip = blacklist
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
                                             include_cpp_warnings_in_stderr, counts_file_path)
+        self.chromosome_patterns_to_skip = blacklist
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
