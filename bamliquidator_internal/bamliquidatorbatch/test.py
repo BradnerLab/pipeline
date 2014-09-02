@@ -182,12 +182,6 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
             self.assertEqual(0, len(counts.root.region_counts)) # no valid regions
 
-            # todo: consider adding an option to default invalid regions to 0
-            #record = counts.root.region_counts[0]
-            #self.assertEqual(start, record['start'])
-            #self.assertEqual(stop,  record['stop'])
-            #self.assertEqual(0, record['count']) # 0 since region doesn't intersect sequence
-
     def test_region_with_long_name(self):
         start = 1
         stop  = 8
@@ -484,7 +478,6 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
             self.assertEqual(self.chromosome, record['chromosome'])
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
-
 
 if __name__ == '__main__':
     unittest.main()
