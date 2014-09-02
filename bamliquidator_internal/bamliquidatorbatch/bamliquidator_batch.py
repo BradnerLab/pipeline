@@ -19,7 +19,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
@@ -89,6 +89,7 @@ class BaseLiquidator(object):
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
+        self.chromosome_patterns_to_skip = [] 
 
         # This script may be run by either a developer install from a git pipeline checkout,
         # or from a user install so that the exectuable is on the path.  First we try to
@@ -217,6 +218,16 @@ class BaseLiquidator(object):
         duration = time() - start
         logging.info("Flattening took %f seconds" % duration)
         self.log_time('flattening', duration)
+
+    def chromosome_args(self, bam_file_name, skip_non_canonical):
+        args = []
+        for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
+            if skip_non_canonical:
+                if any(pattern in chromosome for pattern in self.chromosome_patterns_to_skip):
+                    continue
+            args.append(chromosome)
+            args.append(str(length))
+        return args
         
     def logging_cpp_args(self):
         return [os.path.join(self.output_directory, "log.txt"), "1" if self.include_cpp_warnings_in_stderr else "0"]
@@ -237,9 +248,9 @@ class BinLiquidator(BaseLiquidator):
                  include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
-        self.chromosome_patterns_to_skip = blacklist
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
                                             include_cpp_warnings_in_stderr, counts_file_path)
+        self.chromosome_patterns_to_skip = blacklist
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
@@ -252,12 +263,7 @@ class BinLiquidator(BaseLiquidator):
         args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
-
-        for chromosome, length in self.file_to_chromosome_length_pairs[bam_file_name]:
-            if any(pattern in chromosome for pattern in self.chromosome_patterns_to_skip):
-                continue
-            args.append(chromosome)
-            args.append(str(length))
+        args.extend(self.chromosome_args(bam_file_name, skip_non_canonical=True))
 
         start = time()
         return_code = subprocess.call(args)
@@ -310,8 +316,11 @@ class RegionLiquidator(BaseLiquidator):
         args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
-        if sense is not None:
+        if sense is None:
+            args.append('_') # _ means use strand specified in region file (or . if none specified)
+        else:
             args.append(sense)
+        args.extend(self.chromosome_args(bam_file_name, skip_non_canonical=False))
 
         start = time()
         return_code = subprocess.call(args)

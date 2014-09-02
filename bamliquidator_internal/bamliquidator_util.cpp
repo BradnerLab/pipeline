@@ -1,4 +1,4 @@
-#include "bamliquidator_logger.h"
+#include "bamliquidator_util.h"
 
 #include <iostream>
 #include <fstream>
@@ -10,27 +10,12 @@ namespace
   std::ofstream log_file;
   
   bool include_warnings(true);
-
-  int serr = 0;
-
-  void disable_stderr()
-  {
-    serr = dup(fileno(stderr));
-    freopen("/dev/null", "w", stderr);
-  }
-
-  void enable_stderr()
-  {
-    dup2(serr,fileno(stderr));
-    close(serr);
-  }
 }
 
 void Logger::configure(const std::string& log_file_path, bool include_warnings_in_stderr)
 {
   log_file.open(log_file_path.c_str(), std::ios::app);
   include_warnings = include_warnings_in_stderr;
-  if (!include_warnings) disable_stderr();
 }
 
 Logger Logger::warn()
@@ -58,9 +43,7 @@ Logger::~Logger()
   {
     if (write_to_stderr)
     {
-      if (!include_warnings) enable_stderr();
       std::cerr << level << '\t' << ss.str() << std::endl;
-      if (!include_warnings) disable_stderr();
     }
 
     std::time_t t = std::time(NULL);

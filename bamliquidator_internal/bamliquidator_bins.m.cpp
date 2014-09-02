@@ -1,5 +1,5 @@
 #include "bamliquidator.h"
-#include "bamliquidator_logger.h"
+#include "bamliquidator_util.h"
 
 #include <cmath>
 #include <fstream>
@@ -146,7 +146,7 @@ void liquidate_bins(std::vector<CountH5Record>& counts, const std::string& bam_f
                                               extension);
     } catch(const std::exception& e)
     {
-      Logger::warn() << "Skipping " << max_lengthed_string(counts[i].chromosome, sizeof(counts[i].chromosome))
+      Logger::warn() << "Skipping " << counts[i].chromosome
                      << " bin " << i << " due to error: " << e.what();
     }
   }
@@ -186,8 +186,8 @@ std::vector<CountH5Record> count_placeholders(
   empty_record.bam_file_key = bam_file_key;
   empty_record.bin_number = 0;
   empty_record.count      = 0;
-  strncpy(empty_record.cell_type,  cell_type.c_str(),     sizeof(CountH5Record::cell_type));
-  strncpy(empty_record.chromosome, "",                    sizeof(CountH5Record::chromosome));
+  copy(empty_record.cell_type, cell_type, sizeof(CountH5Record::cell_type));
+  copy(empty_record.chromosome, "", sizeof(CountH5Record::chromosome));
 
   std::vector<CountH5Record> records(num_records, empty_record);
 
@@ -195,10 +195,10 @@ std::vector<CountH5Record> count_placeholders(
   for (auto& chr_length : chromosome_lengths)
   {
     int bins = std::ceil(chr_length.second / (double) bin_size);
-    for (size_t j=0; j < bins; ++j, ++i)
+    for (int j=0; j < bins; ++j, ++i)
     {
       records[i].bin_number = j;
-      strncpy(records[i].chromosome, chr_length.first.c_str(), sizeof(CountH5Record::chromosome));
+      copy(records[i].chromosome, chr_length.first, sizeof(CountH5Record::chromosome));
     }
   }
 
@@ -232,19 +232,13 @@ int main(int argc, char* argv[])
     const std::string hdf5_file_path = argv[7];
     const std::string log_file_path = argv[8];
     const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[9]);
-
-    std::vector<std::pair<std::string, size_t>> chromosome_lengths;
-    for (int arg = 10; arg < argc && arg + 1 < argc; arg += 2)
-    {
-      chromosome_lengths.push_back(
-        std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
-    }
+    const std::vector<std::pair<std::string, size_t>> chromosome_lengths = extract_chromosome_lengths(argc, argv, 10);
 
     Logger::configure(log_file_path, write_warnings_to_stderr);
 
     if (bin_size == 0)
     {
-      Logger::error() << "bin size cannot be zero";
+      Logger::error() << "Bin size cannot be zero";
       return 2;
     }
 
