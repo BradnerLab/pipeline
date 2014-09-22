@@ -1,12 +1,30 @@
-#ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
-#define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_LOGGER_H
+#ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_UTIL_H
+#define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_UTIL_H
 
+#include <algorithm>
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <utility>
+#include <cstring>
 
-// these functions are intended to match bamliquidator_batch.py logging output style
+#include <boost/lexical_cast.hpp>
 
+// todo: use a namespace here
+
+// copies str to dest
+// precondition: dest_size > 0
+// postcondition: dest is null terminated, dest isn't overflowed, and any excess in dest is filled with \0 characters
+inline void copy(char* dest, const std::string& str, size_t dest_size)
+{
+  // my hdf5/pytables usage seems to require that any excess space in dest be
+  // filled with null terminators (not random garbage), so strncpy is ideal
+  strncpy(dest, str.c_str(), dest_size - 1);
+  dest[dest_size - 1] = '\0';
+}
+
+// The logger class is intended to be used to match bamliquidator_batch.py logging output style
 class Logger
 {
 public:
@@ -63,6 +81,18 @@ private:
   std::stringstream ss;
   mutable bool copied;
 };
+
+inline std::vector<std::pair<std::string, size_t>>
+extract_chromosome_lengths(int argc, char* argv[], int chr1_arg)
+{
+  std::vector<std::pair<std::string, size_t>> chromosome_lengths;
+  for (int arg = chr1_arg; arg < argc && arg + 1 < argc; arg += 2)
+  {
+    chromosome_lengths.push_back(
+      std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
+  }
+  return chromosome_lengths;
+}
 
 /* The MIT License (MIT) 
 
