@@ -38,11 +38,7 @@ import os
 import string
 
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
-bamliquidatorString = '/usr/bin/bamliquidator'
-if not os.path.isfile(bamliquidatorString):
-    bamliquidatorString = './bamliquidator'
-    if not os.path.isfile(bamliquidatorString):
-        raise ValueError('bamliquidator not found in path')
+bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
 
 # as of now the number of bins to sample the space is hard wired
 nBins = 200
