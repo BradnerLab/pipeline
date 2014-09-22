@@ -491,10 +491,10 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
+    os.system(cmd)
 
-    outputRank = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-    outputRank = outputRank.communicate()
-    if len(outputRank[0]) > 0:  # test if mapping worked correctly
+    #check for completion
+    if utils.checkOutput(mappedRankByFile,0.2,5):
         print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (enhancerGeneGFFFile, rankByBamFile))
     else:
         print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (enhancerGeneGFFFile, rankByBamFile))
@@ -510,9 +510,10 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
         cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
         print(cmd)
-        outputControl = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-        outputControl = outputControl.communicate()
-        if len(outputControl[0]) > 0:  # test if mapping worked correctly
+        os.system(cmd)
+
+        #check for completion
+        if utils.checkOutput(mappedControlFile,0.2,5):
             print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (enhancerGeneGFFFile, controlBamFile))
         else:
             print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (enhancerGeneGFFFile, controlBamFile))

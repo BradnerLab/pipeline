@@ -296,8 +296,9 @@ def mapCollection(stitchedCollection, referenceCollection, bamFileList, mappedFo
             stitchCount = int(locus.ID().split('_')[0])
         except ValueError:
             stitchCount = 1
+        coords = [int(x) for x in locus.coords()]
 
-        locusTable.append([locus.ID(), locus.chr(), locus.start(), locus.end(), stitchCount, refEnrichSize])
+        locusTable.append([locus.ID(), locus.chr(), min(coords), max(coords), stitchCount, refEnrichSize])
 
     print('GETTING MAPPED DATA')
     print("USING A BAMFILE LIST:")
@@ -477,7 +478,7 @@ def main():
     referenceCollection = utils.gffToLocusCollection(inputGFF)
 
     print('CHECKING REFERENCE COLLECTION:')
-    checkRefCollection(referenceCollection):
+    checkRefCollection(referenceCollection)
         
 
     # MASKING REFERENCE COLLECTION
@@ -567,30 +568,12 @@ def main():
             cmd1 = bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (stitchedGFFFile, mappedOut1Folder, bamFile)
             print(cmd1)
 
-            output1 = subprocess.Popen(cmd1, stdout=subprocess.PIPE, shell=True)
-            output1 = output1.communicate()
-            if len(output1[0]) > 0:  # test if mapping worked correctly
+            os.system(cmd1)
+            if utils.checkOutput(mappedOut1File,0.2,5):
                 print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (stitchedGFFFile, bamFileName))
             else:
                 print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (stitchedGFFFile, bamFileName))
                 sys.exit()
-
-        # # MAPPING TO THE ORIGINAL GFF
-        # mappedOut2Folder = '%s%s_%s_MAPPED' % (mappedFolder, inputName, bamFileName)
-        # mappedOut2File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, inputName, bamFileName)
-        # if utils.checkOutput(mappedOut2File, 0.2, 0.2):
-        #     print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut2File))
-        # else:
-        #     cmd2 = "python " + bamliquidator_path + " --sense . -e 200 --match_bamToGFF -r %s -o %s %s" % (inputGFFFile, mappedOut2Folder, bamFile)
-        #     print(cmd2)
-
-        #     output2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, shell=True)
-        #     output2 = output2.communicate()
-        #     if len(output2[0]) > 0:  # test if mapping worked correctly
-        #         print("SUCCESSFULLY MAPPED TO %s FROM BAM: %s" % (inputGFFFile, bamFileName))
-        #     else:
-        #         print("ERROR: FAILED TO MAP %s FROM BAM: %s" % (inputGFFFile, bamFileName))
-        #         sys.exit()
 
     print('BAM MAPPING COMPLETED NOW MAPPING DATA TO REGIONS')
     # CALCULATE DENSITY BY REGION
