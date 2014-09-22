@@ -396,6 +396,7 @@ def main():
     bowtieDict = {
         'mm9':'/raider/index/mm9/Bowtie2Index/genome',
         'hg19':'/raider/index/hg19/Bowtie2Index/genome',
+        'hg18':'/grail/genomes/Homo_sapiens/human_gp_mar_06_no_random/bowtie/hg18'
         }
 
     bowtieIndex = bowtieDict[string.lower(genome)]
