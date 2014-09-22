@@ -1174,6 +1174,9 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',us
             elif string.upper(genome[0:2]) == 'RN':
                 cmd = "macs14 -t %s -c %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
 
+            elif string.upper(genome[0:2]) == 'DA':
+                cmd = "macs14 -t %s -c %s -f BAM -g 1000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,backgroundBamFile,name,pvalue)
+
         if useBackground == False:
             bamFile = dataDict[name]['bam']
 
@@ -1184,6 +1187,8 @@ def callMacs(dataFile,macsFolder,namesList = [],overwrite=False,pvalue='1e-9',us
                 cmd = "macs14 -t %s -f BAM -g mm -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
             elif string.upper(genome[0:2]) == 'RN':
                 cmd = "macs14 -t %s -f BAM -g 2000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
+            elif string.upper(genome[0:2]) == 'DA':
+                cmd = "macs14 -t %s -f BAM -g 1000000000 -n %s -p %s -w -S --space=50 &" % (bamFile,name,pvalue)
 
 
 
@@ -2110,7 +2115,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     bamString = string.join(bamList,',')
     genome = string.lower(dataDict[namesList[0]]['genome'])
     os.chdir('/ark/home/cl512/src/pipeline/')
-    cmd = "python /ark/home/cl512/src/pipeline/bamPlot.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
+    cmd = "python /ark/home/cl512/src/pipeline/bamPlot_turbo.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s -r &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
 
     #cmd = "python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g hg18 -p multiple -y uniform -b %s -i %s -o %s" % (nameString,titleString,colorString,bamString,locusString,outputFolder)
     print(cmd)
