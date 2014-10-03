@@ -43,7 +43,7 @@ LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
-# if someone does a ppa and/or pip upload, first change the name/email and commit it
+# if someone else does a ppa dput upload, first change the name/email and commit it
 UPLOADER := John DiMatteo
 UPLOADER_EMAIL := jdimatteo@gmail.com
 export UPLOADER
@@ -55,6 +55,7 @@ from setuptools import setup
 setup(
     name='BamLiquidatorBatch',
     version='$(VERSION)',
+    description='Python wrapper around bamliquidator for analyzing the density of short DNA sequence read alignments in the BAM file format.',
     maintainer='$(UPLOADER)',
     maintainer_email='$(UPLOADER_EMAIL)',
     packages=['bamliquidatorbatch'],
@@ -67,9 +68,12 @@ setup(
         ]
     },
     install_requires=[
-        "openpyxl >=1.6.1, <2.0.0",
-        "bokeh == 0.4.4"
-    ],
+        'numpy',
+        'pandas',
+	'redis',
+	'tables',
+	'numexpr'
+    ]
 )
 
 endef
@@ -110,21 +114,24 @@ archive:
 	cp *.h *.cpp makefile bamliquidator-$(VERSION)
 	tar -czf bamliquidator-$(VERSION).tar.gz bamliquidator-$(VERSION)
 	rm -rf bamliquidator-$(VERSION)
+	mkdir bamliquidatorbatch_$(VERSION)
+	cp -r bamliquidatorbatch bamliquidatorbatch_$(VERSION)
+	echo "$$SETUP_PY" > bamliquidatorbatch_$(VERSION)/setup.py
+	tar -czf bamliquidatorbatch_$(VERSION).orig.tar.gz bamliquidatorbatch_$(VERSION)
 
 deb: clean archive
 	./make_deb.sh
 
 dput: deb
+	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*precise_source.changes
+	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*trusty_source.changes
+	exit 1
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
 
-pip:
-	echo "$$SETUP_PY" > setup.py
-	python setup.py sdist upload
-
 clean:
 	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
-	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
