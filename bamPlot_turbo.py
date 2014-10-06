@@ -534,7 +534,7 @@ def main():
 
         # plot style
         plotStyle = options.plot.upper()
-        if ['SINGLE', 'MULTIPLE'].count(plotStyle) == 0:
+        if ['SINGLE', 'MULTIPLE','MERGE'].count(plotStyle) == 0:
             print('ERROR: PLOT STYLE %s NOT AN OPTION' % (plotStyle))
             parser.print_help()
             exit()

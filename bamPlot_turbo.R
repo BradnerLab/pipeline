@@ -38,12 +38,27 @@ multiPage = args[7]
 #==========================================================
 #==================DEBUG SECTION===========================
 #==========================================================
-#setwd('/Users/charles/Dropbox/src/temp/')
-#summaryFile = 'ACTB/ACTB_summary.txt'
-#outFile = '/Users/charles/Dropbox/src/temp/ACTB_plots_test.pdf'
-#yScale = 'UNIFORM'
-#plotStyle = 'MULTIPLE'
-#multiPage = 'SINGLE_PAGE'
+# setwd('/Users/charles/Dropbox/src/temp/')
+# summaryFile = 'ACTB/ACTB_summary.txt'
+# outFile = '/Users/charles/Dropbox/src/temp/ACTB_plots_test_merge.pdf'
+# yScale = 'UNIFORM'
+# plotStyle = 'MERGE'
+# multiPage = 'SINGLE_PAGE'
+
+#==========================================================
+#==========================================================
+#==========================================================
+#Helper functions
+
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2, 
+                     function(x) 
+                       rgb(x[1], x[2], x[3], alpha=alpha))  
+}
+
+
 #==========================================================
 #==========================================================
 #==========================================================
@@ -60,7 +75,9 @@ summaryTable = read.delim(summaryFile)
 #establish the plot height from the first entry
 plotFile = as.character(summaryTable$PLOT_TABLE[1])
 plotTable = read.delim(plotFile)
-plotHeight = (nrow(plotTable)+1)*3
+if(plotStyle == 'MULTIPLE'){
+	plotHeight = (nrow(plotTable)+1)*3
+	}else{plotHeight = 6}
 
 #now open up the pdf if this is a multipage pdf
 if(multiPage == 'SINGLE_PAGE'){
@@ -68,13 +85,13 @@ if(multiPage == 'SINGLE_PAGE'){
 }
 
 #now loop through the summary table
-for(i in 1:nrow(summaryTable)){
+for(n in 1:nrow(summaryTable)){
 	
-	diagramFile = as.character(summaryTable$DIAGRAM_TABLE[i])
-	nameFile = as.character(summaryTable$NAME_TABLE[i])
-	bedDiagramFile = as.character(summaryTable$BED_DIAGRAM_TABLE[i])
-	bedNameFile = as.character(summaryTable$BED_NAME_TABLE[i])
-	plotFile = as.character(summaryTable$PLOT_TABLE[i])
+	diagramFile = as.character(summaryTable$DIAGRAM_TABLE[n])
+	nameFile = as.character(summaryTable$NAME_TABLE[n])
+	bedDiagramFile = as.character(summaryTable$BED_DIAGRAM_TABLE[n])
+	bedNameFile = as.character(summaryTable$BED_NAME_TABLE[n])
+	plotFile = as.character(summaryTable$PLOT_TABLE[n])
 	
 	diagramTable = read.delim(diagramFile,header=FALSE)
 	nameTable = read.delim(nameFile,header=FALSE)
@@ -82,11 +99,11 @@ for(i in 1:nrow(summaryTable)){
 	bedNameTable = read.delim(bedNameFile,header=FALSE)
 	plotTable = read.delim(plotFile)
 	
-	chrom = as.character(summaryTable$CHROM[i])
-	name = as.character(summaryTable$ID[i])
-	sense = as.character(summaryTable$SENSE[i])
-	start = as.numeric(summaryTable$START[i])
-	end = as.numeric(summaryTable$END[i])
+	chrom = as.character(summaryTable$CHROM[n])
+	name = as.character(summaryTable$ID[n])
+	sense = as.character(summaryTable$SENSE[n])
+	start = as.numeric(summaryTable$START[n])
+	end = as.numeric(summaryTable$END[n])
 
 	#if a multipage PDF, open up the pdf
 	if(multiPage == 'MULTIPLE_PAGE'){
@@ -259,6 +276,104 @@ for(i in 1:nrow(summaryTable)){
 
 		
 	}
+	
+	
+	#for merging plots
+	if(plotStyle == 'MERGE'){
+		#getting the number of groups
+		groupList = unique(as.character(plotTable[,3]))
+
+		if(hasBed){
+			par(mfrow = c(length(groupList)+2,1))
+		}else{
+			par(mfrow = c(length(groupList)+1,1))
+
+		}
+		par(mai=c(0.2,1.5,0.2,0.2772))
+		
+		#scale to the strongest dataset
+		if(yScale == 'UNIFORM'){
+			yMax = 1*max(plotTable[,(8:(nBins+7))])
+		}		
+		
+		for(groupName in groupList){
+			
+			groupRows = grep(groupName,plotTable[,3])
+			if(length(groupRows)>1){
+				plotMeta = as.numeric(apply(plotTable[groupRows,(8:(nBins+7))],2,mean))
+			}else{
+				plotMeta = as.numeric(plotTable[groupRows,(8:(nBins+7))])
+				}
+				
+			if(yScale == 'RELATIVE'){
+				yMax = 1.2*max(plotMeta)
+			}
+				
+			color = colorVector[groupRows[1]]
+			plotSpline = spline(1:nBins,plotMeta,n=2*nBins)
+		
+			xVector = c(1,plotSpline$x,max(plotSpline$x))
+			yVector = c(0,plotSpline$y,0)			
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='ChIP-Seq Reads',xaxt = 'n',main=name)
+
+
+			#now add all of the other polygons shaded
+			if(length(groupRows) > 1){
+				for(row in groupRows){
+				plotSpline = spline(1:nBins,as.numeric(plotTable[row,(8:(nBins+7))]),n=2*nBins)
+				xVector = c(1,plotSpline$x,max(plotSpline$x))
+				yVector = c(0,plotSpline$y,0)			
+				polygon(xVector,yVector,col= add.alpha(color,0.1),border = add.alpha(color,0.25),lty=1,lwd=0.25)
+				
+				}	     
+					   
+			}
+			
+			
+			#now draw the meta line
+			plotSpline = spline(1:nBins,plotMeta,n=2*nBins)
+		
+			xVector = c(1,plotSpline$x,max(plotSpline$x))
+			yVector = c(0,plotSpline$y,0)			
+			polygon(xVector,yVector,col= NA,border =color,lty=1,lwd=2)
+
+			legend(0,yMax,groupName,col=colorVector[groupRows[1]],lwd=2.5,cex=1.2)
+			if(sense =='-'){
+				axis(1,at = c(0,nBins),labels= c(paste(chrom,end,sep=':'),paste(chrom,start,sep=':')))
+				}else{
+				axis(1,at = c(0,nBins),labels= c(paste(chrom,start,sep=':'),paste(chrom,end,sep=':')))
+				}
+		}
+		#plotting the beds
+		if(hasBed){
+			par(mai=c(0,1.5,0.2,0.2772))
+			plot(0,0,xlim = c(0,nBins),ylim = c(yMinBedDiagram,.5),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+			for(i in 2:nrow(bedDiagramTable)){
+				rect(bedDiagramTable[i,1],bedDiagramTable[i,2],bedDiagramTable[i,3],bedDiagramTable[i,4],col='black')
+			}
+			
+			#the bed names		
+			axis(2,bedNameTable[2:nrow(bedNameTable),3],labels=bedNameTable[2:nrow(bedNameTable),1],las=1)
+		}
+		#the gene diagram
+		par(mai=c(0,1.5,0.2,0.2772))
+
+		plot(0,0,xlim = c(0,nBins),ylim = c(yMinDiagram,2),col=rgb(1,1,1),xaxt='n',yaxt='n',ylab='',xlab='',main ='')
+		for(i in 2:nrow(diagramTable)){
+			rect(diagramTable[i,1],diagramTable[i,2],diagramTable[i,3],diagramTable[i,4],col='black')
+			}
+		for(i in 2:nrow(nameTable)){
+			text(nameTable[i,2],nameTable[i,3],nameTable[i,1],cex=1)
+		}
+		
+			
+			
+			
+	}
+
+
+		
+	
 
 
 	if(multiPage == 'MULTIPLE_PAGE'){
