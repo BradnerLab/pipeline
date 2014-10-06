@@ -1508,7 +1508,7 @@ def makeGeneGFFs(annotFile,gffFolder,species='HG18'):
 
      
     unParseTable(tssGFF_5kb,gffFolder + '%s_TSS_ALL_-5000_+5000.gff' % (species),'\t')
-    unParseTable(tssGFF_5kb,gffFolder + '%s_TSS_ALL_-1000_+1000.gff' % (species),'\t')
+    unParseTable(tssGFF_1kb,gffFolder + '%s_TSS_ALL_-1000_+1000.gff' % (species),'\t')
     unParseTable(tssGFF_300,gffFolder + '%s_TSS_ALL_-300_+300.gff' % (species),'\t')
     unParseTable(txnGFF,gffFolder + '%s_BODY_ALL_+300_+3000.gff' % (species),'\t')
 
@@ -2069,7 +2069,7 @@ def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
 
 
 
-def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,region='TXN',yScale = 'UNIFORM'):
+def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,region='TXN',yScale = 'UNIFORM',plotType='MULTIPLE',nameString =''):
 
     '''
     calls bamPlot to plot a gene for a given set of bams
@@ -2105,17 +2105,19 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
     else:
         locusString = region
 
-    nameString = string.join(namesList,',')
+    if string.upper(plotType) !='MERGE' or len(nameString) == 0:
+        nameString = string.join(namesList,',')
+
     if startDict.has_key(geneID):
-        titleString = startDict[geneID]['name'] +'_' + plotName + '.pdf'
+        titleString = startDict[geneID]['name'] +'_' + plotName
     else:
-        titleString = geneID+'_'+plotName+'.pdf'
+        titleString = geneID+'_'+plotName
     colorString = string.join([dataDict[name]['color'] for name in namesList],':')
     bamList = [dataDict[name]['bam'] for name in namesList]
     bamString = string.join(bamList,',')
     genome = string.lower(dataDict[namesList[0]]['genome'])
     os.chdir('/ark/home/cl512/src/pipeline/')
-    cmd = "python /ark/home/cl512/src/pipeline/bamPlot_turbo.py -n %s -t %s -c %s -g %s -p multiple -y %s -b %s -i %s -o %s -r &" % (nameString,titleString,colorString,genome,yScale,bamString,locusString,outputFolder)
+    cmd = "python /ark/home/cl512/src/pipeline/bamPlot_turbo.py -n %s -t %s -c %s -g %s -p %s -y %s -b %s -i %s -o %s -r --save-temp &" % (nameString,titleString,colorString,genome,plotType,yScale,bamString,locusString,outputFolder)
 
     #cmd = "python /nfs/young_ata/scripts/bamPlot.py -n %s -t %s -c %s -g hg18 -p multiple -y uniform -b %s -i %s -o %s" % (nameString,titleString,colorString,bamString,locusString,outputFolder)
     print(cmd)
@@ -2126,7 +2128,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
 #========================BATCH PLOTTING REGIONS============================
 #==========================================================================
 
-def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200,multiPage = False,debug=False):
+def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200,multiPage = False,debug=False,nameString = ''):
 
     '''
     batch plots all regions in a gff
@@ -2165,7 +2167,8 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     colorString = string.join([dataDict[name]['color'] for name in namesList],':')
 
     #get the namesList
-    nameString = string.join(namesList,',')
+    if string.upper(plotType) !='MERGE' or len(nameString) == 0:
+        nameString = string.join(namesList,',')
     
     #yScale setting
     if uniform == True:
@@ -2178,7 +2181,7 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
     
 
     os.chdir(pipelineFolder)
-    cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p MULTIPLE -r' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title)
+    cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p %s -r' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title,plotType)
     if len(bed) > 0:
         cmd += ' --bed %s' % (bed)
     if multiPage:
