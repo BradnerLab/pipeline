@@ -637,7 +637,7 @@ def main():
         print "\n\n\nIDENTIFYING CONSENSUS ENHANCER REGIONS"
 
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
-        #mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
+        mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
