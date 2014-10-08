@@ -135,9 +135,23 @@ dput: clean archive
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
 	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
 
+gtest:
+	wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
+	unzip gtest-1.7.0.zip
+	mv gtest-1.7.0 gtest
+	mkdir gtest/build
+	(cd gtest/build; cmake ..; make)
+
+cpp_test: gtest test.cpp
+	$(CC)	-I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
+
+test: cpp_test 
+	./cpp_test
+	# todo: run python unit tests
+
 clean:
 	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
-	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist gtest cpp_test
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
