@@ -122,7 +122,8 @@ archive:
 deb: clean archive
 	./make_deb.sh
 
-dput: deb
+dput: clean archive
+	debuild_args=-S ./make_deb.sh
 	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*precise_source.changes
 	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*trusty_source.changes
 	exit 1

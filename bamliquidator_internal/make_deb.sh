@@ -29,15 +29,13 @@ cp python-bamliquidatorbatch.preinst deb_dist/bamliquidatorbatch-$VERSION/debian
 cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-precise
 pushd deb_dist/bamliquidatorbatch-$VERSION-precise
 printf "$CHANGELOG" bamliquidatorbatch precise precise > debian/changelog
-debuild
-debuild -S
+debuild $debuild_args
 popd
 
 cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-trusty
 pushd deb_dist/bamliquidatorbatch-$VERSION-trusty
 printf "$CHANGELOG" bamliquidatorbatch trusty trusty > debian/changelog
-debuild -S
-debuild
+debuild $debuild_args
 popd
 
 mv bamliquidator-$VERSION.tar.gz bamliquidator_$VERSION.orig.tar.gz 
@@ -49,11 +47,9 @@ printf "$CHANGELOG" bamliquidator precise precise > bamliquidator-$VERSION-preci
 printf "$CHANGELOG" bamliquidator trusty trusty > bamliquidator-$VERSION-trusty/debian/changelog 
 
 pushd bamliquidator-$VERSION-precise/debian
-debuild -S
-debuild
+debuild $debuild_args
 popd
 
 pushd bamliquidator-$VERSION-trusty/debian
-debuild -S
-debuild
+debuild $debuild_args
 popd
