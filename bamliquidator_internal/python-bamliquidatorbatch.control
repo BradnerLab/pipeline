@@ -1,0 +1,12 @@
+Source: bamliquidatorbatch
+Maintainer: John DiMatteo <jdimatteo@gmail.com>
+Section: python
+Priority: optional
+Build-Depends: python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 7.4.3)
+Standards-Version: 3.9.1
+
+Package: python-bamliquidatorbatch
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-pip
+Description: Python wrapper around bamliquidator for analyzing the density of short DNA sequence read alignments in the BAM file format.
+

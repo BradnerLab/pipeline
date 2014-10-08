@@ -25,6 +25,7 @@ CHANGELOG="%s ($VERSION-0ppa1~%s) %s; urgency=low
 
 py2dsc -m "$UPLOADER <$UPLOADER_EMAIL>" bamliquidatorbatch_$VERSION.orig.tar.gz  
 cp python-bamliquidatorbatch.preinst deb_dist/bamliquidatorbatch-$VERSION/debian/
+cp python-bamliquidatorbatch.control deb_dist/bamliquidatorbatch-$VERSION/debian/control
 
 cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-precise
 pushd deb_dist/bamliquidatorbatch-$VERSION-precise
