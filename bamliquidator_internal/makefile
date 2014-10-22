@@ -138,15 +138,14 @@ gtest:
 	(cd gtest/build; cmake ..; make)
 
 cpp_test: gtest test.cpp
-	$(CC)	-I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
+	$(CC)	$(CPPFLAGS) -I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
 
 test: cpp_test 
 	./cpp_test
-	# todo: run python unit tests
 
 clean:
-	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
-	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist gtest cpp_test
+	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz cpp_test
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist #gtest
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
