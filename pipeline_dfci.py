@@ -444,7 +444,7 @@ def loadDataTable(dataFile):
         bamFolder = "%s" % (line[0])
         bamFileList = [x for x in os.listdir(bamFolder) if len(x) > 0 and x[0] != '.']
 
-        bamFileCandidates = [x for x in bamFileList if x.count(line[1]) == 1 and x.count('sorted.bam') == 1 and x.count('bai') ==0]
+        bamFileCandidates = [x for x in bamFileList if x.count(line[1]) == 1 and x.split('.')[-1] =='bam' and x.count('bai') ==0]
         if len(bamFileCandidates) == 0:
             print("UNABLE TO FIND A BAM FILE IN %s WITH UNIQUE ID %s" % (bamFolder,line[1]))
             fullBamPath = ''
@@ -1480,7 +1480,7 @@ def makeGeneGFFs(annotFile,gffFolder,species='HG18'):
     tssCollection = LocusCollection(tssLoci,500)
     tssGFF_5kb = locusCollectionToGFF(tssCollection)
 
-
+    tssLoci= [] 
     for gene in geneList:
         tssLocus = Locus(startDict[gene]['chr'],startDict[gene]['start'][0]-1000,startDict[gene]['start'][0]+1000,startDict[gene]['sense'],gene)
         tssLoci.append(tssLocus)
@@ -1894,6 +1894,7 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
             #filter based on celltype
             cellName = name.split('_')[0]
             if cellTypeList.count(cellName) != 1:
+                print("this guy didn't get mapped %s" % (name))
                 continue
             fullBamFile = dataDict[name]['bam']
             outFile = outdir+gffName+'_'+name+'.gff'
@@ -2660,8 +2661,14 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
 
 
     #now we'll want to pipe the output into the R script for RNA_Seq normalization
+    rOutputFolder = formatFolder('%scuffnorm/output/' % (cufflinksFolder),True)
+    geneFPKMFile = '%scuffnorm/genes.fpkm_table' % (cufflinksFolder)
 
 
+    
+    rCmd = '#R --no-save %s %s %s %s TRUE < %snormalizeRNASeq.R\n' % (geneFPKMFile,rOutputFolder,analysisName,namesString,pipelineFolder)
+
+    bashFile.write(rCmd)
     bashFile.close()
 
 
