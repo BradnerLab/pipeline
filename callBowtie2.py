@@ -33,7 +33,7 @@ THE SOFTWARE.
 import string
 
 import random
-
+import utils
 
 #===================================================================
 #==========================GLOBAL PARAMETERS========================
@@ -117,6 +117,9 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,li
 
     tempSortedBamFile = tempFolder + fastqName + '.%s.bwt.N%s.sorted' % (genome,mismatchN)
     fileNameDict['tempSortedBamFile'] = tempSortedBamFile
+
+    sortedSamFile = fastqName + '.%s.bwt.N%s.sorted.sam' % (genome,mismatchN)
+    fileNameDict['sortedSamFile'] = sortedSamFile
 
     groupHeader = tempFolder + fastqName + '.%s.bwt.N%s' % (genome,mismatchN)
     fileNameDict['groupHeader'] = groupHeader
@@ -300,6 +303,17 @@ def rmSamCmd(fileNameDict):
     cmd = "/bin/rm -f '%s'" % (tempSamFile)
     return cmd
 
+def mvSamCmd(fileNameDict):
+
+    '''
+    rename and move the sam
+    '''
+    tempSamFile = fileNameDict['tempSamFile']
+    finalFolder = fileNameDict['finalFolder']
+    sortedSamFile=fileNameDict['sortedSamFile']
+    cmd = "mv %s %s%s" % (tempSamFile,finalFolder,sortedSamFile)
+    return cmd
+
 def mvBamCmd(fileNameDict):
 
     '''
@@ -353,7 +367,7 @@ def main():
     parser.add_option("-f","--fastq", dest="fastq",nargs = 1, default=None,
                       help = "Enter the full path of a fastq file to be mapped")
     parser.add_option("-g","--genome",dest="genome",nargs =1, default = None,
-                      help = "specify a genome, options are hg18 or mm9 right now")
+                      help = "specify a genome, options are hg19,hg18, mm9 or geckov2 right now")
     parser.add_option("-u","--unique",dest="unique",nargs =1, default = None,
                       help = "specify a uniqueID")
     parser.add_option("-o","--output",dest="output",nargs =1, default = None,
@@ -367,6 +381,10 @@ def main():
                       help = "Specify a folder to symlink the bam")
     parser.add_option("-p","--paired",dest="paired",action='store_true',default = False,
                       help = "Flag for paired end data")
+    parser.add_option("-S","--sam",dest="sam",action='store_true',default = False,
+                      help = "Flag to save sam")
+    parser.add_option("-q","--qc",dest="qc",action='store_true',default = False,
+                      help = "Flag to run fastqc")
 
 
 
@@ -382,6 +400,9 @@ def main():
     genome = string.lower(options.genome)
     uniqueID = options.unique
     outputFolder = options.output
+    
+    #make the output folder
+    outputFolder = utils.formatFolder(outputFolder,True)
 
     #retrieve optional arguments
     mismatchN = options.mismatchN
@@ -396,7 +417,8 @@ def main():
     bowtieDict = {
         'mm9':'/raider/index/mm9/Bowtie2Index/genome',
         'hg19':'/raider/index/hg19/Bowtie2Index/genome',
-        'hg18':'/grail/genomes/Homo_sapiens/human_gp_mar_06_no_random/bowtie/hg18'
+        'hg18':'/grail/genomes/Homo_sapiens/human_gp_mar_06_no_random/bowtie/hg18',
+        'geckov2':'/grail/genomes/gecko/GeCKOv2/Sequence/Bowtie2Index/gecko',
         }
 
     bowtieIndex = bowtieDict[string.lower(genome)]
@@ -422,8 +444,9 @@ def main():
     bashFile.write(cmd+'\n')
 
     #call fastqc
-    cmd =runFastQC(fastqcString,fileNameDict,pairedEnd)
-    bashFile.write(cmd+'\n')
+    if options.qc:
+        cmd =runFastQC(fastqcString,fileNameDict,pairedEnd)
+        bashFile.write(cmd+'\n')
 
     #call bowtie
     cmd = bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd)
@@ -450,9 +473,14 @@ def main():
     bashFile.write(cmd+'\n')
 
     #remove sam
-    cmd = rmSamCmd(fileNameDict)
-    bashFile.write(cmd+'\n')
-
+    if not options.sam:
+        cmd = rmSamCmd(fileNameDict)
+        bashFile.write(cmd+'\n')
+    
+    #or move the sam
+    if options.sam:
+        cmd = mvSamCmd(fileNameDict)
+        bashFile.write(cmd+'\n')
     #mv bams
     cmd = mvBamCmd(fileNameDict)
     bashFile.write(cmd+'\n')
