@@ -197,12 +197,12 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
   /* fetch bed items for a region and compute density
   only deal with coord, so use generic item
   */
-  double startArr[spnum], stopArr[spnum];
-  double pieceLength = (double)(stop-start) / (double)spnum;
+  int startArr[spnum], stopArr[spnum];
+  int pieceLength = (stop-start) / spnum;
   for(int i=0; i<spnum; i++)
   {
-    startArr[i] = (double)(start + pieceLength*i);
-    stopArr[i] = (double)(start + pieceLength*(i+1));
+    startArr[i] = start + pieceLength*i;
+    stopArr[i] = start + pieceLength*(i+1);
   }
 
   std::deque<ReadItem> items = bamQuery_region(fp,bamidx,coord,strand,extendlen);
@@ -214,8 +214,8 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
     {
       if(item.start > stopArr[i]) continue;
       if(item.stop < startArr[i]) break;
-      int start=intMax(item.start,(int)startArr[i]);
-      int stop=intMin(item.stop,(int)stopArr[i]);
+      int start=intMax(item.start,startArr[i]);
+      int stop=intMin(item.stop,stopArr[i]);
       if(start<stop)
       {
         // as Charles suggested, add the fraction of the read (overlapping with the bin)
