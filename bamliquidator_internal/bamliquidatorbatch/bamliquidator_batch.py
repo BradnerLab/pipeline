@@ -80,7 +80,7 @@ class BaseLiquidator(object):
         pass
 
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
-                 include_cpp_warnings_in_stderr = True, counts_file_path = None):
+                 include_cpp_warnings_in_stderr = True, counts_file_path = None, number_of_threads = 0):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
@@ -89,6 +89,7 @@ class BaseLiquidator(object):
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
+        self.number_of_threads = number_of_threads
         self.chromosome_patterns_to_skip = [] 
 
         # This script may be run by either a developer install from a git pipeline checkout,
@@ -245,11 +246,11 @@ class BaseLiquidator(object):
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
                  counts_file_path = None, extension = 0, sense = '.', skip_plot = False,
-                 include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
+                 include_cpp_warnings_in_stderr = True, number_of_threads = 0, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
-                                            include_cpp_warnings_in_stderr, counts_file_path)
+                                            include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
         self.chromosome_patterns_to_skip = blacklist
         self.batch(extension, sense)
 
@@ -260,7 +261,7 @@ class BinLiquidator(BaseLiquidator):
         if cell_type == '':
             cell_type = '-'
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
+        args = [self.executable_path, str(self.number_of_threads), cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
         args.extend(self.chromosome_args(bam_file_name, skip_non_canonical=True))
@@ -295,7 +296,7 @@ class BinLiquidator(BaseLiquidator):
 class RegionLiquidator(BaseLiquidator):
     def __init__(self, regions_file, output_directory, bam_file_path,
                  region_format=None, counts_file_path = None, extension = 0, sense = '.',
-                 include_cpp_warnings_in_stderr = True):
+                 include_cpp_warnings_in_stderr = True, number_of_threads = 0):
         self.regions_file = regions_file
         self.region_format = region_format
         if self.region_format is None:
@@ -307,13 +308,13 @@ class RegionLiquidator(BaseLiquidator):
                                % str(self.region_format))
 
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
-                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path)
+                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
         
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
+        args = [self.executable_path, str(self.number_of_threads), self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
         if sense is None:
@@ -450,6 +451,9 @@ def main():
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
                              'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
                              'in log.txt.')
+    parser.add_argument('-n', '--number_of_threads', type=int, default=0,
+                        help='Number of threads to run concurrently during liquidation.  Defaults to the total number of logical '
+                             'cpus on the system.')
     parser.add_argument('--xml_timings', action='store_true',
                         help='Write performance timings to junit style timings.xml in output folder, which is useful for '
                              'tracking performance over time with automatically generated Jenkins graphs')
@@ -478,14 +482,14 @@ def main():
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
                                    args.counts_file, args.extension, args.sense, args.skip_plot,
-                                   not args.quiet)
+                                   not args.quiet, args.number_of_threads)
     else:
         if args.counts_file:
             raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
                             "please email the developer if you need this feature")
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
                                       args.region_format, args.counts_file, args.extension, args.sense,
-                                      not args.quiet)
+                                      not args.quiet, args.number_of_threads)
 
     if args.flatten:
         liquidator.flatten()
