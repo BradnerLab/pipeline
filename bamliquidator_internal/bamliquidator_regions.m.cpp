@@ -94,8 +94,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     name_column = 3;
     start_column = 1;
     stop_column = 2;
-    strand_column = -1;
-    min_columns = 4;
+    strand_column = 5;
+    min_columns = 3;
   }
   else
   {
@@ -117,15 +117,24 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     boost::split(columns, line, boost::is_any_of("\t"));
     if (columns.size() < min_columns)
     {
-      throw std::runtime_error("error parsing " + region_file_path);
+      std::stringstream ss;
+      ss << "Not enough columns parsing line " << line_number << " '" << line << "' of " << region_file_path;
+      throw std::runtime_error(ss.str());
     }
     Region region;
     region.bam_file_key = bam_file_key; 
     copy(region.chromosome,  columns[chromosome_column], sizeof(Region::chromosome));
-    copy(region.region_name, columns[name_column],       sizeof(Region::region_name));
-    if (columns[name_column].size() >= sizeof(Region::region_name))
+    if (columns.size() > name_column)
     {
-      Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
+      copy(region.region_name, columns[name_column], sizeof(Region::region_name));
+      if (columns[name_column].size() >= sizeof(Region::region_name))
+      {
+        Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
+      }
+    }
+    else
+    {
+      copy(region.region_name, "", sizeof(Region::region_name));
     }
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
     region.stop  = boost::lexical_cast<uint64_t>(columns[stop_column]);
@@ -134,21 +143,23 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       std::swap(region.start, region.stop);
     }
 
-    if (strand_column == -1)
-    {
-      region.strand = default_strand == '_'
-                    ? '.'
-                    : default_strand; 
-    }
-    else
+    if (columns.size() > strand_column)
     {
       if (columns[strand_column].size() != 1)
       {
-        throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
+        std::stringstream ss;
+        ss << "error parsing strand: '" << columns[strand_column] << "' on line " << line_number;
+        throw std::runtime_error(ss.str());
       }
       region.strand = default_strand == '_'
                     ? columns[strand_column][0]
                     : default_strand;
+    }
+    else
+    {
+      region.strand = default_strand == '_'
+                    ? '.'
+                    : default_strand; 
     }
     region.count = 0;
     region.normalized_count = 0.0;
