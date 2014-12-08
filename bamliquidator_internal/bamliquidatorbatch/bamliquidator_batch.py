@@ -14,12 +14,13 @@ import logging
 import sys
 import abc
 import collections
+import numpy
 
 from time import time 
 from os.path import basename
 from os.path import dirname
 
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
@@ -80,7 +81,7 @@ class BaseLiquidator(object):
         pass
 
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
-                 include_cpp_warnings_in_stderr = True, counts_file_path = None):
+                 include_cpp_warnings_in_stderr = True, counts_file_path = None, number_of_threads = 0):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
@@ -89,6 +90,7 @@ class BaseLiquidator(object):
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
+        self.number_of_threads = number_of_threads
         self.chromosome_patterns_to_skip = [] 
 
         # This script may be run by either a developer install from a git pipeline checkout,
@@ -245,11 +247,11 @@ class BaseLiquidator(object):
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
                  counts_file_path = None, extension = 0, sense = '.', skip_plot = False,
-                 include_cpp_warnings_in_stderr = True, blacklist = default_black_list):
+                 include_cpp_warnings_in_stderr = True, number_of_threads = 0, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
-                                            include_cpp_warnings_in_stderr, counts_file_path)
+                                            include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
         self.chromosome_patterns_to_skip = blacklist
         self.batch(extension, sense)
 
@@ -260,7 +262,7 @@ class BinLiquidator(BaseLiquidator):
         if cell_type == '':
             cell_type = '-'
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
+        args = [self.executable_path, str(self.number_of_threads), cell_type, str(self.bin_size), str(extension), sense, bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
         args.extend(self.chromosome_args(bam_file_name, skip_non_canonical=True))
@@ -295,7 +297,7 @@ class BinLiquidator(BaseLiquidator):
 class RegionLiquidator(BaseLiquidator):
     def __init__(self, regions_file, output_directory, bam_file_path,
                  region_format=None, counts_file_path = None, extension = 0, sense = '.',
-                 include_cpp_warnings_in_stderr = True):
+                 include_cpp_warnings_in_stderr = True, number_of_threads = 0):
         self.regions_file = regions_file
         self.region_format = region_format
         if self.region_format is None:
@@ -307,13 +309,13 @@ class RegionLiquidator(BaseLiquidator):
                                % str(self.region_format))
 
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
-                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path)
+                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
         
         self.batch(extension, sense)
 
     def liquidate(self, bam_file_path, extension, sense = None):
         bam_file_name = basename(bam_file_path)
-        args = [self.executable_path, self.regions_file, str(self.region_format), str(extension), bam_file_path, 
+        args = [self.executable_path, str(self.number_of_threads), self.regions_file, str(self.region_format), str(extension), bam_file_path, 
                 str(self.file_to_key[bam_file_name]), self.counts_file_path]
         args.extend(self.logging_cpp_args())
         if sense is None:
@@ -353,17 +355,34 @@ class RegionLiquidator(BaseLiquidator):
 def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
     with tables.open_file(h5_region_counts_file_path, "r") as counts_file:
         with open(output_file_path, "w") as output:
-            file_key = None
-            file_name = None 
-            for row in counts_file.root.region_counts:
-                if file_key != row["file_key"]:
-                    file_key = row["file_key"]
-                    file_name = counts_file.root.file_names[file_key]
-                    output.write("GENE_ID\tlocusLine\tbin_1_%s\n" % file_name)
+            file_keys = []
 
-                output.write("%s\t%s(%s):%d-%d\t%s\n" % (row["region_name"], row["chromosome"],
-                    row["strand"], row["start"], row["stop"], round(row["normalized_count"], 4)))
-                
+            output.write("GENE_ID\tlocusLine")
+            for file_record in counts_file.root.files:
+                file_key = file_record["key"] 
+                file_keys.append(file_key)
+                output.write("\tbin_1_%s" % counts_file.root.file_names[file_key])
+            output.write("\n")
+
+            number_of_files = len(file_keys)
+            number_of_regions = counts_file.root.region_counts.nrows / number_of_files 
+
+            # first loop through all but the last file index, storing those counts 
+            prior_region_counts = numpy.zeros((number_of_regions,  number_of_files - 1))
+            for col, file_key in enumerate(file_keys[:-1]):
+                for row, region in enumerate(counts_file.root.region_counts.where("file_key == %d" % file_key)):
+                    prior_region_counts[row, col] = region["normalized_count"]
+
+            # then loop through the last index,
+            # printing the region columns and the counts for the prior files,
+            # along with the count for the last index
+            for row, region in enumerate(counts_file.root.region_counts.where("file_key == %d" % file_keys[-1])):
+                output.write("%s\t%s(%s):%d-%d" % (region["region_name"], region["chromosome"],
+                    region["strand"], region["start"], region["stop"]))
+                for col in range(0, number_of_files-1):
+                    output.write("\t%s" % round(prior_region_counts[row, col], 4))
+                output.write("\t%s\n" % round(region["normalized_count"], 4))
+
 def configure_logging(args):
     # Using root logger so we can just do logging.info/warn/error in this and other files.
     # If people start using bamliquidator_batch as an imported module, then we should probably
@@ -438,7 +457,7 @@ def main():
                         help="Map to '+' (forward), '-' (reverse) or '.' (both) strands. For gff regions, default is to use "
                              "the sense specified by the gff file; otherwise, default maps to both.")
     parser.add_argument('-m', '--match_bamToGFF', default=False, action='store_true',
-                        help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.gff in the output folder")
+                        help="match bamToGFF_turbo.py matrix output format, storing the result as matrix.txt in the output folder")
     parser.add_argument('--region_format', default=None, choices=['gff', 'bed'],
                         help="Interpret region file as having the given format.  Default is to deduce format from file extension.")
     parser.add_argument('--skip_plot', action='store_true', help='Skip generating plots.  (This can speed up execution.)')
@@ -450,6 +469,9 @@ def main():
                              'All bamliquidator logs are still written to log.txt in the output directory.  This also disables '
                              'samtools error messages to stderr, but a corresponding bamliquidator message should still be logged '
                              'in log.txt.')
+    parser.add_argument('-n', '--number_of_threads', type=int, default=0,
+                        help='Number of threads to run concurrently during liquidation.  Defaults to the total number of logical '
+                             'cpus on the system.')
     parser.add_argument('--xml_timings', action='store_true',
                         help='Write performance timings to junit style timings.xml in output folder, which is useful for '
                              'tracking performance over time with automatically generated Jenkins graphs')
@@ -478,14 +500,16 @@ def main():
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
                                    args.counts_file, args.extension, args.sense, args.skip_plot,
-                                   not args.quiet)
+                                   not args.quiet, args.number_of_threads, args.black_list)
     else:
         if args.counts_file:
             raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
                             "please email the developer if you need this feature")
+        # non-exhaustive list of items that would need to be handled to get this working:
+        ## review matrix output, specifically the assumption that each file has the exact same regions in the same order
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
                                       args.region_format, args.counts_file, args.extension, args.sense,
-                                      not args.quiet)
+                                      not args.quiet, args.number_of_threads)
 
     if args.flatten:
         liquidator.flatten()
@@ -494,11 +518,11 @@ def main():
         if args.regions_file is None:
             logging.warning("Ignoring match_bamToGFF argument (this is only supported if a regions file is provided)")
         else:
-            logging.info("Writing bamToGff style matrix.gff file")
+            logging.info("Writing bamToGff style matrix.txt file")
             start = time()
-            write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.gff"), liquidator.counts_file_path)  
+            write_bamToGff_matrix(os.path.join(args.output_directory, "matrix.txt"), liquidator.counts_file_path)  
             duration = time() - start
-            logging.info("Writing matrix.gff took %f seconds" % duration)
+            logging.info("Writing matrix.txt took %f seconds" % duration)
             liquidator.log_time('matrix', duration)
 
     if args.xml_timings:
