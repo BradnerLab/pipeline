@@ -26,8 +26,9 @@ default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
 def create_files_table(h5file):
     class Files(tables.IsDescription):
-        key       = tables.UInt32Col(    pos=0) # is there an easier way to assign keys?
-        length    = tables.UInt64Col(    pos=2)
+        key         = tables.UInt32Col(pos=0)
+        length      = tables.UInt64Col(pos=1) # total number of base pairs in the reference genome
+        read_length = tables.UInt32Col(pos=2)
         # file_name would be included here, but pytables doesn't support variable length strings as table column
         # so it is instead in a vlarray "file_names" 
 
@@ -81,7 +82,8 @@ class BaseLiquidator(object):
         pass
 
     def __init__(self, executable, counts_table_name, output_directory, bam_file_path,
-                 include_cpp_warnings_in_stderr = True, counts_file_path = None, number_of_threads = 0):
+                 legacy_normalization = False, include_cpp_warnings_in_stderr = True, counts_file_path = None, 
+                 number_of_threads = 0):
         # clear all memoized values from any prior runs
         nps.file_keys_memo = {}
 
@@ -89,6 +91,7 @@ class BaseLiquidator(object):
 
         self.output_directory = output_directory
         self.counts_file_path = counts_file_path
+        self.legacy_normalization = legacy_normalization 
         self.include_cpp_warnings_in_stderr = include_cpp_warnings_in_stderr
         self.number_of_threads = number_of_threads
         self.chromosome_patterns_to_skip = [] 
@@ -161,10 +164,9 @@ class BaseLiquidator(object):
         next_file_key += 1
 
         for bam_file_path in self.bam_file_paths:
-            args = ["samtools", "idxstats", bam_file_path]
-            output = subprocess.check_output(args)
+            idxstats_output = subprocess.check_output(["samtools", "idxstats", bam_file_path])
             # skip last two lines: the unmapped chromosome line and the empty line
-            reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
+            reader = csv.reader(idxstats_output.split('\n')[:-2], delimiter='\t')
             file_name = basename(bam_file_path)
             file_count = 0
             
@@ -179,9 +181,14 @@ class BaseLiquidator(object):
                                         
                 file_count += int(row[mapped_read_col])
                 chromosome_length_pairs.append((chromosome, int(row[length_col])))
+
+            samtools_view = subprocess.Popen(["samtools", "view", bam_file_path], stdout=subprocess.PIPE)
+            first_read = subprocess.check_output(['head', '-n1'], stdin=samtools_view.stdout).split('\t')[9]
+            samtools_view.terminate()
             
             files.row["key"] = next_file_key
             files.row["length"] = file_count
+            files.row["read_length"] = len(first_read)
             files.row.append()
             file_names.append(file_name)
 
@@ -247,11 +254,13 @@ class BaseLiquidator(object):
 class BinLiquidator(BaseLiquidator):
     def __init__(self, bin_size, output_directory, bam_file_path,
                  counts_file_path = None, extension = 0, sense = '.', skip_plot = False,
-                 include_cpp_warnings_in_stderr = True, number_of_threads = 0, blacklist = default_black_list):
+                 legacy_normalization = False, include_cpp_warnings_in_stderr = True, 
+                 number_of_threads = 0, blacklist = default_black_list):
         self.bin_size = bin_size
         self.skip_plot = skip_plot
         super(BinLiquidator, self).__init__("bamliquidator_bins", "bin_counts", output_directory, bam_file_path,
-                                            include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
+                                            legacy_normalization, include_cpp_warnings_in_stderr, counts_file_path, 
+                                            number_of_threads)
         self.chromosome_patterns_to_skip = blacklist
         self.batch(extension, sense)
 
@@ -280,7 +289,8 @@ class BinLiquidator(BaseLiquidator):
        
     def normalize(self):
         with tables.open_file(self.counts_file_path, mode = "r+") as counts_file:
-            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size, self.skip_plot) 
+            nps.normalize_plot_and_summarize(counts_file, self.output_directory, self.bin_size,
+                                             self.skip_plot, self.legacy_normalization) 
 
     def create_counts_table(self, h5file):
         class BinCount(tables.IsDescription):
@@ -297,7 +307,7 @@ class BinLiquidator(BaseLiquidator):
 class RegionLiquidator(BaseLiquidator):
     def __init__(self, regions_file, output_directory, bam_file_path,
                  region_format=None, counts_file_path = None, extension = 0, sense = '.',
-                 include_cpp_warnings_in_stderr = True, number_of_threads = 0):
+                 legacy_normalization=False, include_cpp_warnings_in_stderr = True, number_of_threads = 0):
         self.regions_file = regions_file
         self.region_format = region_format
         if self.region_format is None:
@@ -309,7 +319,8 @@ class RegionLiquidator(BaseLiquidator):
                                % str(self.region_format))
 
         super(RegionLiquidator, self).__init__("bamliquidator_regions", "region_counts", output_directory, 
-                                               bam_file_path, include_cpp_warnings_in_stderr, counts_file_path, number_of_threads)
+                                               bam_file_path, legacy_normalization, include_cpp_warnings_in_stderr, 
+                                               counts_file_path, number_of_threads)
         
         self.batch(extension, sense)
 
@@ -475,6 +486,10 @@ def main():
     parser.add_argument('--xml_timings', action='store_true',
                         help='Write performance timings to junit style timings.xml in output folder, which is useful for '
                              'tracking performance over time with automatically generated Jenkins graphs')
+    parser.add_argument('--legacy_normalization', action='store_false',
+                        help='Assume read lengths are 40 base pairs long when normalizing.  Legacy normalization may '
+                             'skew comparisons between normalized values of bams with different read lengths.  As of '
+                             'version 1.3, normalization has taken into account the read length.')  
     parser.add_argument('--version', action='version', version='%s %s' % (basename(sys.argv[0]), __version__))
     parser.add_argument('bam_file_path', 
                         help='The directory to recursively search for .bam files for counting.  Every .bam file must '
@@ -500,7 +515,8 @@ def main():
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
                                    args.counts_file, args.extension, args.sense, args.skip_plot,
-                                   not args.quiet, args.number_of_threads, args.black_list)
+                                   args.legacy_normalization, not args.quiet, args.number_of_threads, 
+                                   args.black_list)
     else:
         if args.counts_file:
             raise Exception("Appending to a prior regions counts.h5 file is not supported at this time -- "
@@ -509,7 +525,7 @@ def main():
         ## review matrix output, specifically the assumption that each file has the exact same regions in the same order
         liquidator = RegionLiquidator(args.regions_file, args.output_directory, args.bam_file_path, 
                                       args.region_format, args.counts_file, args.extension, args.sense,
-                                      not args.quiet, args.number_of_threads)
+                                      args.legacy_normalization, not args.quiet, args.number_of_threads)
 
     if args.flatten:
         liquidator.flatten()

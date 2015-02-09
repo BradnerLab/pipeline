@@ -151,8 +151,9 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
 
     bp.save()
 
-def populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files):
+def populate_normalized_counts(normalized_counts, counts, file_key, bin_size, legacy_normalization, files):
     total_count = length_for_file_key(files, file_key)
+    read_length = read_length_for_file_key(files, file_key, legacy_normalization)
 
     '''
     Excerpt from Feb 13, 2014 email from Charles Lin:
@@ -166,7 +167,21 @@ def populate_normalized_counts(normalized_counts, counts, file_key, bin_size, fi
     So for instance if you have a 1kb bin and get 2500 counts from a bam with 30 million
     reads you would calculate density as 2500/1000/30 = 0.083rpm/bp
     '''
-    factor = (1 / bin_size) * (1 / (total_count / 10**6))
+
+    '''
+    Update in version 1.3 so that normalization doesn't skew with different read lengths.
+
+    Instead of using the number of reads, we use the number of 40 base reads.
+
+    "bases per million (40 base) reads per base"
+    1. The count is the number of bases in a bin or region.
+    2. The total million (40 base) reads is: the total number of reads * (read base length / 40) / 1 million 
+    3. The normalized count is:
+        a. the count is divided by the total million number of reads in the bam,
+        b. then we divide by the size of the bin or region.
+    '''
+    millions_of_reads = total_count * (read_length / 40) / 10**6 
+    factor = (1 / bin_size) * (1 / millions_of_reads)
 
     for count_row in counts.where("file_key == %d" % file_key):
         normalized_counts.row["bin_number"] = count_row["bin_number"]
@@ -185,6 +200,14 @@ def length_for_file_key(files, file_key):
     file_rows = files.read_where("key == %d" % file_key)
     assert len(file_rows) == 1
     return file_rows[0]["length"]
+
+def read_length_for_file_key(files, file_key, legacy_normalization):
+    if legacy_normalization:
+        return 40
+
+    file_rows = files.read_where("key == %d" % file_key)
+    assert len(file_rows) == 1
+    return file_rows[0]["read_length"]
 
 def normalize_regions(region_counts, files):
     logging.info("Normalizing")
@@ -343,7 +366,7 @@ def populate_summary(summary, normalized_counts, chromosome):
         summary.row.append()
     summary.flush()
 
-def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_plot):
+def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_plot, legacy_normalization=False):
     delete_all_but_bin_counts_and_files_table(counts_file)
 
     # recreating the entirity of the remaining tables is quick and easier than updating prior records correctly
@@ -362,7 +385,7 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_p
         logging.info("Normalizing and calculating percentiles for cell type %s", cell_type)
         current_file_keys = file_keys(counts, cell_type)
         for file_key in current_file_keys:
-           populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files)
+           populate_normalized_counts(normalized_counts, counts, file_key, bin_size, legacy_normalization, files)
            populate_percentiles(normalized_counts, cell_type, file_key)
         populate_normalized_counts_for_cell_type(normalized_counts, cell_type, current_file_keys) 
         populate_percentiles(normalized_counts, cell_type)

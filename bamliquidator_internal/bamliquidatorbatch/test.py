@@ -16,28 +16,33 @@ import tempfile
 import unittest
 
 # one full read for each chromosome
-def create_bam(dir_path, chromosomes, sequence, file_name='single.bam'):
+def create_bam(dir_path, chromosomes, sequence1, file_name='test.bam', sequence2=''):
     # create a sam file, based on instructions at http://genome.ucsc.edu/goldenPath/help/bam.html
     # and http://samtools.github.io/hts-specs/SAMv1.pdf
-    sam_file_path = os.path.join(dir_path, 'single.sam') 
+    sam_file_path = os.path.join(dir_path, 'test.sam') 
     with open(sam_file_path, 'w') as sam_file:
-        length = len(sequence)
+        length = len(sequence1)
         
         # sequence headers for all chromosomes go on top
         for chromosome in chromosomes: 
-            sequence_header = '@SQ\tSN:%s\tLN:%d\n' % (chromosome, length)
+            sequence_header = '@SQ\tSN:%s\tLN:%d\n' % (chromosome, length if sequence2 == '' else 2*length)
             sam_file.write(sequence_header)
 
         for chromosome in chromosomes:
-            qual = '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
+            qual = '<' * length
 
-            #               qname      chr    quality   next read name                                                   
-            #               |      flag|   pos|    CIGAR|  next read pos
-            #               |      |   |   |  |    |    |  |  template length 
-            #               |      |   |   |  |    |    |  |  |  sequence
-            #               |      |   |   |  |    |    |  |  |  |   QUAL           
-            #               |      |   |   |  |    |    |  |  |  |   |   distance to ref
-            sam_file.write('read1\t16\t%s\t1\t255\t50M\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, sequence, qual))
+            sequences = [sequence1]
+            if len(sequence2) != 0:
+                sequences.append(sequence2)
+
+            for i, sequence in enumerate(sequences):
+                #               qname       chr     quality   next read name
+                #               |       flag|   pos |    CIGAR|  next read pos
+                #               |       |   |   |   |    |    |  |  template length
+                #               |       |   |   |   |    |    |  |  |  sequence
+                #               |       |   |   |   |    |    |  |  |  |   QUAL
+                #               |       |   |   |   |    |    |  |  |  |   |   distance to ref
+                sam_file.write('read%d\t16\t%s\t%d\t255\t%dM\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (i+1, chromosome, 1+i*length, length, sequence, qual))
    
     # create bam file
     bam_file_path = os.path.join(dir_path, file_name)
@@ -135,7 +140,7 @@ class SingleFullReadBamTest(TempDirTest):
            self.assertEqual(3, len(header_cols))
            self.assertEqual('GENE_ID', header_cols[0])
            self.assertEqual('locusLine', header_cols[1])
-           self.assertEqual('bin_1_%s\n' % 'single.bam', header_cols[2])
+           self.assertEqual('bin_1_%s\n' % 'test.bam', header_cols[2])
 
            data_cols = matrix_lines[1].split('\t')
            self.assertEqual(3, len(data_cols))
@@ -206,7 +211,7 @@ class SingleFullReadBamTest(TempDirTest):
                self.assertEqual(3, len(header_cols))
                self.assertEqual('GENE_ID', header_cols[0])
                self.assertEqual('locusLine', header_cols[1])
-               self.assertEqual('bin_1_%s\n' % 'single.bam', header_cols[2])
+               self.assertEqual('bin_1_%s\n' % 'test.bam', header_cols[2])
 
                data_cols = matrix_lines[1].split('\t')
                self.assertEqual(3, len(data_cols))
@@ -552,6 +557,125 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
             self.assertEqual(self.chromosome, record['chromosome'])
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
+
+class NormalizationTest(TempDirTest):
+    def setUp(self):
+        super(NormalizationTest, self).setUp()
+
+    # *legacy* normalization at version 1.2 and below was defined as:
+    #   "bases per million reads per base"
+    #   1. The count is the number of bases in a bin or region.
+    #   2. The normalized count is:
+    #       a. the count is divided by the total million number of reads in the bam,
+    #       b. then we divide by the size of the bin or region.
+
+    # *improved* normalization at version 1.3 and above was defined as:
+    #   "bases per million (40 base) reads per base"
+    #   1. The count is the number of bases in a bin or region.
+    #   2. The total million (40 base) reads is: the total number of reads / (40 / read base length) / 1 million 
+    #   3. The normalized count is:
+    #       a. the count is divided by the total million number of reads in the bam,
+    #       b. then we divide by the size of the bin or region.
+
+    def test_40_length_reads_bins(self):
+        for legacy in True, False:
+            length = 40
+            chromosome = 'chr1'
+            sequence = length * 'A'
+            bin_size = 40 
+
+            if legacy:
+                millions_of_reads = 2 / 10**6
+            else:
+                millions_of_reads = 2 / (40/length) / 10**6
+
+            expected_count = length
+            expected_normalized_count = expected_count / millions_of_reads / bin_size 
+
+            bam_file_path = create_bam(self.dir_path, [chromosome], sequence1=sequence, sequence2=sequence, file_name="norm_legacy_" + str(legacy) + ".bam")
+
+            liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                           output_directory = os.path.join(self.dir_path, 'output'),
+                                           bam_file_path = bam_file_path,
+                                           legacy_normalization = legacy)
+
+            liquidator.flatten()
+
+            with tables.open_file(liquidator.counts_file_path) as counts:
+                self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+                file_record = counts.root.files[0] 
+                self.assertEqual(2, file_record['length']) # 2 since two reads
+                self.assertEqual(1, file_record['key'])
+
+                #for record in counts.root.bin_counts:
+                #    print record['bin_number'], record['chromosome'], record['count'], record['file_key']
+
+                self.assertEqual(2, len(counts.root.bin_counts))
+                for i, count_record in enumerate(counts.root.bin_counts):
+                    self.assertEqual(i, count_record['bin_number'])
+                    self.assertEqual(chromosome, count_record['chromosome'])
+                    self.assertEqual(expected_count, count_record['count'])
+                    self.assertEqual(1, count_record['file_key'])
+
+                #print "legacy", legacy, "normalization records:"
+                #for record in counts.root.normalized_counts:
+                #    print record['bin_number'], record['chromosome'], record['count'], record['file_key']
+
+                self.assertEqual(4, len(counts.root.normalized_counts)) # 2 record for the counts, and 2 for the average count
+                for norm_record in counts.root.normalized_counts:
+                    self.assertEqual(chromosome, norm_record['chromosome'])
+                    self.assertEqual(expected_normalized_count, norm_record['count'])
+                    # todo test percentile
+
+    def test_80_length_reads_bins(self):
+        for legacy in True, False:
+            length = 80
+            chromosome = 'chr1'
+            sequence = length * 'A'
+            bin_size = 40 
+
+            if legacy:
+                millions_of_reads = 1 / 10**6
+            else:
+                millions_of_reads = 1 * (length/40) / 10**6
+
+            expected_count = 40 # the 80 bp in the single read is split between two bins, so each count is half 
+            expected_normalized_count = expected_count / millions_of_reads / bin_size 
+
+            bam_file_path = create_bam(self.dir_path, [chromosome], sequence1=sequence, file_name="norm_legacy_" + str(legacy) + ".bam")
+
+            liquidator = blb.BinLiquidator(bin_size = bin_size,
+                                           output_directory = os.path.join(self.dir_path, 'output'),
+                                           bam_file_path = bam_file_path,
+                                           legacy_normalization = legacy)
+
+            liquidator.flatten()
+
+            with tables.open_file(liquidator.counts_file_path) as counts:
+                self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+                file_record = counts.root.files[0] 
+                self.assertEqual(1, file_record['length']) # 1 since two reads
+                self.assertEqual(1, file_record['key'])
+
+                #for record in counts.root.bin_counts:
+                #    print record['bin_number'], record['chromosome'], record['count'], record['file_key']
+
+                self.assertEqual(2, len(counts.root.bin_counts)) # 2 records since the 1 read is split between two bins
+                for i, count_record in enumerate(counts.root.bin_counts):
+                    self.assertEqual(i, count_record['bin_number'])
+                    self.assertEqual(chromosome, count_record['chromosome'])
+                    self.assertEqual(expected_count, count_record['count'])
+                    self.assertEqual(1, count_record['file_key'])
+
+                #print "legacy", legacy, "normalization records:"
+                #for record in counts.root.normalized_counts:
+                #    print record['bin_number'], record['chromosome'], record['count'], record['file_key']
+
+                self.assertEqual(4, len(counts.root.normalized_counts))
+                for norm_record in counts.root.normalized_counts:
+                    self.assertEqual(chromosome, norm_record['chromosome'])
+                    self.assertEqual(expected_normalized_count, norm_record['count'])
+                    # todo test percentile
 
 if __name__ == '__main__':
     unittest.main()
