@@ -639,6 +639,8 @@ def main():
         mergedGFFFile = "%s%s_%s_-0_+0.gff" % (outputFolder,genome,analysisName)
         mergedGFFFile = mergeCollections(nameDict,analysisName,mergedGFFFile,superOnly)
 
+        #sys.exit()
+
         #=====================================================
         #===============MAP TO MERGED REGIONS=================
         #=====================================================
