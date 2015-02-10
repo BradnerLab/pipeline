@@ -1,8 +1,32 @@
 #include <iostream>
 #include <samtools/bam.h>
 
+char complement(char c)
+{
+    switch(c)
+    {
+      case 'A': return 'T';
+      case 'C': return 'G';
+      case 'G': return 'C';
+      case 'T': return 'A';
+    }
+    throw std::runtime_error("no known complement for " + std::string(1, c));
+}
+
+std::string complement(const std::string& sequence)
+{
+  std::string c = sequence;
+  for (size_t i=0; i < c.size(); ++i)
+  {
+    c[i] = complement(sequence[i]);
+  }
+  return c;
+}
+
 void liquidate(const std::string& input_bam_file, const std::string& target, const std::string& output_bam_file)
 {
+  const std::string target_complement = complement(target);
+
   bam1_t* read = bam_init1();
   bamFile input = bam_open(input_bam_file.c_str(), "r");
   bamFile output = bam_open(output_bam_file.c_str(), "w");
@@ -43,7 +67,7 @@ void liquidate(const std::string& input_bam_file, const std::string& target, con
       sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
     }
 
-    if (sequence.find(target) != std::string::npos)
+    if (sequence.find(target) != std::string::npos || sequence.find(target_complement) != std::string::npos)
     {
       bam_write1(output, read);
     }
