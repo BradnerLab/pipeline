@@ -1,27 +1,42 @@
 #include <iostream>
 #include <samtools/bam.h>
 
-void test(const std::string& bam_file, const std::string& target)
+void test(const std::string& input_bam_file, const std::string& target, const std::string& output_bam_file)
 {
   bam1_t* read = bam_init1();
-  bamFile file_handle = bam_open(bam_file.c_str(), "r");
-  bam_header_t* header = bam_header_read(file_handle);
+  bamFile input = bam_open(input_bam_file.c_str(), "r");
+  bamFile output = bam_open(output_bam_file.c_str(), "w");
+  bam_header_t* header = bam_header_read(input);
 
-  if (file_handle == 0 || read == 0 || header == 0) throw std::runtime_error("failed to open " + bam_file);
+  if (read == 0 || input == 0 || header == 0)
+  {
+    throw std::runtime_error("failed to open " + input_bam_file);
+  }
+  if (output == 0) 
+  {
+    throw std::runtime_error("failed to open " + output_bam_file);
+  }
 
-  std::string sequence(50, ' '); // todo: use the actual read length 
+  bam_header_write(output, header);
 
-  size_t count = 0;
-  while (bam_read1(file_handle, read) >= 0)
+  std::string sequence;
+
+  while (bam_read1(input, read) >= 0)
   {
     const bam1_core_t *c = &read->core;
     uint8_t *s = bam1_seq(read);
 
-    // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte
-    // I bet we could directly search that instead of first storing as a string
+    // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte.
+    // I bet we could directly search that instead of first copying into a string
     // but lets get something simple working first. An intermediate step could be
     // to search integers without using bam_nt16_rev_table (and I wouldn't have
     // to worry about the packing complexity).
+
+    if (sequence.size() != c->l_qseq)
+    { 
+      // assuming that all reads are uniform length, this will only happen once
+      sequence = std::string(c->l_qseq, ' '); 
+    }
 
     for (int i = 0; i < c->l_qseq; ++i)
     {
@@ -30,33 +45,43 @@ void test(const std::string& bam_file, const std::string& target)
 
     if (sequence.find(target) != std::string::npos)
     {
-      ++count;
+      bam_write1(output, read);
     }
   }
-  std::cout << "match count: " << count << std::endl;
 
   bam_header_destroy(header);
-  bam_close(file_handle);
+  bam_close(input);
+  bam_close(output);
   bam_destroy1(read);
 }
 
 int main(int argc, char** argv)
 {
   // todo: support multiple strings in one go?
-  if (argc != 3)
+  if (argc != 4)
   {
-    std::cout << "Usage: " << argv[0] << " [BAM_FILE] [STRING]" << std::endl;
-    std::cout << "e.g. " << argv[0] << " 20110819_580_hg19.sorted.bam TGGGAA" << std::endl; 
+    std::cerr << "Usage: " << argv[0] << " [INPUT_BAM] [STRING] [OUTPUT_BAM] " << std::endl;
+    std::cerr << "e.g. " << argv[0] << " input.bam TGGGAA output.bam" << std::endl; 
     return 1;
   }
 
-  const std::string bam_file = argv[1]; 
+  const std::string input_bam_file = argv[1]; 
   const std::string target = argv[2];
+  const std::string output_bam_file = argv[3]; 
 
-  test(bam_file, target);
+  try 
+  {
+    test(input_bam_file, target, output_bam_file);
+  }
+  catch(const std::exception& e)
+  {
+    std::cerr << e.what() << std::endl;
+    return 2;
+  }
 
   return 0;
 }
+
 /* The MIT License (MIT) 
 
    Copyright (c) 2015 John DiMatteo (jdimatteo@gmail.com) 
@@ -79,4 +104,3 @@ int main(int argc, char** argv)
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE. 
  */
-
