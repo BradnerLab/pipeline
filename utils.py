@@ -267,7 +267,7 @@ def checkOutput(fileName, waitTime = 1, timeOut = 30):
 
               try:
                      size1 = os.stat(fileName).st_size
-                     time.sleep(2)
+                     time.sleep(.1)
                      size2 = os.stat(fileName).st_size
                      if size1 == size2:
                             fileExists = True
@@ -281,7 +281,7 @@ def checkOutput(fileName, waitTime = 1, timeOut = 30):
                      break
 
               
-       time.sleep(5)
+       time.sleep(.1)
        if fileExists:
               return True
        else:
@@ -1347,7 +1347,7 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
         if useID:
                name = '>' + line[1]
         else:
-               name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'_')
+               name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'|')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])

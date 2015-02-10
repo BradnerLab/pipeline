@@ -2,6 +2,7 @@
 #pipeline.py
 
 samtoolsString = 'samtools'
+bamliquidator_path = 'bamliquidator_batch'
 pipelineFolder = '/ark/home/cl512/pipeline/' # need to set this to where this code is stored
 fastqDelimiter = '::' #delimiter for pairs in fastqs
 
@@ -221,7 +222,7 @@ import string
 
 #CALLING ROSE
 #def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch=12500,bashFileName ='',mask=''):
-
+#def callRose2(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch='',bashFileName ='',mask=''):
 
 
 #-------------------------------------------------------------------------#
@@ -232,6 +233,14 @@ import string
 
 #MAKING EXPRESSION TABLES
 #def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bashFileName = ''):
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              GECKO TOOLS                                #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
 
 #============================================================================================================
 #============================================================================================================
@@ -1472,14 +1481,17 @@ def makeGeneGFFs(annotFile,gffFolder,species='HG18'):
     startDict = makeStartDict(annotFile)
 
     geneList = startDict.keys()
+    print("USING %s genes" % (len(geneList)))
     
     tssLoci = []
     for gene in geneList:
         tssLocus = Locus(startDict[gene]['chr'],startDict[gene]['start'][0]-5000,startDict[gene]['start'][0]+5000,startDict[gene]['sense'],gene)
         tssLoci.append(tssLocus)
+    #print(len(tssLoci))
     tssCollection = LocusCollection(tssLoci,500)
+    #print(len(tssCollection.getLoci()))
     tssGFF_5kb = locusCollectionToGFF(tssCollection)
-
+    #print(len(tssGFF_5kb))
     tssLoci= [] 
     for gene in geneList:
         tssLocus = Locus(startDict[gene]['chr'],startDict[gene]['start'][0]-1000,startDict[gene]['start'][0]+1000,startDict[gene]['sense'],gene)
@@ -1845,7 +1857,7 @@ def mapEnrichedToGFF(dataFile,setName,gffList,cellTypeList,enrichedFolder,mapped
 #===================MAPPING BAMS TO GFFS===================================
 #==========================================================================
 
-def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
+def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,rpm=True,nameList = []):
     
     '''
     for each gff maps all of the data and writes to a specific folder named after the gff
@@ -1902,7 +1914,10 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
             
 
             if overWrite:
-                cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -m %s -b %s -i %s -o %s" % (nBin,fullBamFile,gffFile,outFile)
+                if rpm:
+                    cmd1 += ' -r'
+                cmd1 += ' &'
                 print cmd1
                 os.system(cmd1)
 
@@ -1911,7 +1926,11 @@ def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =Fal
                     Foo = open(outFile,'r')
                     print('File %s Already Exists, not mapping' % (outFile))
                 except IOError:
-                    cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -r -m %s -b %s -i %s -o %s &" % (nBin,fullBamFile,gffFile,outFile)
+                    cmd1 = "python /ark/home/cl512/pipeline/bamToGFF_turbo.py -e 200 -m %s -b %s -i %s -o %s" % (nBin,fullBamFile,gffFile,outFile)
+                    if rpm:
+                        cmd1 += ' -r'
+                    cmd1 += ' &'
+
                     print cmd1
                     os.system(cmd1)
 
@@ -2000,6 +2019,115 @@ def mapBamsQsub(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite 
     bashCommand = 'qsub %s' % (bashFileName) 
     print(bashCommand)
             #os.system(bashCommand)
+
+
+
+
+
+
+def mapBamsBatch(dataFile,gffList,mappedFolder,overWrite =False,namesList = [],extension=200):
+    
+    '''
+    for each gff maps all of the data and writes to a specific folder named after the gff
+    can map either by cell type or by a specific name list
+    uses bamliquidatorbatch
+    '''
+
+    dataDict = loadDataTable(dataFile)
+    if mappedFolder[-1] != '/':
+        mappedFolder+='/'
+    ticker = 0
+    for gffFile in gffList:
+        
+        #check to make sure gff exists
+        try:
+            foo = open(gffFile,'r')
+        except IOError:
+            print('ERROR: GFF FILE %s DOES NOT EXIST' % (gffFile))
+            sys.exit()
+
+        gffName = gffFile.split('/')[-1].split('.')[0]
+
+        #see if the parent directory exists, if not make it
+        mappedFolder = formatFolder(mappedFolder,True)
+        outdirRoot = formatFolder(mappedFolder+gffName,True)
+
+      
+        if len(namesList) == 0:
+            namesList = dataDict.keys()
+                
+
+        for name in namesList:
+            print ('mapping %s to %s' % (name,gffFile))
+            #filter based on celltype
+            fullBamFile = dataDict[name]['bam']
+            #what we want the eventual outfile to look like
+            outdir = formatFolder(outdirRoot + name,True)
+            outMatrixFile = outdir+gffName+'_'+name+'.txt'
+
+            
+            if overWrite:
+                mapCmd = bamliquidator_path + " --sense . -e %s --match_bamToGFF -r %s -o %s %s &" % (extension,gffFile, outdir, fullBamFile)    
+                print(mapCmd)
+                os.system(mapCmd)
+
+            else:
+                try:
+                    Foo = open(outMatrixFile,'r')
+                    print('File %s Already Exists, not mapping' % (outMatrixFile))
+                except IOError:
+                    mapCmd = bamliquidator_path + " --sense . -e %s --match_bamToGFF -r %s -o %s %s &" % (extension,gffFile, outdir, fullBamFile)                
+                    print(mapCmd)
+                    os.system(mapCmd)
+
+    time.sleep(10) #wait 10 seconds before checking for output
+    #now initiate another giant loop to check for output and rename it
+    for gffFile in gffList:
+        
+        #check to make sure gff exists
+        try:
+            foo = open(gffFile,'r')
+        except IOError:
+            print('ERROR: GFF FILE %s DOES NOT EXIST' % (gffFile))
+            sys.exit()
+
+        gffName = gffFile.split('/')[-1].split('.')[0]
+
+        #see if the parent directory exists, if not make it
+        mappedFolder = formatFolder(mappedFolder,True)
+        #the first outdir of the mapping
+        outdirRoot = formatFolder(mappedFolder+gffName,True)
+
+        if len(namesList) == 0:
+            namesList = dataDict.keys()
+                
+        for name in namesList:
+            print ('Checking output of %s mapping to %s' % (name,gffFile))
+            #filter based on celltype
+            fullBamFile = dataDict[name]['bam']
+            
+            outdir = formatFolder(outdirRoot+name,True)
+            matrixFile = outdir + 'matrix.gff'
+            countsFile = outdir + 'counts.h5'
+            
+            #what we want the eventual outfile to look like
+            outMatrixFile = outdirRoot+gffName+'_'+name+'.txt'
+            outCountsFile = outdirRoot+gffName+'_'+name+'.h5'
+
+            #now make sure the matrix file exists
+            try:
+                Foo = open(outMatrixFile,'r')    
+            except IOError:
+
+                if checkOutput(matrixFile,0.1,2):
+                    mvCmd = 'mv %s %s &' % (matrixFile,outMatrixFile)
+                    print("Renaming output %s as %s" % (matrixFile,outMatrixFile))
+                    os.system(mvCmd)
+                else:
+                    print("ERROR: No output found for %s mapping to %s" % (name,gffFile))
+
+
+
 
 #==========================================================================
 #===================MAKING GFF LISTS=======================================
@@ -2129,7 +2257,7 @@ def callGenePlot(dataFile,geneID,plotName,annotFile,namesList,outputFolder,regio
 #========================BATCH PLOTTING REGIONS============================
 #==========================================================================
 
-def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200,multiPage = False,debug=False,nameString = ''):
+def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=True,bed ='',plotType= 'MULTIPLE',extension=200,multiPage = False,debug=False,nameString = '',rpm=True,rxGenome = ''):
 
     '''
     batch plots all regions in a gff
@@ -2179,17 +2307,43 @@ def callBatchPlot(dataFile,inputFile,plotName,outputFolder,namesList=[],uniform=
 
     #get the title
     title = plotName
-    
+
+    #figure out if a ChIP-Rx scaling factor is required
+    if len(rxGenome) >0:
+
+        #we need to make a list of scaling factors
+        scaleFactorList = []
+        for name in namesList:
+            uniqueID = dataDict[name]['uniqueID']
+
+            #get the rx  bam
+            rxBamFile = getTONYInfo(uniqueID,47)
+            print('using bamfile %s to scale %s' % (rxBamFile.split('::')[-1],name))
+            rxBam = Bam(rxBamFile.split('::')[-1])
+            rxMMR = float(rxBam.getTotalReads())/1000000
+            scaleFactor = round(1/rxMMR,4)
+            print('using a scale factor of %s for %s' % (scaleFactor,name))
+            scaleFactorList.append(str(scaleFactor))
+
+        scaleFactorString = string.join(scaleFactorList,',')
+
+            
 
     os.chdir(pipelineFolder)
-    cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p %s -r' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title,plotType)
+    cmd = 'python %sbamPlot_turbo.py -g %s -e %s -b %s -i %s -o %s -c %s -n %s -y %s -t %s -p %s' % (pipelineFolder,genome,extension,bamString,inputFile,outputFolder,colorString,nameString,yScale,title,plotType)
+    #scale for RPM
+    if rpm == True:
+        cmd += ' -r'
+    if len(rxGenome) > 0:
+        cmd += ' --scale %s' % (scaleFactorString)
+
     if len(bed) > 0:
         cmd += ' --bed %s' % (bed)
     if multiPage:
         cmd += ' --multi-page'
     if debug:
         cmd += ' --save-temp'
-    cmd += ' &'
+    #cmd += ' &'
 
     print cmd
     os.system(cmd)
@@ -2670,6 +2824,91 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
 
     bashFile.write(rCmd)
     bashFile.close()
+
+
+
+
+#-------------------------------------------------------------------------#
+#                                                                         #
+#                              GECKO TOOLS                                #
+#                                                                         #
+#-------------------------------------------------------------------------#
+
+
+
+
+
+def processGecko(dataFile,geckoFolder,namesList = [],overwrite=False,scoringMethod='WtSum'):
+
+    '''
+    processes the GECKO bams from the dataFile/namesList
+    '''
+
+    dataDict = loadDataTable(dataFile)
+
+    #making the gecko folder
+    geckoFolder = formatFolder(geckoFolder,True)
+
+    #if no names are given, process all the data
+    if len(namesList) == 0:
+
+        namesList = dataDict.keys()
+
+
+    for name in namesList:
+        
+        #skip if a background set
+        if string.upper(dataDict[name]['background']) == 'NONE' or string.upper(dataDict[name]['background']) == '':
+            continue
+
+        #check for the bam
+        try:
+            bam = open(dataDict[name]['bam'],'r')
+            hasBam = True
+
+        
+        except IOError:
+            hasBam = False
+
+        #check for background
+        try:
+            backgroundName = dataDict[name]['background']
+            backbroundBam = open(dataDict[backgroundName]['bam'],'r')
+            hasBackground = True
+        except (IOError, KeyError) as e:
+            hasBackground = False
+
+        if not hasBam:
+            print('no bam found for %s. GECKO processing not called' % (name))
+            continue
+
+        if not hasBackground:
+            print('no background bam %s found for dataset %s. GECKO processing not called' % (backgroundName,name))
+            continue
+
+        #getting bam names
+        testBamFileName = dataDict[name]['bam']
+        controlBamFileName = dataDict[backgroundName]['bam']
+
+        #names string
+        namesString = '%s,%s' % (name,backgroundName)
+
+        genome = string.lower(dataDict[name]['genome'])
+      
+
+        #now set up the process Gecko command
+
+        processGeckoCmd = 'python %sprocessGeckoBam.py -t %s -c %s -g %s -n %s -s %s -o %s' % (pipelineFolder,testBamFileName,controlBamFileName,genome,namesString,scoringMethod,geckoFolder)
+        print("RUNNING GECKO PROCESSING FOR %s WITH BACKGROUND %s IN BUILD %s WITH %s SCORING" % (name,backgroundName,genome,scoringMethod))
+        print(processGeckoCmd)
+
+
+
+        os.system(processGeckoCmd)
+
+
+
+
 
 
 
