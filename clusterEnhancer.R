@@ -63,12 +63,18 @@ enhancerTable = read.delim(enhancerFile)
 enhancerMatrix = as.matrix(enhancerTable[,7:ncol(enhancerTable)])
 #rownames(enhancerMatrix) = enhancerTable[,1]
 #===================================================================
-#========================DISTANCE MATRICIES=========================
+#==================SAMPLE DISTANCE MATRICIES========================
 #===================================================================
 
 #distance by samples
 sampleDist = as.dist(1-cor(enhancerMatrix))
 sampleHC = hclust(sampleDist)
+
+
+#===================================================================
+#=====================PLOTTING SAMPLE TREE==========================
+#===================================================================
+
 
 #PLOTTING THE SAMPLE TREE
 
@@ -79,20 +85,73 @@ pdf(treePDFFile,width=8,height=8)
 plot(sampleHC,xlab='',main = paste(genome,'_',analysisName,sep=''))
 dev.off()
 
+
+
+#===================================================================
+#=======================SAMPLE CLUSTER ORDERING=====================
+#===================================================================
+
+sampleOrder = sampleHC$order
+
+
+
+#===================================================================
+#=================MAKING SAMPLE PAIRWISE HEATMAP====================
+#===================================================================
+
+
+
+#distance by samples
+sampleSimMatrix = cor(enhancerMatrix)
+
+
+#Set the color spectrum
+colorSpectrum <- colorRampPalette(c("white","red"))(100)
+
+#setting a color data range
+minValue <- .1
+maxValue <- .9
+color_cuts <- seq(minValue,maxValue,length=100)
+color_cuts <- c(0, color_cuts,1)
+
+#add one extra min color to even out sampling
+colorSpectrum <- c(colorSpectrum[1],colorSpectrum)
+
+
+clusterSampleFile = paste(outputFolder,genome,'_',analysisName,"_clusterSamples.pdf",sep='')
+
+pdf(file = clusterSampleFile,width = 10,height =10)
+
+layout(matrix(data=c(1,2,2,2,1,3,3,3,1,3,3,3,1,3,3,3,1,3,3,3,1,3,3,3,1,4,4,4),ncol= 7))
+par(mar=c(8,9,5,9))
+plot(as.dendrogram(sampleHC),ylab='Distance')
+par(mar=c(4,2,2,2))
+
+plot(as.dendrogram(sampleHC),horiz=TRUE,xlab='Distance',leaflab='none')
+par(mar=c(6,4,4,2))
+
+image(1:ncol(sampleSimMatrix),1:nrow(sampleSimMatrix),t(sampleSimMatrix[sampleOrder,sampleOrder]),breaks=color_cuts,col=colorSpectrum,xaxt="n",yaxt="n",ylab='',xlab='')
+
+par(mar=c(6,5,4,2))
+
+image(1:2,color_cuts[2:101],t(matrix(data=color_cuts[2:101],ncol=2,nrow=100)),breaks=color_cuts,col=colorSpectrum,xaxt="n",xlab="",ylab="Similarity")
+dev.off()
+
+
+#===================================================================
+#===================ENHANCER DISTANCE MATRICIES=====================
+#===================================================================
+
 #distances by SEs
 seDist = as.dist(1-cor(t(enhancerMatrix)))
 seHC = hclust(seDist)
 #plot(seHC)
 
-
-
 #===================================================================
-#=======================CLUSTER ORDERING============================
+#======================ENHANCER CLUSTER ORDERING====================
 #===================================================================
 
-sampleOrder = sampleHC$order
 seOrder = seHC$order
-
 
 #===================================================================
 #======================INDIVIDUAL CLUSTERS==========================
@@ -192,7 +251,7 @@ write.table(signif(exemplarMatrix,4),file= exemplarTableFile,quote=FALSE,sep='\t
 
 
 #===================================================================
-#=========================MAKING HEATMAPS===========================
+#=======================MAKING ENHANCER HEATMAPS====================
 #===================================================================
 
 #Set the color spectrum
@@ -246,47 +305,6 @@ par(mar=c(6,5,4,2))
 image(1:2,color_cuts[2:101],t(matrix(data=color_cuts[2:101],ncol=2,nrow=100)),breaks=color_cuts,col=colorSpectrum,xaxt="n",xlab="",ylab="Fold vs. median")
 dev.off()
 
-#===================================================================
-#=================MAKING SAMPLE PAIRWISE HEATMAP====================
-#===================================================================
-
-
-
-#distance by samples
-sampleSimMatrix = cor(enhancerMatrix)
-
-
-#Set the color spectrum
-colorSpectrum <- colorRampPalette(c("white","red"))(100)
-
-#setting a color data range
-minValue <- .1
-maxValue <- .9
-color_cuts <- seq(minValue,maxValue,length=100)
-color_cuts <- c(0, color_cuts,1)
-
-#add one extra min color to even out sampling
-colorSpectrum <- c(colorSpectrum[1],colorSpectrum)
-
-
-clusterSampleFile = paste(outputFolder,genome,'_',analysisName,"_clusterSamples.pdf",sep='')
-
-pdf(file = clusterSampleFile,width = 10,height =10)
-
-layout(matrix(data=c(1,2,2,2,1,3,3,3,1,3,3,3,1,3,3,3,1,3,3,3,1,3,3,3,1,4,4,4),ncol= 7))
-par(mar=c(8,9,5,9))
-plot(as.dendrogram(sampleHC),ylab='Distance')
-par(mar=c(4,2,2,2))
-
-plot(as.dendrogram(sampleHC),horiz=TRUE,xlab='Distance',leaflab='none')
-par(mar=c(6,4,4,2))
-
-image(1:ncol(sampleSimMatrix),1:nrow(sampleSimMatrix),t(sampleSimMatrix[sampleOrder,sampleOrder]),breaks=color_cuts,col=colorSpectrum,xaxt="n",yaxt="n",ylab='',xlab='')
-
-par(mar=c(6,5,4,2))
-
-image(1:2,color_cuts[2:101],t(matrix(data=color_cuts[2:101],ncol=2,nrow=100)),breaks=color_cuts,col=colorSpectrum,xaxt="n",xlab="",ylab="Similarity")
-dev.off()
 
 
 
