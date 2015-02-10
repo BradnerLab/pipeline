@@ -1,7 +1,7 @@
 #include <iostream>
 #include <samtools/bam.h>
 
-void test(const std::string& input_bam_file, const std::string& target, const std::string& output_bam_file)
+void liquidate(const std::string& input_bam_file, const std::string& target, const std::string& output_bam_file)
 {
   bam1_t* read = bam_init1();
   bamFile input = bam_open(input_bam_file.c_str(), "r");
@@ -53,6 +53,8 @@ void test(const std::string& input_bam_file, const std::string& target, const st
   bam_close(input);
   bam_close(output);
   bam_destroy1(read);
+
+  bam_index_build(output_bam_file.c_str());
 }
 
 int main(int argc, char** argv)
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
 
   try 
   {
-    test(input_bam_file, target, output_bam_file);
+    liquidate(input_bam_file, target, output_bam_file);
   }
   catch(const std::exception& e)
   {
