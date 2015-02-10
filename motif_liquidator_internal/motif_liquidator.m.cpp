@@ -1,5 +1,7 @@
-#include <iostream>
 #include <samtools/bam.h>
+
+#include <iostream>
+#include <stdexcept>
 
 char complement(char c)
 {
