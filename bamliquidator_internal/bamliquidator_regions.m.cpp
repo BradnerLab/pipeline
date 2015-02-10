@@ -94,8 +94,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     name_column = 3;
     start_column = 1;
     stop_column = 2;
-    strand_column = -1;
-    min_columns = 4;
+    strand_column = 5;
+    min_columns = 3;
   }
   else
   {
@@ -117,15 +117,24 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
     boost::split(columns, line, boost::is_any_of("\t"));
     if (columns.size() < min_columns)
     {
-      throw std::runtime_error("error parsing " + region_file_path);
+      std::stringstream ss;
+      ss << "Not enough columns parsing line " << line_number << " '" << line << "' of " << region_file_path;
+      throw std::runtime_error(ss.str());
     }
     Region region;
     region.bam_file_key = bam_file_key; 
     copy(region.chromosome,  columns[chromosome_column], sizeof(Region::chromosome));
-    copy(region.region_name, columns[name_column],       sizeof(Region::region_name));
-    if (columns[name_column].size() >= sizeof(Region::region_name))
+    if (columns.size() > name_column)
     {
-      Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
+      copy(region.region_name, columns[name_column], sizeof(Region::region_name));
+      if (columns[name_column].size() >= sizeof(Region::region_name))
+      {
+        Logger::warn() << "Truncated region on line " << line_number << " from '" << columns[name_column] << "' to '" << region.region_name << "'";
+      }
+    }
+    else
+    {
+      copy(region.region_name, "", sizeof(Region::region_name));
     }
     region.start = boost::lexical_cast<uint64_t>(columns[start_column]);
     region.stop  = boost::lexical_cast<uint64_t>(columns[stop_column]);
@@ -134,21 +143,23 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
       std::swap(region.start, region.stop);
     }
 
-    if (strand_column == -1)
-    {
-      region.strand = default_strand == '_'
-                    ? '.'
-                    : default_strand; 
-    }
-    else
+    if (columns.size() > strand_column)
     {
       if (columns[strand_column].size() != 1)
       {
-        throw std::runtime_error("error parsing strand: '" + columns[strand_column] + "'");
+        std::stringstream ss;
+        ss << "error parsing strand: '" << columns[strand_column] << "' on line " << line_number;
+        throw std::runtime_error(ss.str());
       }
       region.strand = default_strand == '_'
                     ? columns[strand_column][0]
                     : default_strand;
+    }
+    else
+    {
+      region.strand = default_strand == '_'
+                    ? '.'
+                    : default_strand; 
     }
     region.count = 0;
     region.normalized_count = 0.0;
@@ -304,34 +315,38 @@ void liquidate_and_write(hid_t& file, std::vector<Region>& regions,
 
 int main(int argc, char* argv[])
 {
-  tbb::task_scheduler_init init; 
-
   try
   {
-    if (argc < 12 || argc % 2 != 0)
+    if (argc < 13 || argc % 2 != 1)
     {
-      std::cerr << "usage: " << argv[0] << " region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file "
+      std::cerr << "usage: " << argv[0] << " number_of_threads region_file gff_or_bed_format extension bam_file bam_file_key hdf5_file "
                 << "log_file write_warnings_to_stderr strand chr1 length1 ...\n"
         << "\ne.g. " << argv[0] << " /grail/annotations/HG19_SUM159_BRD4_-0_+0.gff gff"
         << "\n      /ifs/labs/bradner/bam/hg18/mm1s/04032013_D1L57ACXX_4.TTAGGC.hg18.bwt.sorted.bam 137 counts.hdf5 "
         << "\n      output/log.txt 1 _ chr1 247249719 chr2 242951149 chr3 199501827\n"
         << "\nstrand value of _ means use strand that is specified in region file (and use . if strand not specified in region file)."
+        << "\nnumber of threads <= 0 means use a number of threads equal to the number of logical cpus."
         << "\nnote that this application is intended to be run from bamliquidator_batch.py -- see"
         << "\nhttps://github.com/BradnerLab/pipeline/wiki for more information"
         << std::endl;
       return 1;
     }
 
-    const std::string region_file_path = argv[1];
-    const std::string region_format = argv[2];
-    const unsigned int extension = boost::lexical_cast<unsigned int>(argv[3]);
-    const std::string bam_file_path = argv[4];
-    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[5]);
-    const std::string hdf5_file_path = argv[6];
-    const std::string log_file_path = argv[7];
-    const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[8]);
-    const char strand = boost::lexical_cast<char>(argv[9]);
-    const std::vector<std::pair<std::string, size_t>> chromosome_lengths = extract_chromosome_lengths(argc, argv, 10);
+    const int number_of_threads = boost::lexical_cast<int>(argv[1]);
+    const std::string region_file_path = argv[2];
+    const std::string region_format = argv[3];
+    const unsigned int extension = boost::lexical_cast<unsigned int>(argv[4]);
+    const std::string bam_file_path = argv[5];
+    const unsigned int bam_file_key = boost::lexical_cast<unsigned int>(argv[6]);
+    const std::string hdf5_file_path = argv[7];
+    const std::string log_file_path = argv[8];
+    const bool write_warnings_to_stderr = boost::lexical_cast<bool>(argv[9]);
+    const char strand = boost::lexical_cast<char>(argv[10]);
+    const std::vector<std::pair<std::string, size_t>> chromosome_lengths = extract_chromosome_lengths(argc, argv, 11);
+
+    tbb::task_scheduler_init init( number_of_threads <= 0 
+                                 ? tbb::task_scheduler_init::automatic
+                                 : number_of_threads); 
 
     Logger::configure(log_file_path, write_warnings_to_stderr);
 

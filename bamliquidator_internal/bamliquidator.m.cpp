@@ -37,7 +37,7 @@ int parseArgs(std::string& bamfile, std::string& chromosome,
 {
   if(argc!=8)
   {
-    printf("[ bamliquidator ] output to stdout\n1. bam file (.bai file has to be at same location)\n2. chromosome\n3. start\n4. stop\n5. strand +/-, use dot (.) for both strands\n6. number of summary points\n7. extension length\n\n");
+    printf("[ bamliquidator ] output to stdout\n1. bam file (.bai file has to be at same location)\n2. chromosome\n3. start\n4. stop\n5. strand +/-, use dot (.) for both strands\n6. number of summary points\n7. extension length\n\nNote that each summary point is floor((stop-start)/(number of summary points)) long,\nand if it doesn't divide evenly then the range is truncated.\n");
     return 1;
   }
 

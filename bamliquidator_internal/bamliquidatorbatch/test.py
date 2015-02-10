@@ -143,6 +143,80 @@ class SingleFullReadBamTest(TempDirTest):
            self.assertEqual('chr1(.):1-8', data_cols[1]) # todo: don't hardcode these values 
            self.assertEqual('1000000.0\n', data_cols[2])
 
+    def test_region_liquidation_with_optional_bed_columns(self):
+        start = 1
+        stop  = 8
+        region_name = 'region_f'
+        score = 9.9
+        strand = "."
+
+        columns = ["chr1", str(start), str(stop), region_name, str(score), strand,
+                   "thickStart", "thickEnd", "itemRgb", "blockCount", "blockSizes", "blockStarts"]
+
+        def create_single_region_bed_file(dir_path, columns):
+            region_file_path = os.path.join(dir_path, "single.bed") 
+            with open(region_file_path, 'w') as region_file:
+                first_column_written = False
+                for column in columns:
+                    if first_column_written:
+                        region_file.write('\t')
+                    region_file.write('%s' % column)
+                    first_column_written = True
+                region_file.write('\n')
+            return region_file_path
+            
+        for number_of_columns in range(0, 9):
+            regions_file_path = create_single_region_bed_file(self.dir_path, columns[:number_of_columns])
+
+            try:
+                liquidator = blb.RegionLiquidator(regions_file = regions_file_path,
+                                                  output_directory = os.path.join(self.dir_path, 'output'),
+                                                  bam_file_path = self.bam_file_path)
+            except Exception:
+                self.assertLess(number_of_columns, 3)
+                continue
+            else:
+                self.assertGreaterEqual(number_of_columns, 3)
+
+            liquidator.flatten()
+
+            matrix_path = os.path.join(self.dir_path, 'matrix.gff')
+            blb.write_bamToGff_matrix(matrix_path, liquidator.counts_file_path)
+
+            with tables.open_file(liquidator.counts_file_path) as counts:
+                self.assertEqual(1, len(counts.root.files)) # 1 since only a single bam file
+                self.assertEqual(1, counts.root.files[0]['length']) # 1 since only a single read 
+                self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
+               
+                record = counts.root.region_counts[0]
+                if number_of_columns >= 4:
+                   self.assertEqual(region_name, record['region_name'])
+                else:
+                   self.assertEqual("", record['region_name'])
+                self.assertEqual(start, record['start'])
+                self.assertEqual(stop,  record['stop'])
+                self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
+                                                              # the region
+
+            with open(matrix_path, 'r') as matrix_file:
+               matrix_lines = matrix_file.readlines()
+               self.assertEqual(2, len(matrix_lines))
+
+               header_cols = matrix_lines[0].split('\t')
+               self.assertEqual(3, len(header_cols))
+               self.assertEqual('GENE_ID', header_cols[0])
+               self.assertEqual('locusLine', header_cols[1])
+               self.assertEqual('bin_1_%s\n' % 'single.bam', header_cols[2])
+
+               data_cols = matrix_lines[1].split('\t')
+               self.assertEqual(3, len(data_cols))
+               if number_of_columns >= 4:
+                   self.assertEqual(region_name, data_cols[0])
+               else:
+                   self.assertEqual("", data_cols[0])
+               self.assertEqual('chr1(.):1-8', data_cols[1]) # todo: don't hardcode these values 
+               self.assertEqual('1000000.0\n', data_cols[2])
+
     def test_out_of_range_region(self):
         start = len(self.sequence) + 10
         stop = start + 10

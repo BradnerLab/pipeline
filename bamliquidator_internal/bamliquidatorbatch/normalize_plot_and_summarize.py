@@ -29,11 +29,15 @@ from __future__ import division
 import sys
 import os
 import argparse
-import bokeh.plotting as bp
 import tables
 import scipy.stats as stats
 import collections
 import logging
+
+try:
+    import bokeh.plotting as bp
+except:
+    bp = None 
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right).
@@ -370,10 +374,16 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_p
     normalized_counts.cols.chromosome.create_csindex()
 
     if not skip_plot:
-        logging.info("Plotting")
-        for chromosome in chromosomes:
-            plot(output_directory, normalized_counts, chromosome, cell_types)
-        plot_summaries(output_directory, normalized_counts, chromosomes)
+        if bp is None:
+            logging.error('Skipping plotting because plots require bokeh and it is not installed -- '
+                          'see https://github.com/BradnerLab/pipeline/wiki/bamliquidator#Install . '
+                          'Consider running the following command to install bokeh: '
+                          'sudo pip install bokeh==0.4.4 "openpyxl>=1.6.1,<2.0.0"')
+        else:
+            logging.info("Plotting")
+            for chromosome in chromosomes:
+                plot(output_directory, normalized_counts, chromosome, cell_types)
+            plot_summaries(output_directory, normalized_counts, chromosomes)
 
     logging.info("Summarizing")
     for chromosome in chromosomes:
