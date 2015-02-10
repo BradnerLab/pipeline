@@ -231,7 +231,9 @@ for(n in 1:nrow(summaryTable)){
 		par(mai=c(0.2,1.5,0.2,0.2772))	
 
 		if(yScale == 'UNIFORM'){
-			yMax = 1.2*max(plotTable[,(8:(nBins+7))])
+			yMax = 1.2*max(plotTable[,(8:(nBins+7))],na.rm=TRUE)
+			#print(plotTable)
+			print(yMax)
 		}
 		for(i in 1:nrow(plotTable)){
 			if(yScale == 'RELATIVE'){

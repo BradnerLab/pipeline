@@ -245,7 +245,7 @@ def mapGFFLineToBed(gffLine, outFolder, nBins, bedCollection, header=''):
 def mapBamToGFFLine(bamFile, MMR, name, gffLine, color, nBins, sense='both', extension=200):
     '''maps reads from a bam to a gff'''
 
-    print('using a MMR value of %s' % (MMR))
+    print('using a MMR/scaling denominator value of %s' % (MMR))
 
     line = gffLine[0:9]
     gffLocus = utils.Locus(line[0], int(line[3]), int(line[4]), line[6], line[1])
@@ -305,7 +305,7 @@ def callRPlot(summaryFile, outFile, yScale, plotStyle,multi):
     return cmd
 
 
-def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extension, rpm, outFolder, names, title, bedCollection):
+def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extension, rpm, outFolder, names, title, bedCollection,scale=''):
     '''
     makes a plot table for each line of the gff mapped against all the bams in the bamList
     '''
@@ -321,7 +321,15 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
     # make an MMR dict so MMRs are only computed once
     print('Getting information about read depth in bams')
     mmrDict = {}
-    for bamFile in bamFileList:
+    
+    if len(scale) >0:
+        print("Applying scaling factors")
+        scaleList = [float(x) for x in scale.split(',')]
+    else:
+        scaleList = [1]*len(bamFileList)
+
+    #now iterate through the bam files
+    for i,bamFile in enumerate(bamFileList):
         # millionMappedReads
         idxCmd = 'samtools idxstats %s' % (bamFile)
         idxPipe = subprocess.Popen(idxCmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
@@ -330,18 +338,17 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
         idxStats = [line.split('\t') for line in idxStats]
 
         rawCount = sum([int(line[2]) for line in idxStats[:-1]])
+        
+        #implement scaling
+        readScaleFactor = scaleList[i]
+        
+
+        
         if rpm:
-            MMR = round(float(rawCount) / 1000000, 4)
+            MMR = round(float(rawCount) / 1000000 / readScaleFactor, 4)
         else:
-            MMR = 1
+            MMR = round(1/float(readScaleFactor),4)
         mmrDict[bamFile] = MMR
-        # bam = Bam(bamFile)
-        # if rpm:
-        #     MMR= round(float(bam.getTotalReads('mapped'))/1000000,4)
-        # else:
-        #     MMR = 1
-        # mmrDict[bamFile] = MMR
-        # mmrDict[bamFile] = 21.5377
 
     ticker = 1
     # go line by line in the gff
@@ -419,11 +426,13 @@ def main():
     parser.add_option("-n", "--names", dest="names", nargs=1, default=None,
                       help="Enter a comma separated list of names for your bams")
     parser.add_option("-p", "--plot", dest="plot", nargs=1, default="MULTIPLE",
-                      help="Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE'")
+                      help="Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE,MERGE'")
     parser.add_option("-t", "--title", dest="title", nargs=1, default='',
                       help="Specify a title for the output plot(s), default will be the coordinate region")
 
     # DEBUG OPTION TO SAVE TEMP FILES
+    parser.add_option("--scale", dest="scale", nargs=1, default='',
+                      help="Enter a comma separated list of scaling factors for your bams. Default is none")
     parser.add_option("--save-temp", dest="save", action='store_true', default=False,
                       help="If flagged will save temporary files made by bamPlot")
     parser.add_option("--bed", dest="bed", nargs=1, default=None,
@@ -519,6 +528,8 @@ def main():
 
         rpm = options.rpm
 
+        scale = options.scale
+
         yScale = options.yScale.upper()
 
         # names
@@ -540,7 +551,7 @@ def main():
             exit()
 
         # now run!
-        summaryTableFileName = makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extension, rpm, tempFolder, names, title, bedCollection)
+        summaryTableFileName = makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extension, rpm, tempFolder, names, title, bedCollection,scale)
         print ("%s is the summary table" % (summaryTableFileName))
 
         #running the R command to plot
