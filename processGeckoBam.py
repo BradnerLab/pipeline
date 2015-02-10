@@ -177,7 +177,7 @@ def callRiger(rigerTableFile,scoring='KSbyScore',output='',callRiger = True):
     '''
     calls riger using the KS scoring metric (default)
     '''
-    rigerDirectory = '/usr/local/bin/riger/'
+    rigerDirectory = '/raider/temp/riger/'
 
     rigerTableAbsFile = os.path.abspath(rigerTableFile)
     outputFolder = utils.getParentFolder(rigerTableAbsFile)
