@@ -1,5 +1,6 @@
 #include <samtools/bam.h>
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -27,7 +28,8 @@ std::string complement(const std::string& sequence)
 
 void liquidate(const std::string& input_bam_file, const std::string& target, const std::string& output_bam_file)
 {
-  const std::string target_complement = complement(target);
+  std::string reverse_complement = complement(target);
+  std::reverse(reverse_complement.begin(), reverse_complement.end());
 
   bam1_t* read = bam_init1();
   bamFile input = bam_open(input_bam_file.c_str(), "r");
@@ -69,7 +71,7 @@ void liquidate(const std::string& input_bam_file, const std::string& target, con
       sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
     }
 
-    if (sequence.find(target) != std::string::npos || sequence.find(target_complement) != std::string::npos)
+    if (sequence.find(target) != std::string::npos || sequence.find(reverse_complement) != std::string::npos)
     {
       bam_write1(output, read);
     }
