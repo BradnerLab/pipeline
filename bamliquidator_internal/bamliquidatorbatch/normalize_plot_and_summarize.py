@@ -34,6 +34,8 @@ import scipy.stats as stats
 import collections
 import logging
 
+from common_util import chromosome_name_length
+
 try:
     import bokeh.plotting as bp
 except:
@@ -45,9 +47,6 @@ except:
 
 # I also found that create_index doesn't always work (this was causing where statements to not work)
 # -- I don't know if this was my fault or a bug in pytables, but I just always use create_csindex instead
-
-chromosome_name_length = 64 # Includes 1 for null terminator, so really max of 63 characters.
-                            # Note that changing this value requires updating C++ code as well.
 
 def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:

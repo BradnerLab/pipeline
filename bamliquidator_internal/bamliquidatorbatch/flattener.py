@@ -39,9 +39,14 @@ def write_tab(table, file_names, output_directory, log=False):
         tab_file.close()
 
 def write_tab_for_all(h5_file, output_directory, log=False):
+    try:
+        file_names_table = h5_file.root.file_names
+    except tables.exceptions.NoSuchNodeError:
+        file_names_table = None
+
     for table in h5_file.root:
         if table.name not in ("files", "file_names"):
-            write_tab(table, h5_file.root.file_names, output_directory, log)
+            write_tab(table, file_names_table, output_directory, log)
 
 def main():
     parser = argparse.ArgumentParser(description='Writes bamliquidator_batch.py hdf5 tables into tab delimited '
