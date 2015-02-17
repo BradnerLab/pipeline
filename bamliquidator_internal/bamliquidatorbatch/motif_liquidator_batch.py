@@ -4,11 +4,17 @@ from __future__ import division
 
 import argparse
 import itertools
+import logging
 import os
+import subprocess
+import sys
 import tables
+from time import time 
 
 import common_util as util
 from flattener import write_tab_for_all 
+
+__version__ = util.version
 
 def create_ratio_table(h5file):
     class Ratio(tables.IsDescription):
@@ -52,11 +58,17 @@ def main():
 
     parser.add_argument('bam_file')
 
-    default_pass_through_args='-b 5000 --skip_plot'
-    parser.add_argument('--pass_through', default=default_pass_through_args,
-                        help='Override arguments to pass through to bamliquidator_batch.py. Should not include '
-                             '-o/--ouput nor positional input .bam arguments. '
-                             'Default is "%s".' % default_pass_through_args)
+    default_bin_size = 5000
+    parser.add_argument('-b', '--bin_size', type=int, default=default_bin_size,
+                        help='Number of base pairs in each bin -- the smaller the bin size the longer the runtime and '
+                             'the larger the data files (default is %d)' % default_bin_size)
+
+    # todo: consider replacing -b arg with a --pass_through arg, which would require usage of unsafe shell=True, e.g.
+    #default_pass_through_args='-b 5000 --skip_plot'
+    #parser.add_argument('--pass_through', default=default_pass_through_args,
+    #                    help='Override arguments to pass through to bamliquidator_batch.py. Should not include '
+    #                         '-o/--ouput nor positional input .bam arguments. '
+    #                         'Default is "%s".' % default_pass_through_args)
 
     parser.add_argument('--baseline', help='Baseline counts.h5 file from bamliquidator_batch.py. Bin size should '
                                            'match bin size in --pass_through argument.  If not provided, then '
@@ -73,6 +85,7 @@ def main():
                               'see http://www.pytables.org/ for easy to use Python APIs and '
                               'http://www.hdfgroup.org/products/java/hdf-java-html/hdfview/ for an easy to use GUI for '
                               'browsing HDF5 files)')
+    parser.add_argument('--version', action='version', version='%s %s' % (os.path.basename(sys.argv[0]), __version__))
 
     args = parser.parse_args()
     
@@ -80,13 +93,46 @@ def main():
  
     util.mkdir_if_not_exists(args.output_directory)
 
-    # call motif_liquidator on args.bam_file
+    util.configure_logging(args, args.output_directory, quiet=False)
+    # todo, log file doesn't contain child process logging
 
-    # call bamliquidator as necessary on both baseline and filtered
-    baseline_counts_file_path = '../../20110819_580_hg19_5k_bamliquidator_output/counts.h5'
-    filtered_counts_file_path = '../../20110819_580_hg19_5k_TGGGAA_bamliquidator_output/counts.h5'
-    baseline_file_key = 1
+    logging.info('Running motif_liquidator to get filtered bam')
+    start = time()
+    motif_executable = util.most_appropriate_executable_path('motif_liquidator')
+    filtered_bam_path = os.path.join(args.output_directory, 'filtered.' + os.path.basename(args.bam_file))
+    subprocess.check_call([motif_executable, args.bam_file, args.motif, filtered_bam_path])
+    duration = time() - start
+    logging.info('Running motif_liquidator took %f seconds' % duration)
+
+    logging.info('Running bamliquidator_batch on filtered bam')
+    start = time()
+    bamliquidator_batch_executable = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'bamliquidator_batch.py')
+    filtered_bamliquidator_output_path = os.path.join(args.output_directory, 'filtered_bamliquidator_output')
+    subprocess.check_call([bamliquidator_batch_executable,
+                           '--bin_size=%d' % args.bin_size,
+                           '--skip_plot',
+                           '--output_directory=%s' % filtered_bamliquidator_output_path,
+                           filtered_bam_path])
+    filtered_counts_file_path = os.path.join(filtered_bamliquidator_output_path, 'counts.h5')
     filtered_file_key = 1
+    duration = time() - start
+    logging.info('Running bamliquidator_batch on filtered bam took %f seconds' % duration)
+
+    if args.baseline is None:
+        logging.info('Running bamliquidator_batch on (unfiltered) bam')
+        start = time()
+        baseline_bamliquidator_output_path = os.path.join(args.output_directory, 'baseline_bamliquidator_output')
+        subprocess.check_call([bamliquidator_batch_executable,
+                               '--bin_size=%d' % args.bin_size,
+                               '--skip_plot',
+                               '--output_directory=%s' % baseline_bamliquidator_output_path,
+                               args.bam_file])
+        baseline_counts_file_path = os.path.join(baseline_bamliquidator_output_path, 'counts.h5')
+        duration = time() - start
+        logging.info('Running bamliquidator_batch on (unfiltered) bam took %f seconds' % duration)
+    else:
+        baseline_counts_file_path = args.baseline
+    baseline_file_key = 1 # todo: support args.baseline with file_key not equal to 1
 
     ratio_file_path = os.path.join(args.output_directory, 'ratios.h5')
 
@@ -98,10 +144,18 @@ def main():
                 baseline_counts = baseline_counts_h5.root.bin_counts
                 filtered_counts = filtered_counts_h5.root.bin_counts
 
+                logging.info('Calculating ratios between filtered and unfiltered bin counts')
+                start = time()
                 populate_ratios(baseline_counts, baseline_file_key, filtered_counts, filtered_file_key, ratios)
+                duration = time() - start
+                logging.info('Calculating ratios took %f seconds' % duration)
 
                 if args.flatten:
+                    logging.info('Flattening ratios tables')
+                    start = time()
                     write_tab_for_all(ratios_h5, args.output_directory, log=False)
+                    duration = time() - start
+                    logging.info('Flattening took %f seconds' % duration)
 
 if __name__ == '__main__':
     main()

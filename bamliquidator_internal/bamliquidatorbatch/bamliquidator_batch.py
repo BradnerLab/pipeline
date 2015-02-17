@@ -20,7 +20,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '1.2.0'
+__version__ = util.version
 
 default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
@@ -93,18 +93,7 @@ class BaseLiquidator(object):
         self.number_of_threads = number_of_threads
         self.chromosome_patterns_to_skip = [] 
 
-        # This script may be run by either a developer install from a git pipeline checkout,
-        # or from a user install so that the exectuable is on the path.  First we try to
-        # find the exectuable for a developer install, and if that fails we look on the
-        # standard path.
-        if basename(dirname(dirname(os.path.realpath(__file__)))) == 'bamliquidator_internal':
-            # look for developer executable location 
-            self.executable_path = os.path.join(dirname(dirname(os.path.realpath(__file__))), executable)
-            if not os.path.isfile(self.executable_path):
-                exit("%s is missing -- try cd'ing into the directory and running 'make'" % self.executable_path)
-        else:
-            # just look on standard path
-            self.executable_path = executable 
+        self.executable_path = util.most_appropriate_executable_path(executable)
 
         util.mkdir_if_not_exists(output_directory)
 
@@ -383,42 +372,6 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
                     output.write("\t%s" % round(prior_region_counts[row, col], 4))
                 output.write("\t%s\n" % round(region["normalized_count"], 4))
 
-def configure_logging(args):
-    # Using root logger so we can just do logging.info/warn/error in this and other files.
-    # If people start using bamliquidator_batch as an imported module, then we should probably
-    # change this logging to not use the root logger directly.
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    file_handler = logging.FileHandler(os.path.join(args.output_directory, 'log.txt'))
-    file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s\t%(message)s',
-                                                datefmt='%Y-%m-%d %H:%M:%S'))
-    
-    logger.addHandler(file_handler)
-    # todo: add bamliquidator version to the starting log message
-    logging.info("Starting %s %s with args %s", basename(sys.argv[0]), __version__, vars(args))
-
-    # Adding console handler after writing the startup log entry.  The startup log could be useful 
-    # in a file that is being appended to from a prior run, but would be annonying on stderr.
-
-    console_handler = logging.StreamHandler()
-    if args.quiet:
-        console_handler.setLevel(logging.ERROR)
-    else:
-        console_handler.setLevel(logging.INFO)
-
-    class FormatterNotFormattingInfo(logging.Formatter):
-        def __init__(self, fmt):
-            logging.Formatter.__init__(self, fmt)
-
-        def format(self, record):
-            if record.levelno == logging.INFO:
-                return record.getMessage()
-            return logging.Formatter.format(self, record)
-
-    console_handler.setFormatter(FormatterNotFormattingInfo('%(levelname)s\t%(message)s'))
-    logger.addHandler(console_handler)
-
 def main():
     parser = argparse.ArgumentParser(description='Count the number of base pair reads in each bin or region '
                                                  'in the bam file(s) at the given directory, and then normalize, plot bins, '
@@ -488,7 +441,7 @@ def main():
 
     util.mkdir_if_not_exists(args.output_directory)
 
-    configure_logging(args)
+    util.configure_logging(args, args.output_directory, args.quiet)
 
     if args.regions_file is None:
         liquidator = BinLiquidator(args.bin_size, args.output_directory, args.bam_file_path,
