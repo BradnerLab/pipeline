@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION := $(shell grep "__version__ =" bamliquidatorbatch/bamliquidator_batch.py | cut -d' ' -f 3 | sed "s/'//g")
+VERSION := $(shell grep "version =" bamliquidatorbatch/common_util.py | cut -d' ' -f 3 | sed "s/'//g")
 export VERSION
 
 # The directory to install in:
@@ -38,7 +38,7 @@ CC=g++
 
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
-CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+CPPFLAGS := -std=c++0x -O3 -g -Wall
 LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
@@ -79,7 +79,7 @@ setup(
 endef
 export SETUP_PY
 
-all: bamliquidator bamliquidator_bins bamliquidator_regions 
+all: bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
 bamliquidator: bamliquidator.m.o bamliquidator.o
 	$(CC) $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
@@ -91,6 +91,9 @@ bamliquidator_bins: bamliquidator_bins.m.o bamliquidator.o bamliquidator_util.o
 bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o bamliquidator_util.o
 	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o bamliquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
+
+motif_liquidator: motif_liquidator.m.cpp
+	$(CC) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -107,7 +110,7 @@ bamliquidator.o: bamliquidator.cpp bamliquidator.h
 bamliquidator_util.o: bamliquidator_util.cpp bamliquidator_util.h
 	$(CC) $(CPPFLAGS) -c bamliquidator_util.cpp
 
-EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
+EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
 archive:
 	mkdir bamliquidator-$(VERSION)
