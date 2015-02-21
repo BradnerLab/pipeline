@@ -203,7 +203,7 @@ def main():
     with tables.open_file(baseline_counts_file_path, mode = 'r') as baseline_counts_h5:
         with tables.open_file(filtered_counts_file_path, mode = 'r') as filtered_counts_h5:
             with tables.open_file(ratio_file_path, 'w') as ratios_h5:
-                logging.info('Calculating ratios between filtered and unfiltered bin counts')
+                logging.info('Calculating ratios between filtered and unfiltered counts')
                 start = time()
                 if args.regions_file:
                     ratios = create_region_ratio_table(ratios_h5)
