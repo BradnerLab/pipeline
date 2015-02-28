@@ -28,9 +28,9 @@ std::string complement(const std::string& sequence)
   return c;
 }
 
-void liquidate(const std::string& input_bam_file, std::vector<std::pair<const std::string, size_t>>& motif_counts)
+void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::string, size_t>>& motif_counts)
 {
-  std::vector<const std::string> reverse_complements;
+  std::vector<std::string> reverse_complements;
   for ( const auto& p : motif_counts )
   {
     std::string reverse_complement = complement(p.first);
@@ -99,12 +99,12 @@ int main(int argc, char** argv)
   const std::string control_bam_file = argv[1]; 
   const std::string target_bam_file = argv[2]; 
 
-  std::vector<std::pair<const std::string, size_t>> control_motif_counts;
+  std::vector<std::pair<std::string, size_t>> control_motif_counts;
   for (int i=3; i < argc; ++i)
   {
     control_motif_counts.push_back(std::make_pair<std::string, size_t>(argv[i], 0));
   }
-  std::vector<std::pair<const std::string, size_t>> target_motif_counts(control_motif_counts);
+  std::vector<std::pair<std::string, size_t>> target_motif_counts(control_motif_counts);
 
   try 
   {
