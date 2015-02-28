@@ -92,35 +92,35 @@ int main(int argc, char** argv)
 {
   if (argc < 4)
   {
-    std::cerr << "Usage: " << argv[0] << " [CONTROL_BAM] [TARGET_BAM] [MOTIF1] [MOTIF2] ... [MOTIFN]" << std::endl;
-    std::cerr << "e.g. " << argv[0] << " control.bam input.bam TGGGAA AGGG" << std::endl; 
+    std::cerr << "Usage: " << argv[0] << " [BACKGROUND_BAM] [TARGET_BAM] [MOTIF1] [MOTIF2] ... [MOTIFN]" << std::endl;
+    std::cerr << "e.g. " << argv[0] << " background.bam input.bam TGGGAA AGGG" << std::endl; 
     return 1;
   }
 
-  const std::string control_bam_file = argv[1]; 
+  const std::string background_bam_file = argv[1]; 
   const std::string target_bam_file = argv[2]; 
 
-  std::vector<std::pair<std::string, size_t>> control_motif_counts;
+  std::vector<std::pair<std::string, size_t>> background_motif_counts;
   for (int i=3; i < argc; ++i)
   {
-    control_motif_counts.push_back(std::make_pair<std::string, size_t>(argv[i], 0));
+    background_motif_counts.push_back(std::make_pair<std::string, size_t>(argv[i], 0));
   }
-  std::vector<std::pair<std::string, size_t>> target_motif_counts(control_motif_counts);
+  std::vector<std::pair<std::string, size_t>> target_motif_counts(background_motif_counts);
 
   try 
   {
-    liquidate(control_bam_file, control_motif_counts);
+    liquidate(background_bam_file, background_motif_counts);
     liquidate(target_bam_file, target_motif_counts);
-    std::cout << "motif\tcontrol\ttarget\n";
-    for (size_t i=0; i < control_motif_counts.size(); ++i)
+    std::cout << "motif\tbackground\ttarget\n";
+    for (size_t i=0; i < background_motif_counts.size(); ++i)
     {
-      const std::string& motif = control_motif_counts[i].first;
+      const std::string& motif = background_motif_counts[i].first;
       if (motif != target_motif_counts[i].first)
       {
         throw std::runtime_error("internal logic error");
       }
 
-      std::cout << motif << "\t" << control_motif_counts[i].second << "\t" << target_motif_counts[i].second << std::endl;
+      std::cout << motif << "\t" << background_motif_counts[i].second << "\t" << target_motif_counts[i].second << std::endl;
     }
   }
   catch(const std::exception& e)
