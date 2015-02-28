@@ -14,6 +14,7 @@ char complement(char c)
       case 'C': return 'G';
       case 'G': return 'C';
       case 'T': return 'A';
+      case 'N': return 'N';
     }
     throw std::runtime_error("no known complement for " + std::string(1, c));
 }
