@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 {
   if (argc < 4)
   {
-    std::cerr << "Usage: " << argv[0] << " [BACKGROUND_BAM] [TARGET_BAM] [MOTIF1] [MOTIF2] ... [MOTIFN]" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " [BACKGROUND_BAM] [TARGET_BAM] [MOTIF_1] [MOTIF_2] ... [MOTIF_N]" << std::endl;
     std::cerr << "e.g. " << argv[0] << " background.bam input.bam TGGGAA AGGG" << std::endl; 
     return 1;
   }
