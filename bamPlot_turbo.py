@@ -471,6 +471,7 @@ def main():
 
             chrom = chromLine[0]
             sense = chromLine[1]
+            assert(sense in {'+', '-'})
             [start, end] = chromLine[2].split('-')
             if chrom[0:3] != 'chr':
                 print('ERROR: UNRECOGNIZED GFF OR CHROMOSOME LINE INPUT')
