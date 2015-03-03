@@ -406,16 +406,16 @@ def main():
     parser = argparse.ArgumentParser(usage='%(prog)s [options]')
 
     # required flags
-    parser.add_argument("-b", "--bam", dest="bam", default=None,
-                      help="Enter a comma separated list of .bam files to be processed.")
-    parser.add_argument("-i", "--input", dest="input", default=None,
-                      help="Enter .gff or genomic region e.g. chr1:+:1-1000.")
-    parser.add_argument("-g", "--genome", dest="genome", default=None,
-                      help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported")
+    parser.add_argument("-b", "--bam", dest="bam", nargs='*',
+                      help="Enter a comma separated list of .bam files to be processed.", required=True)
+    parser.add_argument("-i", "--input", dest="input", type=str,
+                      help="Enter .gff or genomic region e.g. chr1:+:1-1000.", required=True)
+    parser.add_argument("-g", "--genome", dest="genome", type=str,
+                      help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported", required=True)
 
     # output flag
-    parser.add_argument("-o", "--output", dest="output", default=None,
-                      help="Enter the output folder.")
+    parser.add_argument("-o", "--output", dest="output", type=str,
+                      help="Enter the output folder.", required=True)
     # additional options
     parser.add_argument("-c", "--color", dest="color", default=None,
                       help="Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
@@ -439,8 +439,8 @@ def main():
                       help="Enter a comma separated list of scaling factors for your bams. Default is none")
     parser.add_argument("--save-temp", dest="save", action='store_true', default=False,
                       help="If flagged will save temporary files made by bamPlot")
-    parser.add_argument("--bed", dest="bed", default=None,
-                      help="Add a comma separated list of bam files to plot")
+    parser.add_argument("--bed", dest="bed",
+                      help="Add a space-delimited list of bed files to plot")
     parser.add_argument("--multi-page", dest="multi", action='store_true', default=False,
                       help="If flagged will create a new pdf for each region")
 
@@ -450,13 +450,18 @@ def main():
 
     if args.bam and args.input and args.genome and args.output:
 
-        # bring in the bams
-        bamFileList = args.bam.split(',')
+        # Support a legacy mode where a ',' delimited multiple files
+        bamFileList = args.bam
+        if len(args.bam) == 1:
+            bamFileList = args.bam[0].split(',')
+
 
         # bringing in any beds
         if args.bed:
+            bedFileList = args.bed
+            if len(args.bed) == 1:
+                bedFileList = args.bed[0].split(',')
 
-            bedFileList = args.bed.split(',')
             bedCollection = makeBedCollection(bedFileList)
         else:
             bedCollection = utils.LocusCollection([], 50)
