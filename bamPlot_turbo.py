@@ -30,6 +30,7 @@ THE SOFTWARE.
 #==========================================================================
 #=======================DEPENDENCIES=======================================
 #==========================================================================
+import argparse
 import sys
 import utils
 import pipeline_dfci
@@ -397,80 +398,77 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
 
 
 def main():
-    '''
+    """
     main run function
-    '''
+    """
 
-    from optparse import OptionParser
-
-    usage = "usage: %prog [options] -g [GENOME] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
-    parser = OptionParser(usage=usage)
+    #usage = "usage: %prog [options] -g [GENOME] -b [SORTED BAMFILE(S)] -i [INPUTFILE] -o [OUTPUTFOLDER]"
+    parser = argparse.ArgumentParser(usage='%(prog)s [options]')
 
     # required flags
-    parser.add_option("-b", "--bam", dest="bam", nargs=1, default=None,
+    parser.add_argument("-b", "--bam", dest="bam", default=None,
                       help="Enter a comma separated list of .bam files to be processed.")
-    parser.add_option("-i", "--input", dest="input", nargs=1, default=None,
+    parser.add_argument("-i", "--input", dest="input", default=None,
                       help="Enter .gff or genomic region e.g. chr1:+:1-1000.")
-    parser.add_option("-g", "--genome", dest="genome", nargs=1, default=None,
+    parser.add_argument("-g", "--genome", dest="genome", default=None,
                       help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported")
 
     # output flag
-    parser.add_option("-o", "--output", dest="output", nargs=1, default=None,
+    parser.add_argument("-o", "--output", dest="output", default=None,
                       help="Enter the output folder.")
     # additional options
-    parser.add_option("-c", "--color", dest="color", nargs=1, default=None,
+    parser.add_argument("-c", "--color", dest="color", default=None,
                       help="Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
-    parser.add_option("-s", "--sense", dest="sense", nargs=1, default='both',
+    parser.add_argument("-s", "--sense", dest="sense", default='both',
                       help="Map to '+','-' or 'both' strands. Default maps to both.")
-    parser.add_option("-e", "--extension", dest="extension", nargs=1, default=200,
+    parser.add_argument("-e", "--extension", dest="extension", default=200,
                       help="Extends reads by n bp. Default value is 200bp")
-    parser.add_option("-r", "--rpm", dest="rpm", action='store_true', default=False,
+    parser.add_argument("-r", "--rpm", dest="rpm", action='store_true', default=False,
                       help="Normalizes density to reads per million (rpm) Default is False")
-    parser.add_option("-y", "--yScale", dest="yScale", nargs=1, default="relative",
+    parser.add_argument("-y", "--yScale", dest="yScale", default="relative",
                       help="Choose either relative or uniform y axis scaling. options = 'relative,uniform' Default is relative scaling")
-    parser.add_option("-n", "--names", dest="names", nargs=1, default=None,
+    parser.add_argument("-n", "--names", dest="names", default=None,
                       help="Enter a comma separated list of names for your bams")
-    parser.add_option("-p", "--plot", dest="plot", nargs=1, default="MULTIPLE",
+    parser.add_argument("-p", "--plot", dest="plot", default="MULTIPLE",
                       help="Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE,MERGE'")
-    parser.add_option("-t", "--title", dest="title", nargs=1, default='',
+    parser.add_argument("-t", "--title", dest="title", default='',
                       help="Specify a title for the output plot(s), default will be the coordinate region")
 
     # DEBUG OPTION TO SAVE TEMP FILES
-    parser.add_option("--scale", dest="scale", nargs=1, default='',
+    parser.add_argument("--scale", dest="scale", default='',
                       help="Enter a comma separated list of scaling factors for your bams. Default is none")
-    parser.add_option("--save-temp", dest="save", action='store_true', default=False,
+    parser.add_argument("--save-temp", dest="save", action='store_true', default=False,
                       help="If flagged will save temporary files made by bamPlot")
-    parser.add_option("--bed", dest="bed", nargs=1, default=None,
+    parser.add_argument("--bed", dest="bed", default=None,
                       help="Add a comma separated list of bam files to plot")
-    parser.add_option("--multi-page", dest="multi", action='store_true', default=False,
+    parser.add_argument("--multi-page", dest="multi", action='store_true', default=False,
                       help="If flagged will create a new pdf for each region")
 
-    (options, args) = parser.parse_args()
+    args = parser.parse_args()
 
-    print(options)
     print(args)
 
-    if options.bam and options.input and options.genome and options.output:
+    if args.bam and args.input and args.genome and args.output:
 
         # bring in the bams
-        bamFileList = options.bam.split(',')
+        bamFileList = args.bam.split(',')
 
         # bringing in any beds
-        if options.bed:
+        if args.bed:
 
-            bedFileList = options.bed.split(',')
+            bedFileList = args.bed.split(',')
             bedCollection = makeBedCollection(bedFileList)
         else:
             bedCollection = utils.LocusCollection([], 50)
 
         # bring in the gff
         try:
-            gff = utils.parseTable(options.input, '\t')
-            gffName = options.input.split('/')[-1].split('.')[0]
+            gff = utils.parseTable(args.input, '\t')
+            gffName = args.input.split('/')[-1].split('.')[0]
         except IOError:
             # means a coordinate line has been given e.g. chr1:+:1-100
 
-            chromLine = options.input.split(':')
+            chromLine = args.input.split(':')
 
             chrom = chromLine[0]
             sense = chromLine[1]
@@ -479,12 +477,12 @@ def main():
             if chrom[0:3] != 'chr':
                 print('ERROR: UNRECOGNIZED GFF OR CHROMOSOME LINE INPUT')
                 exit()
-            gffLine = [chrom, '', options.input, start, end, '', sense, '', '']
+            gffLine = [chrom, '', args.input, start, end, '', sense, '', '']
             gffName = "%s_%s_%s_%s" % (chrom, sense, start, end)
             gff = [gffLine]
 
         # bring in the genome
-        genome = options.genome.upper()
+        genome = args.genome.upper()
         if ['HG18', 'HG19', 'MM9', 'MM10', 'RN4'].count(genome) == 0:
             print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN4, MM9, or MM10' % (genome))
             parser.print_help()
@@ -493,7 +491,7 @@ def main():
         # bring in the rest of the options
 
         # output
-        rootFolder = options.output
+        rootFolder = args.output
         if rootFolder[-1] != '/':
             rootFolder += '/'
         try:
@@ -503,10 +501,10 @@ def main():
             exit()
 
         # Get analysis title
-        if len(options.title) == 0:
+        if len(args.title) == 0:
             title = gffName
         else:
-            title = options.title
+            title = args.title
 
         # make a temp folder
         tempFolder = rootFolder + title + '/'
@@ -514,8 +512,8 @@ def main():
         pipeline_dfci.formatFolder(tempFolder, create=True)
 
         # colors
-        if options.color:
-            colorList = options.color.split(':')
+        if args.color:
+            colorList = args.color.split(':')
             colorList = [x.split(',') for x in colorList]
             if len(colorList) < len(bamFileList):
                 print('WARNING: FEWER COLORS THAN BAMS SPECIFIED. COLORS WILL BE RECYCLED')
@@ -528,19 +526,19 @@ def main():
             colorList = tasteTheRainbow(len(bamFileList))
 
         # sense
-        sense = options.sense
+        sense = args.sense
 
-        extension = int(options.extension)
+        extension = int(args.extension)
 
-        rpm = options.rpm
+        rpm = args.rpm
 
-        scale = options.scale
+        scale = args.scale
 
-        yScale = options.yScale.upper()
+        yScale = args.yScale.upper()
 
         # names
-        if options.names:
-            names = options.names.split(',')
+        if args.names:
+            names = args.names.split(',')
 
             if len(names) != len(bamFileList):
                 print('ERROR: NUMBER OF NAMES AND NUMBER OF BAMS DO NOT CORRESPOND')
@@ -550,7 +548,7 @@ def main():
             names = [x.split('/')[-1] for x in bamFileList]
 
         # plot style
-        plotStyle = options.plot.upper()
+        plotStyle = args.plot.upper()
         if ['SINGLE', 'MULTIPLE','MERGE'].count(plotStyle) == 0:
             print('ERROR: PLOT STYLE %s NOT AN OPTION' % (plotStyle))
             parser.print_help()
@@ -561,7 +559,7 @@ def main():
         print ("%s is the summary table" % (summaryTableFileName))
 
         #running the R command to plot
-        multi = options.multi
+        multi = args.multi
         outFile = "%s%s_plots.pdf" % (rootFolder, title)
         rCmd = callRPlot(summaryTableFileName, outFile, yScale, plotStyle,multi)
 
@@ -575,7 +573,7 @@ def main():
         os.system("bash %s" % (bashFileName))
 
         # delete temp files
-        if not options.save:
+        if not args.save:
             if utils.checkOutput(outFile, 1, 10):
                 removeCommand = "rm -rf %s" % (tempFolder)
                 print(removeCommand)
