@@ -143,7 +143,7 @@ gtest:
 	(cd gtest/build; cmake ..; make)
 
 cpp_test: gtest test.cpp
-	$(CC)	-I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
+	$(CC)	$(CPPFLAGS) -I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
 
 test: cpp_test 
 	./cpp_test
