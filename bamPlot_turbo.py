@@ -38,7 +38,8 @@ import os
 import string
 
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
-bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
+# bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
+bamliquidatorString = '/usr/bin/bamliquidator'
 
 # as of now the number of bins to sample the space is hard wired
 nBins = 200
@@ -408,7 +409,7 @@ def main():
     parser.add_option("-i", "--input", dest="input", nargs=1, default=None,
                       help="Enter .gff or genomic region e.g. chr1:+:1-1000.")
     parser.add_option("-g", "--genome", dest="genome", nargs=1, default=None,
-                      help="specify a genome, HG18,HG19,MM8,MM9 are currently supported")
+                      help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported")
 
     # output flag
     parser.add_option("-o", "--output", dest="output", nargs=1, default=None,
@@ -480,8 +481,8 @@ def main():
 
         # bring in the genome
         genome = options.genome.upper()
-        if ['HG18', 'HG19', 'MM9', 'RN4'].count(genome) == 0:
-            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN4, OR MM9' % (genome))
+        if ['HG18', 'HG19', 'MM9', 'MM10', 'RN4'].count(genome) == 0:
+            print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN4, MM9, or MM10' % (genome))
             parser.print_help()
             exit()
 
