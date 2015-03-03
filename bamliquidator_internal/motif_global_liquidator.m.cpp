@@ -29,6 +29,31 @@ std::string complement(const std::string& sequence)
   return c;
 }
 
+bool contains(const std::string& haystack, const std::string& needle)
+{
+  // naive implementation just to get started
+  const char match_any_char = 'N';
+
+  for (size_t i=0; i < haystack.size(); ++i)
+  {
+    for (size_t j=0; j < needle.size() && (j + i) < haystack.size(); ++j)
+    {
+      if (needle[j] != match_any_char && haystack[j + i] != match_any_char)
+      {
+        if (needle[j] != haystack[j + i])
+        {
+          break;
+        }
+      }
+      if (j == needle.size() - 1)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::string, size_t>>& motif_counts)
 {
   std::vector<std::string> reverse_complements;
@@ -75,8 +100,7 @@ void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::str
 
     for (size_t i=0; i < motif_counts.size(); ++i)
     {
-      if (   sequence.find(motif_counts[i].first)  != std::string::npos 
-          || sequence.find(reverse_complements[i]) != std::string::npos)
+      if (contains(sequence, motif_counts[i].first) || contains(sequence, reverse_complements[i]))
       {
         ++(motif_counts[i].second);
       }
