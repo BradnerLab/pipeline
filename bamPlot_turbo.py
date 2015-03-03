@@ -39,7 +39,7 @@ import string
 
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local (in path), otherwise fail.
 # bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
-bamliquidatorString = '/usr/bin/bamliquidator'
+bamliquidatorString = '/usr/local/bin/bamliquidator'
 
 # as of now the number of bins to sample the space is hard wired
 nBins = 200
@@ -471,7 +471,7 @@ def main():
 
             chrom = chromLine[0]
             sense = chromLine[1]
-            assert(sense in {'+', '-'})
+            assert(sense in {'+', '-', '.'})
             [start, end] = chromLine[2].split('-')
             if chrom[0:3] != 'chr':
                 print('ERROR: UNRECOGNIZED GFF OR CHROMOSOME LINE INPUT')
