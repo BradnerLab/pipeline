@@ -63,6 +63,7 @@ def loadAnnotFile(genome):
     genomeDict = {
         'HG18': 'annotation/hg18_refseq.ucsc',
         'MM9': 'annotation/mm9_refseq.ucsc',
+        'MM10': 'annotation/mm10_refseq.ucsc',
         'hg18': 'annotation/hg18_refseq.ucsc',
         'mm9': 'annotation/mm9_refseq.ucsc',
         'HG19': 'annotation/hg19_refseq.ucsc',
