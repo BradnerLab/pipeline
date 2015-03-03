@@ -120,19 +120,17 @@ def open(fileName,mode='r'):
 #a nested list such that list[row][col]
 #example call:
 #table = parseTable('file.txt','\t')
-def parseTable(fn, sep, header = False, excel = False):
+def parseTable(fn, sep, header = False,excel = False):
     fh = open(fn)
-    lines = fh.readlines()
-    fh.close()
-    if excel:
-        lines = lines[0].split('\r')
-    if lines[0].count('\r') > 0:
-        lines = lines[0].split('\r')
-    table = []
     if header == True:
-        lines = lines[1:]
-    for i in lines:
-        table.append(i.rstrip().split(sep))
+        header = fh.readline() #disposes of the header
+
+    table = []
+    for line in fh:
+        line = line.rstrip().split(sep)
+        table.append(line)
+
+    fh.close()
 
     return table
 
