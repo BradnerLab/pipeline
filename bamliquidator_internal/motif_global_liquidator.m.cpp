@@ -1,3 +1,5 @@
+#include "bamliquidator_util.h"
+
 #include <samtools/bam.h>
 
 #include <algorithm>
@@ -27,31 +29,6 @@ std::string complement(const std::string& sequence)
     c[i] = complement(sequence[i]);
   }
   return c;
-}
-
-bool contains(const std::string& haystack, const std::string& needle)
-{
-  // naive implementation just to get started
-  const char match_any_char = 'N';
-
-  for (size_t i=0; i < haystack.size(); ++i)
-  {
-    for (size_t j=0; j < needle.size() && (j + i) < haystack.size(); ++j)
-    {
-      if (needle[j] != match_any_char && haystack[j + i] != match_any_char)
-      {
-        if (needle[j] != haystack[j + i])
-        {
-          break;
-        }
-      }
-      if (j == needle.size() - 1)
-      {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 // returns total number of reads

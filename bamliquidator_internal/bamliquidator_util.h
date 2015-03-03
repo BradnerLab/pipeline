@@ -13,6 +13,32 @@
 
 // todo: use a namespace here
 
+inline bool contains(const std::string& haystack, const std::string& needle)
+{
+  // naive implementation just to get started
+  const char match_any_char = 'N';
+
+  for (size_t i=0; i < haystack.size(); ++i)
+  {
+    for (size_t j=0; j < needle.size() && (j + i) < haystack.size(); ++j)
+    {
+      if (needle[j] != match_any_char && haystack[j + i] != match_any_char)
+      {
+        if (needle[j] != haystack[j + i])
+        {
+          break;
+        }
+      }
+      if (j == needle.size() - 1)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+
 // copies str to dest
 // precondition: dest_size > 0
 // postcondition: dest is null terminated, dest isn't overflowed, and any excess in dest is filled with \0 characters
