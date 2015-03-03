@@ -54,7 +54,8 @@ bool contains(const std::string& haystack, const std::string& needle)
   return false;
 }
 
-void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::string, size_t>>& motif_counts)
+// returns total number of reads
+size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::string, size_t>>& motif_counts)
 {
   std::vector<std::string> reverse_complements;
   for ( const auto& p : motif_counts )
@@ -74,9 +75,11 @@ void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::str
   }
 
   std::string sequence;
+  size_t read_count = 0;
 
   while (bam_read1(input, read) >= 0)
   {
+    ++read_count;
     const bam1_core_t *c = &read->core;
     uint8_t *s = bam1_seq(read);
 
@@ -110,6 +113,8 @@ void liquidate(const std::string& input_bam_file, std::vector<std::pair<std::str
   bam_header_destroy(header);
   bam_close(input);
   bam_destroy1(read);
+
+  return read_count;
 }
 
 int main(int argc, char** argv)
@@ -133,8 +138,9 @@ int main(int argc, char** argv)
 
   try 
   {
-    liquidate(background_bam_file, background_motif_counts);
-    liquidate(target_bam_file, target_motif_counts);
+    size_t background_count = liquidate(background_bam_file, background_motif_counts);
+    size_t target_count     = liquidate(target_bam_file,     target_motif_counts);
+
     std::cout << "motif\tbackground\ttarget\n";
     for (size_t i=0; i < background_motif_counts.size(); ++i)
     {
@@ -146,6 +152,9 @@ int main(int argc, char** argv)
 
       std::cout << motif << "\t" << background_motif_counts[i].second << "\t" << target_motif_counts[i].second << std::endl;
     }
+    std::cout << std::endl 
+              << "background reads: " << background_count << std::endl
+              << "target reads: " << target_count << std::endl;
   }
   catch(const std::exception& e)
   {
