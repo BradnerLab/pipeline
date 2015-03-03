@@ -141,7 +141,7 @@ int main(int argc, char** argv)
     size_t background_count = liquidate(background_bam_file, background_motif_counts);
     size_t target_count     = liquidate(target_bam_file,     target_motif_counts);
 
-    std::cout << "motif\tbackground\ttarget\n";
+    std::cout << "motif\tbackground (normalized)\ttarget (normalized)\n";
     for (size_t i=0; i < background_motif_counts.size(); ++i)
     {
       const std::string& motif = background_motif_counts[i].first;
@@ -150,7 +150,12 @@ int main(int argc, char** argv)
         throw std::runtime_error("internal logic error");
       }
 
-      std::cout << motif << "\t" << background_motif_counts[i].second << "\t" << target_motif_counts[i].second << std::endl;
+      size_t background_matches = background_motif_counts[i].second; 
+      size_t target_matches     = target_motif_counts[i].second;
+      double background_matches_normalized = background_matches / ( double(background_count) / 1E6);
+      double target_matches_normalized     = target_matches     / ( double(target_count)     / 1E6);
+      std::cout << motif << "\t" << background_matches << " (" << background_matches_normalized << ")\t" 
+                                 << target_matches     << " (" << target_matches_normalized     << ")\n";
     }
     std::cout << std::endl 
               << "background reads: " << background_count << std::endl
