@@ -22,7 +22,7 @@ inline bool contains(const std::string& haystack, const std::string& needle)
   {
     for (size_t j=0; j < needle.size() && (j + i) < haystack.size(); ++j)
     {
-      if (needle[j] != match_any_char && haystack[j + i] != match_any_char)
+      if (needle[j] != match_any_char)
       {
         if (needle[j] != haystack[j + i])
         {

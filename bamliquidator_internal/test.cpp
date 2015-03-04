@@ -16,7 +16,7 @@ TEST(contains, misc)
   EXPECT_FALSE(contains("abc", "d"));
 
   EXPECT_TRUE(contains("N", "N"));
-  EXPECT_TRUE(contains("N", "A"));
+  EXPECT_FALSE(contains("N", "A"));
   EXPECT_TRUE(contains("A", "N"));
 
   EXPECT_TRUE(contains("AB", "N"));
@@ -25,7 +25,10 @@ TEST(contains, misc)
   
   EXPECT_FALSE(contains("BB", "AN"));
   EXPECT_FALSE(contains("BN", "AN"));
+  EXPECT_TRUE(contains("BN", "BN"));
   EXPECT_TRUE(contains("ABB", "ANB"));
+
+  EXPECT_TRUE(contains("GGGGGTAGAAGAGGAAGAGAGGAGGGGGGAAATCCCCTTT", "GGGAAATCCCCT"));
 }
 
 int main(int argc, char **argv)
