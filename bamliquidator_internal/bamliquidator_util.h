@@ -31,10 +31,6 @@ inline bool contains(const std::string& haystack, const std::string& needle)
       }
       if (j == needle.size() - 1)
       {
-        std::string spaces(13+i, ' ');
-        //            123456789012
-        std::cout << "MATCH at " << i << ": " << haystack << '\n' 
-                   << spaces << needle << std::endl;
         return true;
       }
     }
