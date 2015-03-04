@@ -72,9 +72,18 @@ size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::s
       sequence = std::string(c->l_qseq, ' '); 
     }
 
+    bool readHasN = false; 
     for (int i = 0; i < c->l_qseq; ++i)
     {
       sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
+      if (sequence[i] == 'N') 
+      {
+        readHasN = true; 
+      }
+    }
+    if (readHasN)
+    {
+      continue; // reads with Ns are considered poor and should not be checked
     }
 
 
