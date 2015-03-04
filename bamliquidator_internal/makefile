@@ -95,7 +95,7 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o bamliquidator_u
 motif_liquidator: motif_liquidator.m.cpp
 	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
 
-motif_global_liquidator: motif_global_liquidator.m.cpp
+motif_global_liquidator: motif_global_liquidator.m.cpp bamliquidator_util.h
 	$(CC) $(CPPFLAGS) motif_global_liquidator.m.cpp $(LDFLAGS) -o motif_global_liquidator $(LDLIBS)
 
 bamliquidator.m.o: bamliquidator.m.cpp
