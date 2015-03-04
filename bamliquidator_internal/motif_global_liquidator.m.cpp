@@ -56,7 +56,6 @@ size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::s
 
   while (bam_read1(input, read) >= 0)
   {
-    ++read_count;
     const bam1_core_t *c = &read->core;
     uint8_t *s = bam1_seq(read);
 
@@ -85,7 +84,7 @@ size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::s
     {
       continue; // reads with Ns are considered poor and should not be checked
     }
-
+    ++read_count;
 
     for (size_t i=0; i < motif_counts.size(); ++i)
     {
