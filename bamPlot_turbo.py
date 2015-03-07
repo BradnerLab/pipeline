@@ -31,12 +31,16 @@ THE SOFTWARE.
 #=======================DEPENDENCIES=======================================
 #==========================================================================
 import argparse
+import cPickle
+import gzip
 import sys
 import utils
 import pipeline_dfci
 import subprocess
 import os
 import string
+import tempfile
+import zlib
 
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local default, otherwise fail.
 bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
@@ -61,10 +65,10 @@ whereAmI = os.path.dirname(os.path.realpath(__file__))
 #==========================================================================
 
 
-def loadAnnotFile(genome):
-    '''
+def loadAnnotFile(genome, skip_cache=False):
+    """
     load in the annotation and create a geneDict and transcription collection
-    '''
+    """
     genomeDict = {
         'HG18': 'annotation/hg18_refseq.ucsc',
         'MM9': 'annotation/mm9_refseq.ucsc',
@@ -78,10 +82,42 @@ def loadAnnotFile(genome):
     }
 
     annotFile = whereAmI + '/' + genomeDict[genome]
+
+
+    if not skip_cache:
+        # Try loading from a cache, if the crc32 matches
+        annotPathHash = zlib.crc32(annotFile) & 0xFFFFFFFF  # hash the entire location of this script
+        annotFileHash = zlib.crc32(open(annotFile, "rb").read()) & 0xFFFFFFFF
+
+        cache_file_name = "%s.%s.%s.cache" % (genome, annotPathHash, annotFileHash)
+
+        cache_file_path = '%s/%s' % (tempfile.gettempdir(), cache_file_name)
+
+        if os.path.isfile(cache_file_path):
+            # Cache exists! Load it!
+            try:
+                print('\tLoading genome data from cache.')
+                with gzip.open(cache_file_path, 'rb') as cache_fh:
+                    cached_data = cPickle.load(cache_fh)
+                return cached_data
+            except IOError:
+                # Pickle corrupt? Let's get rid of it.
+                print('\tWARNING: Cache corrupt or unreadable. Ignoring.')
+        else:
+            print('\tNo cache exists: Loading annotation (slow).')
+
+
+    # We're still here, so either caching was disabled, or the cache doesn't exist
+
     # geneList =['NM_002460','NM_020185']
     geneList = []
     geneDict = utils.makeGenes(annotFile, geneList, True)
     txCollection = utils.makeTranscriptCollection(annotFile, 0, 0, 500, geneList)
+
+    if not skip_cache:
+        print('Writing cache for the first time.')
+        with gzip.open(cache_file_path, 'wb', 1) as cache_fh:
+            cPickle.dump((geneDict, txCollection), cache_fh)
 
     return geneDict, txCollection
 
