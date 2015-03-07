@@ -449,14 +449,16 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
     makes a LocusCollection w/ each transcript as a locus
     takes in either a refseqfile or an ensemblGFF
     '''
+
     if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         locusList = []
         ticker = 0
         if len(geneList) == 0:
-            geneList =refseqDict.keys()
+            geneList = refseqDict.keys()
+
         for line in refseqTable[1:]:
-            if geneList.count(line[1]) > 0:
+            if line[1] in geneList:
                 if line[3] == '-':
                     locus = Locus(line[2],int(line[4])-downSearch,int(line[5])+upSearch,line[3],line[1])
                 else:
@@ -554,8 +556,7 @@ class Locus:
     # start,end = ints of the start and end coords of the locus;
     #      end coord is the coord of the last nucleotide.
     def __init__(self,chr,start,end,sense,ID=''):
-        coords = [int(start),int(end)]
-        coords.sort()
+        coords = sorted([int(start), int(end)])
         # this method for assigning chromosome should help avoid storage of
         # redundant strings.
         if not(self.__chrDict.has_key(chr)): self.__chrDict[chr] = chr
