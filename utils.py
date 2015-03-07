@@ -417,16 +417,15 @@ def makeGenes(annotFile,geneList=[],asDict = False):
     if annotFile.upper().count('REFSEQ') == 1:
         refTable,refDict = importRefseq(annotFile)
 
-
         if len(geneList) == 0:
             geneList = refDict.keys()
+
         for refseqID in geneList:
-            if refDict.has_key(refseqID):
-                geneIndex = refDict[refseqID][0]
-            else:
+            if refseqID not in refDict:
                 #print('no such gene ' + str(refseqID))
                 continue
 
+            geneIndex = refDict[refseqID][0]
             geneLine = refTable[int(geneIndex)]
             exonStarts = map(int,geneLine[9].split(',')[:-1])
             exonEnds = map(int,geneLine[10].split(',')[:-1])
@@ -878,10 +877,8 @@ class Gene:
         else:
             self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
 
-        exStarts = map(lambda i: i, exStarts)
-        exEnds = map(lambda i: i, exEnds)
-        exStarts.sort()
-        exEnds.sort()
+        exStarts = sorted(map(lambda i: i, exStarts))
+        exEnds = sorted(map(lambda i: i, exEnds))
 
         self._txExons = []
         self._cdExons = []
