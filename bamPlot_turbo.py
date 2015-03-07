@@ -32,7 +32,6 @@ THE SOFTWARE.
 #==========================================================================
 import argparse
 import cPickle
-import gzip
 import sys
 import utils
 import pipeline_dfci
@@ -97,10 +96,11 @@ def loadAnnotFile(genome, skip_cache=False):
             # Cache exists! Load it!
             try:
                 print('\tLoading genome data from cache.')
-                with gzip.open(cache_file_path, 'rb') as cache_fh:
+                with open(cache_file_path, 'rb') as cache_fh:
                     cached_data = cPickle.load(cache_fh)
+                    print('done')
                 return cached_data
-            except IOError:
+            except (IOError, cPickle.UnpicklingError):
                 # Pickle corrupt? Let's get rid of it.
                 print('\tWARNING: Cache corrupt or unreadable. Ignoring.')
         else:
@@ -116,8 +116,8 @@ def loadAnnotFile(genome, skip_cache=False):
 
     if not skip_cache:
         print('Writing cache for the first time.')
-        with gzip.open(cache_file_path, 'wb', 1) as cache_fh:
-            cPickle.dump((geneDict, txCollection), cache_fh)
+        with open(cache_file_path, 'wb') as cache_fh:
+            cPickle.dump((geneDict, txCollection), cache_fh, cPickle.HIGHEST_PROTOCOL)
 
     return geneDict, txCollection
 
