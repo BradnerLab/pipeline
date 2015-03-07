@@ -98,7 +98,7 @@ def loadAnnotFile(genome, skip_cache=False):
                 print('\tLoading genome data from cache.')
                 with open(cache_file_path, 'rb') as cache_fh:
                     cached_data = cPickle.load(cache_fh)
-                    print('done')
+                    print('\tCache loaded.')
                 return cached_data
             except (IOError, cPickle.UnpicklingError):
                 # Pickle corrupt? Let's get rid of it.
