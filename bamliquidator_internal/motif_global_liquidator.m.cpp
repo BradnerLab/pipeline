@@ -65,10 +65,7 @@ size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::s
 
     for (size_t i=0; i < motif_counts.size(); ++i)
     {
-      if (contains(sequence, motif_counts[i].first) || contains(sequence, reverse_complements[i]))
-      {
-        ++(motif_counts[i].second);
-      }
+      motif_counts[i].second += count(sequence, motif_counts[i].first) + count(sequence, reverse_complements[i]);
     }
   }
 

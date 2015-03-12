@@ -13,10 +13,12 @@
 
 // todo: use a namespace here
 
-inline bool contains(const std::string& haystack, const std::string& needle)
+inline int count(const std::string& haystack, const std::string& needle)
 {
   // naive implementation just to get started
   const char match_any_char = 'N';
+
+  int count = 0;
 
   for (size_t i=0; i < haystack.size(); ++i)
   {
@@ -31,11 +33,12 @@ inline bool contains(const std::string& haystack, const std::string& needle)
       }
       if (j == needle.size() - 1)
       {
-        return true;
+        ++count;
       }
     }
   }
-  return false;
+
+  return count;
 }
 
 inline char complement(char c)

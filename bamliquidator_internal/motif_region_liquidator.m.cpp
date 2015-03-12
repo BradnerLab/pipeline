@@ -46,10 +46,7 @@ static int bam_fetch_func(const bam1_t* read, void* void_triple)
 
   for (size_t i=0; i < motif_counts.size(); ++i)
   {
-    if (contains(sequence, motif_counts[i].first) || contains(sequence, reverse_complements[i]))
-    {
-      ++(motif_counts[i].second);
-    }
+    motif_counts[i].second += count(sequence, motif_counts[i].first) + count(sequence, reverse_complements[i]);
   }
 
   return 0;

@@ -2,38 +2,55 @@
 
 #include "bamliquidator_util.h"
 
-TEST(contains, misc)
+TEST(count, misc)
 {
-  EXPECT_FALSE(contains("", ""));
-  EXPECT_FALSE(contains("", "A"));
-  EXPECT_FALSE(contains("A", "B"));
+  EXPECT_EQ(0, count("", ""));
+  EXPECT_EQ(0, count("", "A"));
+  EXPECT_EQ(0, count("A", "B"));
 
-  EXPECT_TRUE(contains("A", "A"));
-  EXPECT_TRUE(contains("abc", "a"));
-  EXPECT_TRUE(contains("abc", "bc"));
-  EXPECT_TRUE(contains("bcbcbcbcdbcbc", "bcd"));
-  EXPECT_FALSE(contains("bcbcbcbcdbcbc", "bccd"));
-  EXPECT_FALSE(contains("abc", "d"));
+  EXPECT_EQ(1, count("A", "A"));
+  EXPECT_EQ(1, count("abc", "a"));
+  EXPECT_EQ(1, count("abc", "bc"));
 
-  EXPECT_TRUE(contains("N", "N"));
-  EXPECT_FALSE(contains("N", "A"));
-  EXPECT_TRUE(contains("A", "N"));
+  EXPECT_EQ(1, count("bcbcbcbcdbcbc", "bcd"));
+  //                     1. bcd
 
-  EXPECT_TRUE(contains("AB", "N"));
-  EXPECT_TRUE(contains("NB", "N"));
-  EXPECT_TRUE(contains("BN", "N"));
+  EXPECT_EQ(0, count("bcbcbcbcdbcbc", "bccd"));
+  EXPECT_EQ(0, count("abc", "d"));
+
+  EXPECT_EQ(1, count("N", "N"));
+  EXPECT_EQ(0, count("N", "A"));
+  EXPECT_EQ(1, count("A", "N"));
+
+  EXPECT_EQ(2, count("AB", "N"));
+  EXPECT_EQ(2, count("NB", "N"));
+  EXPECT_EQ(2, count("BN", "N"));
   
-  EXPECT_FALSE(contains("BB", "AN"));
-  EXPECT_FALSE(contains("BN", "AN"));
-  EXPECT_TRUE(contains("BN", "BN"));
-  EXPECT_TRUE(contains("ABB", "ANB"));
+  EXPECT_EQ(0, count("BB", "AN"));
+  EXPECT_EQ(0, count("BN", "AN"));
+  EXPECT_EQ(1, count("BN", "BN"));
+  EXPECT_EQ(1, count("ABB", "ANB"));
 
-  EXPECT_TRUE(contains("GGGGGTAGAAGAGGAAGAGAGGAGGGGGGAAATCCCCTTT", "GGGAAATCCCCT"));
-  EXPECT_TRUE(contains("TTGGAAGGTACTCCTTTTTAGTAAGGGAAATCCCCTCTTC", "GGGAAATCCCCT"));
-  EXPECT_TRUE(contains("CATGGACACGGGACAGGTATTCAGCGGAAATTCCTTCCAG", "GGNNNTTCC"));
+  EXPECT_EQ(1, count("GGGGGTAGAAGAGGAAGAGAGGAGGGGGGAAATCCCCTTT", "GGGAAATCCCCT"));
+  //                                         1. GGGAAATCCCCT
 
-  EXPECT_FALSE(contains("GATGGATCACAGGTCTATCACCCTATTAACCACTCACGGG", "AGGGGATTTCCC"));
-  EXPECT_FALSE(contains("GAGCTCTCCATGCATTTGGTATTTTCGTCTGGGGGGTGTG", "GGNNNTTCC"));
+  EXPECT_EQ(1, count("TTGGAAGGTACTCCTTTTTAGTAAGGGAAATCCCCTCTTC", "GGGAAATCCCCT"));
+  //                                       1. GGGAAATCCCCT
+
+  EXPECT_EQ(1, count("CATGGACACGGGACAGGTATTCAGCGGAAATTCCTTCCAG", "GGNNNTTCC"));
+  //                                        1. GGNNNTTCC
+
+  EXPECT_EQ(0, count("GATGGATCACAGGTCTATCACCCTATTAACCACTCACGGG", "AGGGGATTTCCC"));
+  EXPECT_EQ(0, count("GAGCTCTCCATGCATTTGGTATTTTCGTCTGGGGGGTGTG", "GGNNNTTCC"));
+
+  EXPECT_EQ(2, count("TTGGAAGATACTCCTTTTAAGAAG", "AAGA"));
+  //               1.     AAGA
+  //               2.                   AAGA
+
+  EXPECT_EQ(3, count("TTGGAAGATACTCCTTTTAAGAAGAGGAAATCCCCTCTTC", "AAGA"));
+  //               1.     AAGA
+  //               2.                   AAGA
+  //               3.                      AAGA
 }
 
 int main(int argc, char **argv)
