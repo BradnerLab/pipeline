@@ -51,6 +51,14 @@ TEST(count, misc)
   //               1.     AAGA
   //               2.                   AAGA
   //               3.                      AAGA
+
+  EXPECT_EQ(2, count("ATTTAAAAATTAATTTAATGCTTGGCTAAATCTTAATTACATATATAATT", "TAAA"));
+  //               1.    TAAA
+  //               2.                           TAAA
+
+  EXPECT_EQ(2, count("ATTTAAAAATTAATTTAATGCTTGGCTAAATCTTAATTACATATATAATT", "TTTA"));
+  //               1.  TTTA
+  //               2.              TTTA
 }
 
 int main(int argc, char **argv)
