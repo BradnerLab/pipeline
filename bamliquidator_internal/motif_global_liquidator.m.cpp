@@ -8,29 +8,6 @@
 #include <vector>
 #include <utility>
 
-char complement(char c)
-{
-    switch(c)
-    {
-      case 'A': return 'T';
-      case 'C': return 'G';
-      case 'G': return 'C';
-      case 'T': return 'A';
-      case 'N': return 'N';
-    }
-    throw std::runtime_error("no known complement for " + std::string(1, c));
-}
-
-std::string complement(const std::string& sequence)
-{
-  std::string c = sequence;
-  for (size_t i=0; i < c.size(); ++i)
-  {
-    c[i] = complement(sequence[i]);
-  }
-  return c;
-}
-
 // returns total number of reads
 size_t liquidate(const std::string& input_bam_file, std::vector<std::pair<std::string, size_t>>& motif_counts)
 {

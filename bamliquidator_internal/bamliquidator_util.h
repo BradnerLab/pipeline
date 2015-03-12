@@ -38,6 +38,28 @@ inline bool contains(const std::string& haystack, const std::string& needle)
   return false;
 }
 
+inline char complement(char c)
+{
+    switch(c)
+    {
+      case 'A': return 'T';
+      case 'C': return 'G';
+      case 'G': return 'C';
+      case 'T': return 'A';
+      case 'N': return 'N';
+    }
+    throw std::runtime_error("no known complement for " + std::string(1, c));
+}
+
+inline std::string complement(const std::string& sequence)
+{
+  std::string c = sequence;
+  for (size_t i=0; i < c.size(); ++i)
+  {
+    c[i] = complement(sequence[i]);
+  }
+  return c;
+}
 
 // copies str to dest
 // precondition: dest_size > 0
