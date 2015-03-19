@@ -52,7 +52,7 @@ static int bam_fetch_func(const bam1_t* read, void* void_triple)
   return 0;
 }
 
-// returns total number of reads
+// returns total number of reads in the regions
 size_t liquidate(const std::string& input_bam_file,
                  const std::vector<Region>& regions,
                  MotifCounts& motif_counts)

@@ -145,12 +145,12 @@ gtest:
 	mkdir gtest/build
 	(cd gtest/build; cmake ..; make)
 
-cpp_test: gtest test.cpp
+cpp_test: gtest test.cpp bamliquidator_util.h
 	$(CC)	$(CPPFLAGS) -I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
 
 test: cpp_test 
 	./cpp_test
-	# todo: run python unit tests
+	python bamliquidatorbatch/test.py
 
 clean:
 	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
