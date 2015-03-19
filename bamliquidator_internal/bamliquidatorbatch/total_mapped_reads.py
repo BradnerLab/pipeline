@@ -35,7 +35,7 @@ if __name__ == "__main__":
     parser.add_argument('bam_file_path')
     args = parser.parse_args()
 
-    total_number_of_mapped_reads, _ = total_reads(args.bam_file_path)
+    total_number_of_mapped_reads, _ = total_mapped_reads(args.bam_file_path)
     print total_number_of_mapped_reads
 
 '''
