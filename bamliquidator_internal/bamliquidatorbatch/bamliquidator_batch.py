@@ -3,9 +3,9 @@
 import normalize_plot_and_summarize as nps 
 import common_util as util
 from flattener import write_tab_for_all 
+from total_mapped_reads import total_mapped_reads
 
 import argparse
-import csv
 import datetime
 import os
 import subprocess
@@ -136,10 +136,6 @@ class BaseLiquidator(object):
         self.file_to_count = {}
         self.file_to_key = {}
 
-        chr_col         = 0
-        length_col      = 1
-        mapped_read_col = 2
-
         # bam file keys start at 1.
         # key 0 is special and denotes "no specific file", which
         # is used in normalizated_counts tables to mean an average or total for all bam files
@@ -150,25 +146,10 @@ class BaseLiquidator(object):
         next_file_key += 1
 
         for bam_file_path in self.bam_file_paths:
-            args = ["samtools", "idxstats", bam_file_path]
-            output = subprocess.check_output(args)
-            # skip last two lines: the unmapped chromosome line and the empty line
-            reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
-            file_name = basename(bam_file_path)
-            file_count = 0
-            
-            chromosome_length_pairs = []
-            for row in reader:
-                chromosome = row[chr_col]
-                if len(chromosome) >= util.chromosome_name_length:
-                    raise RuntimeError('Chromosome name "%s" exceeds the max supported chromosome name length (%d). '
-                                       'This max chromosome length may be updated in the code if necessary -- please '
-                                       'contact the bamliquidator developers for additional assistance.'
-                                       % (chromosome, util.chromosome_name_length))
-                                        
-                file_count += int(row[mapped_read_col])
-                chromosome_length_pairs.append((chromosome, int(row[length_col])))
-            
+            file_name = os.path.basename(bam_file_path)
+
+            file_count, chromosome_length_pairs = total_mapped_reads(bam_file_path, util.chromosome_name_length)
+                        
             files.row["key"] = next_file_key
             files.row["length"] = file_count
             files.row.append()
