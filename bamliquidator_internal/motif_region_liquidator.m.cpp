@@ -23,7 +23,7 @@ static int bam_fetch_func(const bam1_t* read, void* void_triple)
   uint8_t *s = bam1_seq(read);
 
   static /*thread_local*/ std::string sequence; // todo: why doesn't thread local compile?
-  if (sequence.size() != c->l_qseq)
+  if (int32_t(sequence.size()) != c->l_qseq)
   { 
     // assuming that all reads are uniform length, this will only happen once
     sequence = std::string(c->l_qseq, ' '); 

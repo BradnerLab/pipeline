@@ -63,11 +63,11 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::map<std::string, size_t>& chromosome_to_length = std::map<std::string, size_t>(), 
                                   const char default_strand = '_') 
 {
-  int chromosome_column = 0;
-  int name_column = 0;
-  int start_column = 0;
-  int stop_column = 0;
-  int strand_column = 0;
+  unsigned int chromosome_column = 0;
+  unsigned int name_column = 0;
+  unsigned int start_column = 0;
+  unsigned int stop_column = 0;
+  unsigned int strand_column = 0;
   unsigned int min_columns = 0;
 
   if (region_format == "gff")
