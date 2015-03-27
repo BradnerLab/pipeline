@@ -616,6 +616,9 @@ def main():
         # delete temp files
         if not args.save:
             if utils.checkOutput(outFile, 1, 10):
+                # This is super dangerous (!). Add some sanity checks.
+                assert(" " not in tempFolder)
+                assert(tempFolder is not "/")
                 removeCommand = "rm -rf %s" % (tempFolder)
                 print(removeCommand)
                 os.system(removeCommand)
