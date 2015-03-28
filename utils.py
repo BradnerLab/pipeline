@@ -39,12 +39,18 @@ THE SOFTWARE.
 #===========================DEPENDENCIES===========================
 #==================================================================
 
-
 import os
 import gzip
 import time
 import re
 import sys
+
+# Very pretty error reporting, where available
+try:
+    from IPython.core import ultratb
+    sys.excepthook = ultratb.FormattedTB(mode='Context', color_scheme='Linux')
+except ImportError:
+    pass
 
 from string import join
 
