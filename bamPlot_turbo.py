@@ -41,6 +41,7 @@ import string
 import tempfile
 import zlib
 
+
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local default, otherwise fail.
 bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
 if not os.path.isfile(bamliquidatorString):
@@ -502,18 +503,43 @@ def main():
         else:
             bedCollection = utils.LocusCollection([], 50)
 
-        # bring in the gff
-        try:
-            gff = utils.parseTable(args.input, '\t')
-            gffName = args.input.split('/')[-1].split('.')[0]
-        except IOError:
+        # Load the input for graphing. One of:
+        # - A .gff
+        # - A .bed
+        # - a specific input region (e.g. chr10:.:93150000-93180000)
+
+        valid_sense_options = {'+', '-', '.'}
+        if os.access(args.input, os.R_OK):
+            if args.input.endswith('.bed'):
+                # Uniquely graph every input of this bed
+                parsed_input_bed = utils.parseTable(args.input, '\t')
+                gffName = os.path.basename(args.input)  # Graph title
+                gff = None
+                try:
+                    if parsed_input_bed[0][5] in valid_sense_options:
+                        # This .bed might have a sense parameter
+                        gff = [[e[0], '', args.input, e[1], e[2], '', e[5], '', ''] for e in parsed_input_bed]
+                except IndexError:
+                    pass
+
+                if gff is None:
+                    print("Your bed doesn't have a valid senese parameter. Defaulting to both strands, '.'")
+                    # We only take chr/start/stop and ignore everything else.
+                    gff = [[e[0], '', args.input, e[1], e[2], '', '.', '', ''] for e in parsed_input_bed]
+
+                # Sanity test the bed
+                assert(all([e[6] in valid_sense_options for e in gff]))  # All strands are sane
+                assert(all([e[3] < e[4] for e in gff]))  # All start/stops are ordered
+            else:
+                # Default to .gff, since that's the original behavior
+                gff = utils.parseTable(args.input, '\t')
+                gffName = args.input.split('/')[-1].split('.')[0]
+        else:
             # means a coordinate line has been given e.g. chr1:+:1-100
-
             chromLine = args.input.split(':')
-
             chrom = chromLine[0]
             sense = chromLine[1]
-            assert(sense in {'+', '-', '.'})
+            assert(sense in valid_sense_options)
             [start, end] = chromLine[2].split('-')
             if chrom[0:3] != 'chr':
                 print('ERROR: UNRECOGNIZED GFF OR CHROMOSOME LINE INPUT')
