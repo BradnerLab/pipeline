@@ -40,13 +40,13 @@ import os
 import string
 import tempfile
 import zlib
-
+from distutils.spawn import find_executable
 
 # Try to use the bamliquidatior script on cluster, otherwise, failover to local default, otherwise fail.
 bamliquidatorString = '/ark/home/cl512/pipeline/bamliquidator'
 if not os.path.isfile(bamliquidatorString):
-    bamliquidatorString = '/usr/local/bin/bamliquidator'
-    if not os.path.isfile(bamliquidatorString):
+    bamliquidatorString = find_executable('bamliquidator')
+    if bamliquidatorString is None:
         raise ValueError('bamliquidator not found in path')
 
 # as of now the number of bins to sample the space is hard wired
