@@ -537,8 +537,12 @@ def main():
         else:
             # means a coordinate line has been given e.g. chr1:+:1-100
             chromLine = args.input.split(':')
-            chrom = chromLine[0]
-            sense = chromLine[1]
+            try:
+                chrom = chromLine[0]
+                sense = chromLine[1]
+            except IndexError:
+                print('Invalid input line or inaccessible file. Try: chr1:.:1-5000')
+                exit()
             assert(sense in valid_sense_options)
             [start, end] = chromLine[2].split('-')
             if chrom[0:3] != 'chr':
