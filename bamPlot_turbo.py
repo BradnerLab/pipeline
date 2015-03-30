@@ -492,6 +492,9 @@ def main():
         if len(args.bam) == 1:
             bamFileList = args.bam[0].split(',')
 
+        # Make sure these are actually files & readable (!)
+        for filename in bamFileList:
+            assert(os.access(filename, os.R_OK))
 
         # bringing in any beds
         if args.bed:
