@@ -79,7 +79,7 @@ def loadAnnotFile(genome, skip_cache=False):
         'hg19': 'annotation/hg19_refseq.ucsc',
         'rn4': 'annotation/rn4_refseq.ucsc',
         'RN4': 'annotation/rn4_refseq.ucsc',
-    }
+        }
 
     annotFile = whereAmI + '/' + genomeDict[genome]
 
@@ -342,7 +342,7 @@ def callRPlot(summaryFile, outFile, yScale, plotStyle,multi):
         pageFlag = 'MULTIPLE_PAGE'
     else:
         pageFlag = 'SINGLE_PAGE'
-    
+
     cmd = 'R --no-save %s %s %s %s %s < %s/bamPlot_turbo.R' % (summaryFile, outFile, yScale, plotStyle, pageFlag,whereAmI)
     print('calling command %s' % (cmd))
     return cmd
@@ -364,7 +364,7 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
     # make an MMR dict so MMRs are only computed once
     print('Getting information about read depth in bams')
     mmrDict = {}
-    
+
     if len(scale) >0:
         print("Applying scaling factors")
         scaleList = [float(x) for x in scale.split(',')]
@@ -381,12 +381,12 @@ def makeBamPlotTables(gff, genome, bamFileList, colorList, nBins, sense, extensi
         idxStats = [line.split('\t') for line in idxStats]
 
         rawCount = sum([int(line[2]) for line in idxStats[:-1]])
-        
+
         #implement scaling
         readScaleFactor = scaleList[i]
-        
 
-        
+
+
         if rpm:
             MMR = round(float(rawCount) / 1000000 / readScaleFactor, 4)
         else:
@@ -444,44 +444,44 @@ def main():
 
     # required flags
     parser.add_argument("-b", "--bam", dest="bam", nargs='*',
-                      help="Enter a comma separated list of .bam files to be processed.", required=True)
+                        help="Enter a comma separated list of .bam files to be processed.", required=True)
     parser.add_argument("-i", "--input", dest="input", type=str,
-                      help="Enter .gff or genomic region e.g. chr1:+:1-1000.", required=True)
+                        help="Enter .gff or genomic region e.g. chr1:+:1-1000.", required=True)
     parser.add_argument("-g", "--genome", dest="genome", type=str,
-                      help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported", required=True)
+                        help="specify a genome, HG18,HG19,MM8,MM9,MM10 are currently supported", required=True)
 
     # output flag
     parser.add_argument("-o", "--output", dest="output", type=str,
-                      help="Enter the output folder.", required=True)
+                        help="Enter the output folder.", required=True)
     # additional options
     parser.add_argument("--stretch-input", dest="stretch_input", default=None, type=int,
-                      help="Stretch the input regions to a minimum length in bp, e.g. 10000 (for 10kb)")
+                        help="Stretch the input regions to a minimum length in bp, e.g. 10000 (for 10kb)")
     parser.add_argument("-c", "--color", dest="color", default=None,
-                      help="Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
+                        help="Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
     parser.add_argument("-s", "--sense", dest="sense", default='both',
-                      help="Map to '+','-' or 'both' strands. Default maps to both.")
+                        help="Map to '+','-' or 'both' strands. Default maps to both.")
     parser.add_argument("-e", "--extension", dest="extension", default=200,
-                      help="Extends reads by n bp. Default value is 200bp")
+                        help="Extends reads by n bp. Default value is 200bp")
     parser.add_argument("-r", "--rpm", dest="rpm", action='store_true', default=False,
-                      help="Normalizes density to reads per million (rpm) Default is False")
+                        help="Normalizes density to reads per million (rpm) Default is False")
     parser.add_argument("-y", "--yScale", dest="yScale", default="relative",
-                      help="Choose either relative or uniform y axis scaling. options = 'relative,uniform' Default is relative scaling")
+                        help="Choose either relative or uniform y axis scaling. options = 'relative,uniform' Default is relative scaling")
     parser.add_argument("-n", "--names", dest="names", default=None,
-                      help="Enter a comma separated list of names for your bams")
+                        help="Enter a comma separated list of names for your bams")
     parser.add_argument("-p", "--plot", dest="plot", default="MULTIPLE",
-                      help="Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE,MERGE'")
+                        help="Choose either all lines on a single plot or multiple plots. options = 'SINGLE,MULTIPLE,MERGE'")
     parser.add_argument("-t", "--title", dest="title", default='',
-                      help="Specify a title for the output plot(s), default will be the coordinate region")
+                        help="Specify a title for the output plot(s), default will be the coordinate region")
 
     # DEBUG OPTION TO SAVE TEMP FILES
     parser.add_argument("--scale", dest="scale", default='',
-                      help="Enter a comma separated list of scaling factors for your bams. Default is none")
+                        help="Enter a comma separated list of scaling factors for your bams. Default is none")
     parser.add_argument("--save-temp", dest="save", action='store_true', default=False,
-                      help="If flagged will save temporary files made by bamPlot")
+                        help="If flagged will save temporary files made by bamPlot")
     parser.add_argument("--bed", dest="bed",
-                      help="Add a space-delimited list of bed files to plot")
+                        help="Add a space-delimited list of bed files to plot")
     parser.add_argument("--multi-page", dest="multi", action='store_true', default=False,
-                      help="If flagged will create a new pdf for each region")
+                        help="If flagged will create a new pdf for each region")
 
     args = parser.parse_args()
 
