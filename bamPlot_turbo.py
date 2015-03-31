@@ -454,6 +454,8 @@ def main():
     parser.add_argument("-o", "--output", dest="output", type=str,
                       help="Enter the output folder.", required=True)
     # additional options
+    parser.add_argument("--stretch-input", dest="stretch_input", default=None, type=int,
+                      help="Stretch the input regions to a minimum length in bp, e.g. 10000 (for 10kb)")
     parser.add_argument("-c", "--color", dest="color", default=None,
                       help="Enter a colon separated list of colors e.g. 255,0,0:255,125,0, default samples the rainbow")
     parser.add_argument("-s", "--sense", dest="sense", default='both',
@@ -529,10 +531,6 @@ def main():
                     print("Your bed doesn't have a valid senese parameter. Defaulting to both strands, '.'")
                     # We only take chr/start/stop and ignore everything else.
                     gff = [[e[0], '', args.input, e[1], e[2], '', '.', '', ''] for e in parsed_input_bed]
-
-                # Sanity test the bed
-                assert(all([e[6] in valid_sense_options for e in gff]))  # All strands are sane
-                assert(all([e[3] < e[4] for e in gff]))  # All start/stops are ordered
             else:
                 # Default to .gff, since that's the original behavior
                 gff = utils.parseTable(args.input, '\t')
@@ -554,6 +552,25 @@ def main():
             gffLine = [chrom, '', args.input, start, end, '', sense, '', '']
             gffName = "%s_%s_%s_%s" % (chrom, sense, start, end)
             gff = [gffLine]
+
+        # Consider stretching the regions to a fixed minimum size
+        if args.stretch_input:
+            print('Stretching inputs to a minimum of: %d bp' % (args.stretch_input))
+            minLength = args.stretch_input
+            stretchGff = []
+            for e in gff:
+                difference = int(e[4]) - int(e[3])
+                if difference < minLength:
+                    pad = int((minLength - difference) / 2)
+                    stretchGff.append([e[0], e[1], e[2], int(e[3])-pad, int(e[4])+pad, e[5], e[6], e[7], e[8]])
+                else:
+                    stretchGff.append(e)
+
+            gff = stretchGff
+
+        # Sanity test the gff object
+        assert(all([e[6] in valid_sense_options for e in gff]))  # All strands are sane
+        assert(all([e[3] < e[4] for e in gff]))  # All start/stops are ordered
 
         # bring in the genome
         genome = args.genome.upper()
