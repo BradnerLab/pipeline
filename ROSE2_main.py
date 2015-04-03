@@ -311,9 +311,9 @@ def mapCollection(stitchedCollection, referenceCollection, bamFileList, mappedFo
         # assumes standard convention for naming enriched region gffs
 
         # opening up the mapped GFF
-        print('OPENING %s%s_%s_MAPPED/matrix.gff' % (mappedFolder, refName, bamFileName))
+        print('OPENING %s%s_%s_MAPPED/matrix.txt' % (mappedFolder, refName, bamFileName))
 
-        mappedGFF = utils.parseTable('%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, refName, bamFileName), '\t')
+        mappedGFF = utils.parseTable('%s%s_%s_MAPPED/matrix.txt' % (mappedFolder, refName, bamFileName), '\t')
 
         signalDict = defaultdict(float)
         print('MAKING SIGNAL DICT FOR %s' % (bamFile))
@@ -561,7 +561,7 @@ def main():
 
         # MAPPING TO THE STITCHED GFF
         mappedOut1Folder = '%s%s_%s_MAPPED' % (mappedFolder, stitchedGFFName, bamFileName)
-        mappedOut1File = '%s%s_%s_MAPPED/matrix.gff' % (mappedFolder, stitchedGFFName, bamFileName)
+        mappedOut1File = '%s%s_%s_MAPPED/matrix.txt' % (mappedFolder, stitchedGFFName, bamFileName)
         if utils.checkOutput(mappedOut1File, 0.2, 0.2):
             print("FOUND %s MAPPING DATA FOR BAM: %s" % (stitchedGFFFile, mappedOut1File))
         else:
