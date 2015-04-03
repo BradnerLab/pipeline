@@ -2107,7 +2107,7 @@ def mapBamsBatch(dataFile,gffList,mappedFolder,overWrite =False,namesList = [],e
             fullBamFile = dataDict[name]['bam']
             
             outdir = formatFolder(outdirRoot+name,True)
-            matrixFile = outdir + 'matrix.gff'
+            matrixFile = outdir + 'matrix.txt'
             countsFile = outdir + 'counts.h5'
             
             #what we want the eventual outfile to look like
@@ -2379,7 +2379,10 @@ def makeMetaGFFs(annotFile,gffFolder,genome,geneListFile =''):
         geneListName = 'ALL'
     else:
         geneListTable = parseTable(geneListFile,'\t')
-        geneList = [line[1] for line in geneListTable]
+        if len(geneListTable[0]) == 1:
+            geneList = [line[0] for line in geneListTable]
+        else:
+            geneList = [line[1] for line in geneListTable]
         geneListName = geneListFile.split('/')[-1].split('.')[0]
     for gene in geneList:
 
@@ -2751,7 +2754,7 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
             groupTicker+=1
         namesString = ','.join(namesStringList)
             
-
+    cufflinksFolder = formatFolder(cufflinksFolder,True)
 
     #let's do this in bashfile format
     if len(bashFileName) ==0:
@@ -2774,7 +2777,7 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
     cuffquantList = [] # create a list to store cuffquant .cxb outputs so we can check for completeness
     for name in namesList:
         bamFileName = dataDict[name]['bam']
-        bashFile.write('cuffquant -p 4 -o %s%s/ %s %s\n' % (cufflinksFolder,name,gtfFile,bamFileName))
+        bashFile.write('cuffquant -p 4 -o %s%s/ %s %s &\n' % (cufflinksFolder,name,gtfFile,bamFileName))
         cuffquantList.append('%s%s/abundances.cxb' % (cufflinksFolder,name))
 
 
@@ -2800,23 +2803,21 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
 
     cxbString = ' '.join(cxbList)
 
-    #now run the cuffnorm
+    #set up the analysis output folders
+    cuffnormFolder = formatFolder('%s%s_cuffnorm' % (cufflinksFolder,analysisName),True)
+    rOutputFolder = formatFolder('%s%s_cuffnorm/output/' % (cufflinksFolder,analysisName),True)
 
-    bashFile.write("\necho 'making cuffnorm folder'\n")
-    bashFile.write('mkdir %scuffnorm\n' % (cufflinksFolder))
-    
-
+    #now run the cuffnorm    
     bashFile.write("\necho 'running cuffnorm command'\n")
 
     
-    cuffNormCmd = 'cuffnorm -p 4 -o %scuffnorm/ -L %s %s %s\n' % (cufflinksFolder,namesString,gtfFile,cxbString)
+    cuffNormCmd = 'cuffnorm -p 4 -o %s%s_cuffnorm/ -L %s %s %s\n' % (cufflinksFolder,analysisName,namesString,gtfFile,cxbString)
 
     bashFile.write(cuffNormCmd + '\n')
 
 
     #now we'll want to pipe the output into the R script for RNA_Seq normalization
-    rOutputFolder = formatFolder('%scuffnorm/output/' % (cufflinksFolder),True)
-    geneFPKMFile = '%scuffnorm/genes.fpkm_table' % (cufflinksFolder)
+    geneFPKMFile = '%s%s_cuffnorm/genes.fpkm_table' % (analysisName,cufflinksFolder)
 
 
     
