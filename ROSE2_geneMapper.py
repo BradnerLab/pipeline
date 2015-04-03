@@ -487,7 +487,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # first on the rankBy bam
     bamName = rankByBamFile.split('/')[-1]
     mappedRankByFolder = "%s%s_%s_%s/" % (enhancerFolder, enhancerName,gffRootName, bamName)
-    mappedRankByFile = "%s%s_%s_%s/matrix.gff" % (enhancerFolder,enhancerName, gffRootName, bamName)
+    mappedRankByFile = "%s%s_%s_%s/matrix.txt" % (enhancerFolder,enhancerName, gffRootName, bamName)
     cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedRankByFolder,rankByBamFile)
     print("Mapping rankby bam %s" % (rankByBamFile))
     print(cmd)
@@ -505,7 +505,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
         controlName = controlBamFile.split('/')[-1]
         mappedControlFolder = "%s%s_%s_%s/" % (
             enhancerFolder, enhancerName,gffRootName, controlName)
-        mappedControlFile = "%s%s_%s_%s/matrix.gff" % (
+        mappedControlFile = "%s%s_%s_%s/matrix.txt" % (
             enhancerFolder, enhancerName,gffRootName, controlName)
         cmd = bamliquidator_path + ' --sense . -e 200 --match_bamToGFF -r %s -o %s %s' % (enhancerGeneGFFFile, mappedControlFolder,controlBamFile)
         print("Mapping control bam %s" % (controlBamFile))
