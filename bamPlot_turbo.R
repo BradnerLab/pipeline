@@ -244,7 +244,7 @@ for(n in 1:nrow(summaryTable)){
 	
 			xVector = c(1,plotSpline$x,max(plotSpline$x))
 			yVector = c(0,plotSpline$y,0)			
-			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='ChIP-Seq Reads',xaxt = 'n',main=name)
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Reads',xaxt = 'n',main=name)
 			polygon(xVector,yVector,col= color,lty=0)
 			legend(0,yMax,as.vector(plotTable[i,3]),col=colorVector[i],lwd=2.5,cex=1.2)
 			if(sense =='-'){
@@ -316,7 +316,7 @@ for(n in 1:nrow(summaryTable)){
 		
 			xVector = c(1,plotSpline$x,max(plotSpline$x))
 			yVector = c(0,plotSpline$y,0)			
-			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='ChIP-Seq Reads',xaxt = 'n',main=name)
+			plot(0,0,ylim = c(0.05*yMax,yMax),cex=0,xlim = range(xVector),xlab='',ylab='Reads',xaxt = 'n',main=name)
 
 
 			#now add all of the other polygons shaded

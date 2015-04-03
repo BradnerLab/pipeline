@@ -39,12 +39,18 @@ THE SOFTWARE.
 #===========================DEPENDENCIES===========================
 #==================================================================
 
-
 import os
 import gzip
 import time
 import re
 import sys
+
+# Very pretty error reporting, where available
+try:
+    from IPython.core import ultratb
+    sys.excepthook = ultratb.FormattedTB(mode='Context', color_scheme='Linux')
+except ImportError:
+    pass
 
 from string import join
 
@@ -110,10 +116,10 @@ from collections import defaultdict
 # TODO: Overriding internal functions is evil!
 bopen=open
 def open(fileName,mode='r'):
-       if fileName.split('.')[-1] == 'gz':
-               return gzip.open(fileName, mode + 'b')
-       else:
-               return bopen(fileName, mode)
+    if fileName.split('.')[-1] == 'gz':
+        return gzip.open(fileName, mode + 'b')
+    else:
+        return bopen(fileName, mode)
 
 #parseTable 4/14/08
 #takes in a table where columns are separated by a given symbol and outputs
@@ -178,7 +184,7 @@ def formatBed(bed,output=''):
         newLine+= [indexTicker,strand]
         indexTicker +=1
         newBed.append(newLine)
-    
+
     if len(output) > 0:
         unParseTable(newBed,output,'\t')
     else:
@@ -191,15 +197,15 @@ def bedToGFF(bed, output=''):
     '''
     if isinstance(bed, str):
         bed = parseTable(bed, '\t')
-    
+
     bed = formatBed(bed)
 
     gff = []
 
     for line in bed:
 
-           gffLine = [line[0],line[3],'',line[1],line[2],line[4],line[5],'',line[3]]
-           gff.append(gffLine)
+        gffLine = [line[0],line[3],'',line[1],line[2],line[4],line[5],'',line[3]]
+        gff.append(gffLine)
 
 
     if len(output) > 0:
@@ -231,11 +237,11 @@ def formatFolder(folderName, create=False):
     makes sure a folder exists and if not makes it
     returns a bool for folder
     '''
-    
+
     if folderName[-1] != '/':
         folderName +='/'
 
-    try: 
+    try:
         os.listdir(folderName)
         return folderName
     except OSError:
@@ -248,56 +254,56 @@ def formatFolder(folderName, create=False):
 
 def checkOutput(fileName, waitTime = 1, timeOut = 30):
 
-       '''
-       checks for the presence of a file every N minutes
-       if it exists, returns True
-       default is 1 minute with a max timeOut of 30 minutes
-       '''       
-       waitTime = int(waitTime * 60)
+    '''
+    checks for the presence of a file every N minutes
+    if it exists, returns True
+    default is 1 minute with a max timeOut of 30 minutes
+    '''
+    waitTime = int(waitTime * 60)
 
-       timeOut = int(timeOut * 60)
+    timeOut = int(timeOut * 60)
 
-       maxTicker = timeOut/waitTime
-       ticker = 0
+    maxTicker = timeOut/waitTime
+    ticker = 0
 
-       fileExists = False
-       while not fileExists:
+    fileExists = False
+    while not fileExists:
 
-              try:
-                     size1 = os.stat(fileName).st_size
-                     time.sleep(.1)
-                     size2 = os.stat(fileName).st_size
-                     if size1 == size2:
-                            fileExists = True
-                     else:
-                            time.sleep(waitTime)
-                            ticker+=1
-              except OSError:
-                     time.sleep(waitTime)
-                     ticker+=1
-              if ticker == maxTicker:
-                     break
+        try:
+            size1 = os.stat(fileName).st_size
+            time.sleep(.1)
+            size2 = os.stat(fileName).st_size
+            if size1 == size2:
+                fileExists = True
+            else:
+                time.sleep(waitTime)
+                ticker+=1
+        except OSError:
+            time.sleep(waitTime)
+            ticker+=1
+        if ticker == maxTicker:
+            break
 
-              
-       time.sleep(.1)
-       if fileExists:
-              return True
-       else:
-              print('OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
-              return False
+
+    time.sleep(.1)
+    if fileExists:
+        return True
+    else:
+        print('OPERATION TIMED OUT. FILE %s NOT FOUND' % (fileName))
+        return False
 
 def getParentFolder(inputFile):
 
-       '''
-       returns the parent folder for any file
-       '''
- 
-       parentFolder = join(inputFile.split('/')[:-1],'/') +'/'
-       if parentFolder =='':
-              return './'
-       else:
-              return parentFolder
-        
+    '''
+    returns the parent folder for any file
+    '''
+
+    parentFolder = join(inputFile.split('/')[:-1],'/') +'/'
+    if parentFolder =='':
+        return './'
+    else:
+        return parentFolder
+
 
 #==================================================================
 #===================ANNOTATION FUNCTIONS===========================
@@ -313,7 +319,7 @@ def makeStartDict(annotFile, geneList=[]):
     if type(geneList) == str:
         geneList = parseTable(geneList, '\t')
         geneList = [line[0] for line in geneList]
-            
+
     if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         if len(geneList) == 0:
@@ -348,7 +354,7 @@ def getTSSs(geneList,refseqTable,refseqDict):
         if line[3] == '-':
             TSS.append(line[5])
     TSS = map(int,TSS)
-    
+
     return TSS
 
 
@@ -417,20 +423,19 @@ def makeGenes(annotFile,geneList=[],asDict = False):
     if annotFile.upper().count('REFSEQ') == 1:
         refTable,refDict = importRefseq(annotFile)
 
-
         if len(geneList) == 0:
             geneList = refDict.keys()
+
         for refseqID in geneList:
-            if refDict.has_key(refseqID):
-                geneIndex = refDict[refseqID][0]
-            else:
+            if refseqID not in refDict:
                 #print('no such gene ' + str(refseqID))
                 continue
 
+            geneIndex = refDict[refseqID][0]
             geneLine = refTable[int(geneIndex)]
             exonStarts = map(int,geneLine[9].split(',')[:-1])
             exonEnds = map(int,geneLine[10].split(',')[:-1])
-            
+
             gene = Gene(refseqID,geneLine[2],geneLine[3],[int(geneLine[4]),int(geneLine[5])],[int(geneLine[6]),int(geneLine[7])],exonStarts,exonEnds,geneLine[12])
 
             if asDict:
@@ -449,14 +454,16 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
     makes a LocusCollection w/ each transcript as a locus
     takes in either a refseqfile or an ensemblGFF
     '''
+
     if annotFile.upper().count('REFSEQ') == 1:
         refseqTable,refseqDict = importRefseq(annotFile)
         locusList = []
         ticker = 0
         if len(geneList) == 0:
-            geneList =refseqDict.keys()
+            geneList = refseqDict.keys()
+
         for line in refseqTable[1:]:
-            if geneList.count(line[1]) > 0:
+            if line[1] in geneList:
                 if line[3] == '-':
                     locus = Locus(line[2],int(line[4])-downSearch,int(line[5])+upSearch,line[3],line[1])
                 else:
@@ -465,7 +472,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
                 ticker = ticker + 1
                 if ticker%1000 == 0:
                     print(ticker)
-            
+
 
     transCollection = LocusCollection(locusList, window)
 
@@ -476,32 +483,32 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
 
 def nameToRefseq(geneNamesList,annotFile,unique=True):
 
-       '''
-       takes a list of names and gets you the refseqID
-       '''
-       startDict=  makeStartDict(annotFile)
-       nameDict = defaultdict(list)
-       for refID in startDict.keys():
+    '''
+    takes a list of names and gets you the refseqID
+    '''
+    startDict=  makeStartDict(annotFile)
+    nameDict = defaultdict(list)
+    for refID in startDict.keys():
 
-              name = startDict[refID]['name']
-              nameDict[name].append(refID)
+        name = startDict[refID]['name']
+        nameDict[name].append(refID)
 
-       newTable = []
-       for name in geneNamesList:
-              refIDList = nameDict[name]
-              
-              #unique preserves the initial number of genes in geneNamesList
-              #by taking only 1 refID per geneName
-              #will take the first in the refList, which should usually be the lower
-              #refID and thus the more relevant, but no guarantees
-              if unique:
-                     newTable.append([name,refIDList[0]]) 
-              else:
-                     for refID in refIDList:
-                            newTable.append([name,refID])
+    newTable = []
+    for name in geneNamesList:
+        refIDList = nameDict[name]
 
-       return newTable
-       
+        #unique preserves the initial number of genes in geneNamesList
+        #by taking only 1 refID per geneName
+        #will take the first in the refList, which should usually be the lower
+        #refID and thus the more relevant, but no guarantees
+        if unique:
+            newTable.append([name,refIDList[0]])
+        else:
+            for refID in refIDList:
+                newTable.append([name,refID])
+
+    return newTable
+
 
 #06/11/09                                                                                                                              
 #import bound region                                                                                                                   
@@ -554,8 +561,7 @@ class Locus:
     # start,end = ints of the start and end coords of the locus;
     #      end coord is the coord of the last nucleotide.
     def __init__(self,chr,start,end,sense,ID=''):
-        coords = [int(start),int(end)]
-        coords.sort()
+        coords = sorted([int(start), int(end)])
         # this method for assigning chromosome should help avoid storage of
         # redundant strings.
         if not(self.__chrDict.has_key(chr)): self.__chrDict[chr] = chr
@@ -580,21 +586,21 @@ class Locus:
     def overlaps(self,otherLocus):
         if self.chr()!=otherLocus.chr(): return False
         elif not(self._sense=='.' or \
-                 otherLocus.sense()=='.' or \
-                 self.sense()==otherLocus.sense()): return False
+                             otherLocus.sense()=='.' or \
+                             self.sense()==otherLocus.sense()): return False
         elif self.start() > otherLocus.end() or otherLocus.start() > self.end(): return False
         else: return True
-        
+
     # returns boolean; True if all the nucleotides of the given locus overlap
     #      with the self locus
     def contains(self,otherLocus):
         if self.chr()!=otherLocus.chr(): return False
         elif not(self._sense=='.' or \
-                 otherLocus.sense()=='.' or \
-                 self.sense()==otherLocus.sense()): return False
+                             otherLocus.sense()=='.' or \
+                             self.sense()==otherLocus.sense()): return False
         elif self.start() > otherLocus.start() or otherLocus.end() > self.end(): return False
         else: return True
-        
+
     # same as overlaps, but considers the opposite strand
     def overlapsAntisense(self,otherLocus):
         return self.getAntisenseLocus().overlaps(otherLocus)
@@ -616,52 +622,52 @@ class Locus:
         pass
     def gffLine(self): return [self.chr(),self.ID(),'',self.start(),self.end(),'',self.sense(),'',self.ID()]
     def getConservation(self,phastConFolder):
-           '''
-           uses tabix to get a per base conservation score from an indexed conservation bedgraph
-           '''
-           tabixString = 'tabix' #set the path/location of tabix
+        '''
+        uses tabix to get a per base conservation score from an indexed conservation bedgraph
+        '''
+        tabixString = 'tabix' #set the path/location of tabix
 
-           #figure out which file is the correct one
-           chrom = self.chr()
+        #figure out which file is the correct one
+        chrom = self.chr()
 
-           phastFile = [phastConFolder + x for x in os.listdir(phastConFolder) if x.count('bg.gz') == 1 and x.count('tbi') == 0 and x.split('.')[0] == chrom][0]
+        phastFile = [phastConFolder + x for x in os.listdir(phastConFolder) if x.count('bg.gz') == 1 and x.count('tbi') == 0 and x.split('.')[0] == chrom][0]
 
-           tabixCmd = '%s %s %s:%s-%s' % (tabixString,phastFile,self.chr(),self.start(),self.end())
+        tabixCmd = '%s %s %s:%s-%s' % (tabixString,phastFile,self.chr(),self.start(),self.end())
 
-           phast = subprocess.Popen(tabixCmd,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
+        phast = subprocess.Popen(tabixCmd,stdin = subprocess.PIPE,stderr = subprocess.PIPE,stdout = subprocess.PIPE,shell = True)
 
-           phastLines = phast.stdout.readlines()
-           phast.stdout.close()
+        phastLines = phast.stdout.readlines()
+        phast.stdout.close()
 
-           phastTable = [x.rstrip().split('\t') for x in phastLines]
+        phastTable = [x.rstrip().split('\t') for x in phastLines]
 
-           #print phastTable
-           #set up a conservation sum
-           phastSum = 0.0
-           #and number of bases w/ conservation data
-           phastBases = 0
+        #print phastTable
+        #set up a conservation sum
+        phastSum = 0.0
+        #and number of bases w/ conservation data
+        phastBases = 0
 
-           for line in phastTable:
-               if int(line[1]) < self.start():
-                   lineLen = min(int(line[2]),self.end()) - self.start() +1
-                   phastSum += lineLen*float(line[3])
-                   phastBases += lineLen
-               elif int(line[2]) > self.end():
-                   lineLen = self.end() - max(int(line[1]),self.start())
-                   phastSum += lineLen*float(line[3])
-                   phastBases += lineLen
-               else:
-                   lineLen = int(line[2]) - int(line[1])
-                   phastSum += lineLen*float(line[3])
-                   phastBases += lineLen
+        for line in phastTable:
+            if int(line[1]) < self.start():
+                lineLen = min(int(line[2]),self.end()) - self.start() +1
+                phastSum += lineLen*float(line[3])
+                phastBases += lineLen
+            elif int(line[2]) > self.end():
+                lineLen = self.end() - max(int(line[1]),self.start())
+                phastSum += lineLen*float(line[3])
+                phastBases += lineLen
+            else:
+                lineLen = int(line[2]) - int(line[1])
+                phastSum += lineLen*float(line[3])
+                phastBases += lineLen
 
-           if phastBases > self.len():
-               print "this locus is sad %s. please debug me" % (self.__str__())
-               print "locus length is %s" % (self.len())
-               print "phastBases are %s" % (phastBases)
+        if phastBases > self.len():
+            print "this locus is sad %s. please debug me" % (self.__str__())
+            print "locus length is %s" % (self.len())
+            print "phastBases are %s" % (phastBases)
 
-               
-           return phastSum/self.len()
+
+        return phastSum/self.len()
 
 
 
@@ -690,7 +696,7 @@ class LocusCollection:
         return range(start,end)
 
     def __len__(self): return len(self.__loci)
-        
+
     def append(self,new): self.__addLocus(new)
     def extend(self,newList):
         for lcs in newList: self.__addLocus(lcs)
@@ -713,7 +719,7 @@ class LocusCollection:
         tempKeys = dict()
         for k in self.__chrToCoordToLoci.keys(): tempKeys[k[:-1]] = None
         return tempKeys.keys()
-            
+
     def __subsetHelper(self,locus,sense):
         sense = sense.lower()
         if ['sense','antisense','both'].count(sense)!=1:
@@ -732,7 +738,7 @@ class LocusCollection:
                         for lcs in self.__chrToCoordToLoci[chrKey][n]:
                             matches[lcs] = None
         return matches.keys()
-        
+
     # sense can be 'sense' (default), 'antisense', or 'both'
     # returns all members of the collection that overlap the locus
     def getOverlap(self,locus,sense='sense'):
@@ -744,7 +750,7 @@ class LocusCollection:
                 realMatches[i] = None
         if sense=='antisense' or sense=='both':
             for i in filter(lambda lcs: lcs.overlapsAntisense(locus), matches):
-                realMatches[i] = None 
+                realMatches[i] = None
         return realMatches.keys()
 
     # sense can be 'sense' (default), 'antisense', or 'both'
@@ -789,7 +795,7 @@ class LocusCollection:
 
         locusList = self.getLoci()
         oldCollection = LocusCollection(locusList,500)
-        
+
         stitchedCollection = LocusCollection([],500)
 
         for locus in locusList:
@@ -797,7 +803,7 @@ class LocusCollection:
             if oldCollection.hasLocus(locus):
                 oldCollection.remove(locus)
                 overlappingLoci = oldCollection.getOverlap(Locus(locus.chr(),locus.start()-stitchWindow,locus.end()+stitchWindow,locus.sense(),locus.ID()),sense)
-                
+
                 stitchTicker = 1
                 while len(overlappingLoci) > 0:
                     stitchTicker+=len(overlappingLoci)
@@ -814,9 +820,9 @@ class LocusCollection:
                         locus = Locus(locus.chr(),min(overlapCoords),max(overlapCoords),locus.sense(),locus.ID())
                     overlappingLoci = oldCollection.getOverlap(Locus(locus.chr(),locus.start()-stitchWindow,locus.end()+stitchWindow,locus.sense()),sense)
                 locus._ID = '%s_%s_lociStitched' % (stitchTicker,locus.ID())
-           
+
                 stitchedCollection.append(locus)
-                
+
             else:
                 continue
         return stitchedCollection
@@ -835,98 +841,96 @@ class Gene:
     # exStarts = list of coords marking the beginning of each exon
     # exEnds = list of coords marking the end of each exon
     # IF THIS IS A NON-CODING GENE, cdCoords => [0,0]
-#    def __init__(self,name,chr,sense,txCoords,cdCoords,exStarts,exEnds):
-#        self._name = name
-#        self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense)
-#        self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
-#
-#        exStarts = map(lambda i: i, exStarts)
-#        exEnds = map(lambda i: i, exEnds)
-#        exStarts.sort()
-#        exEnds.sort()
-#        
-#        self._txExons = []
-#        self._cdExons = []
-#        self._introns = []
-#        
-#        for n in range(len(exStarts)):
-#            if n==0:
-#                self._txExons.append(Locus(chr,txCoords[0],exEnds[n]-1,sense))
-#                self._cdExons.append(Locus(chr,cdCoords[0],exEnds[n]-1,sense))
-#            elif n==len(exStarts)-1:
-#                self._txExons.append(Locus(chr,txCoords[0],txCoords[1],sense))
-#                self._cdExons.append(Locus(chr,cdCoords[0],cdCoords[1],sense))
-#            else:
-#                newExon = Locus(chr,exStarts[n],exEnds[n]-1,sense)
-#                self._txExons.append(newExon)
-#                self._cdExons.append(newExon)
-#            if n < len(exStarts)-1: self._introns.append(Locus(chr,exEnds[n],exStarts[n+1]-1,sense))
-#
-#        if sense=='+':
-#            self._fpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
-#            self._tpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
-#        elif sense=='-':
-#            self._fpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
-#            self._tpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
+    #    def __init__(self,name,chr,sense,txCoords,cdCoords,exStarts,exEnds):
+    #        self._name = name
+    #        self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense)
+    #        self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
+    #
+    #        exStarts = map(lambda i: i, exStarts)
+    #        exEnds = map(lambda i: i, exEnds)
+    #        exStarts.sort()
+    #        exEnds.sort()
+    #
+    #        self._txExons = []
+    #        self._cdExons = []
+    #        self._introns = []
+    #
+    #        for n in range(len(exStarts)):
+    #            if n==0:
+    #                self._txExons.append(Locus(chr,txCoords[0],exEnds[n]-1,sense))
+    #                self._cdExons.append(Locus(chr,cdCoords[0],exEnds[n]-1,sense))
+    #            elif n==len(exStarts)-1:
+    #                self._txExons.append(Locus(chr,txCoords[0],txCoords[1],sense))
+    #                self._cdExons.append(Locus(chr,cdCoords[0],cdCoords[1],sense))
+    #            else:
+    #                newExon = Locus(chr,exStarts[n],exEnds[n]-1,sense)
+    #                self._txExons.append(newExon)
+    #                self._cdExons.append(newExon)
+    #            if n < len(exStarts)-1: self._introns.append(Locus(chr,exEnds[n],exStarts[n+1]-1,sense))
+    #
+    #        if sense=='+':
+    #            self._fpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
+    #            self._tpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
+    #        elif sense=='-':
+    #            self._fpUtr = Locus(chr,cdCoords[1]+1,txCoords[1],sense)
+    #            self._tpUtr = Locus(chr,txCoords[0],cdCoords[0]-1,sense)
     def __init__(self,name,chr,sense,txCoords,cdCoords,exStarts,exEnds,commonName=''):
-         self._name = name
-         self._commonName = commonName
-         self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense,self._name)
-         if cdCoords == None:
-             self._cdLocus = None
-         else:
-             self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
+        self._name = name
+        self._commonName = commonName
+        self._txLocus = Locus(chr,min(txCoords),max(txCoords),sense,self._name)
+        if cdCoords == None:
+            self._cdLocus = None
+        else:
+            self._cdLocus = Locus(chr,min(cdCoords),max(cdCoords),sense)
 
-         exStarts = map(lambda i: i, exStarts)
-         exEnds = map(lambda i: i, exEnds)
-         exStarts.sort()
-         exEnds.sort()
+        exStarts = sorted(map(lambda i: i, exStarts))
+        exEnds = sorted(map(lambda i: i, exEnds))
 
-         self._txExons = []
-         self._cdExons = []
-         self._introns = []
+        self._txExons = []
+        self._cdExons = []
+        self._introns = []
 
 
-         for n in range(len(exStarts)):
-             first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
-             second_locus = Locus(chr,exEnds[n],exEnds[n],sense)
+        for n in range(len(exStarts)):
+            first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
+            second_locus = Locus(chr,exEnds[n],exEnds[n],sense)
 
-             # Add the transcription unit exon
-             tx_exon = Locus(chr,exStarts[n],exEnds[n],sense)
+            # Add the transcription unit exon
+            tx_exon = Locus(chr,exStarts[n],exEnds[n],sense)
 
-             self._txExons.append(tx_exon)
+            self._txExons.append(tx_exon)
 
-             # Add Coding Exons
-             # Need to make sure that the current exon is actually in the coding region of the gene first
-             if self.isCoding() and tx_exon.overlaps(self._cdLocus):
-                 if not first_locus.overlaps(self._cdLocus):
-                     first_coord = min(cdCoords)
-                 else:
-                     first_coord = exStarts[n]
+            # Add Coding Exons
+            # Need to make sure that the current exon is actually in the coding region of the gene first
+            if self.isCoding() and tx_exon.overlaps(self._cdLocus):
+                if not first_locus.overlaps(self._cdLocus):
+                    first_coord = min(cdCoords)
+                else:
+                    first_coord = exStarts[n]
 
-                 if not second_locus.overlaps(self._cdLocus):
-                     second_coord = max(cdCoords)
-                 else:
-                     second_coord = exEnds[n]
+                if not second_locus.overlaps(self._cdLocus):
+                    second_coord = max(cdCoords)
+                else:
+                    second_coord = exEnds[n]
 
-                 new_cd_exon = Locus(chr,first_coord,second_coord,sense)
-                 self._cdExons.append(new_cd_exon)
+                new_cd_exon = Locus(chr,first_coord,second_coord,sense)
+                self._cdExons.append(new_cd_exon)
 
-             # Add Introns
-             if n < len(exStarts)-1:
-                 self._introns.append(Locus(chr,exEnds[n]+1,exStarts[n +1]-1,sense))
+            # Add Introns
+            if n < len(exStarts)-1:
+                self._introns.append(Locus(chr,exEnds[n]+1,exStarts[n +1]-1,sense))
 
-         if self.isCoding():
-             if sense=='+':
-                 self._fpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
-                 self._tpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
-             elif sense=='-':
-                 self._fpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
-                 self._tpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
-         else:
-             self._fpUTR = None
-             self._tpUTR = None
-            
+        if self.isCoding():
+            if sense=='+':
+                self._fpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
+                self._tpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
+            elif sense=='-':
+                self._fpUTR = Locus(chr,max(cdCoords)+1,max(txCoords),sense)
+                self._tpUTR = Locus(chr,min(txCoords),min(cdCoords)-1,sense)
+        else:
+            self._fpUTR = None
+            self._tpUTR = None
+
     def commonName(self): return self._commonName
     def name(self): return self._name
     def chr(self): return self._txLocus.chr()
@@ -1009,7 +1013,7 @@ def makeTSSLocus(gene,startDict,upstream,downstream):
     '''
     given a startDict, make a locus for any gene's TSS w/ upstream and downstream windows
     '''
-    
+
     start = startDict[gene]['start'][0]
     if startDict[gene]['sense'] == '-':
         return Locus(startDict[gene]['chr'],start-downstream,start+upstream,'-',gene)
@@ -1057,11 +1061,11 @@ def makeSECollection(enhancerFile,name,top=0):
 #makes a new class Bam for dealing with bam files and integrating them into the SolexaRun class
 
 def convertBitwiseFlag(flag):
-   if int(flag) & 16:
-	return "-";
-   else:
-	return "+";
-           
+    if int(flag) & 16:
+        return "-";
+    else:
+        return "+";
+
 class Bam:
     '''A class for a sorted and indexed bam file that allows easy analysis of reads'''
     def __init__(self,bamFile):
@@ -1075,16 +1079,16 @@ class Bam:
         if readType == 'mapped':
             for line in statLines:
                 if line.count('mapped (') == 1:
-                    
+
                     return int(line.split(' ')[0])
         if readType == 'total':
             return int(statLines[0].split(' ')[0])
-    
+
     def convertBitwiseFlag(self,flag):
-      if flag & 16:
-	return "-";
-      else:
-	return "+";
+        if flag & 16:
+            return "-";
+        else:
+            return "+";
 
     def getRawReads(self,locus,sense,unique = False,includeJxnReads = False,printCommand = False):
         '''
@@ -1092,7 +1096,7 @@ class Bam:
         can enforce uniqueness and strandedness
         '''
         locusLine = locus.chr()+':'+str(locus.start())+'-'+str(locus.end())
-        
+
         command = '%s view %s %s' % (samtoolsString,self._bam,locusLine)
         if printCommand:
             print(command)
@@ -1105,22 +1109,22 @@ class Bam:
 
         #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-'}
         # convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
-        
-        
+
+
         #BJA added 256 and 272, which correspond to 0 and 16 for multi-mapped reads respectively:
         #http://onetipperday.blogspot.com/2012/04/understand-flag-code-of-sam-format.html
         #convert = string.maketrans('160','--+')
         keptReads = []
         seqDict = defaultdict(int)
         if sense == '-':
-          strand = ['+','-']
-          strand.remove(locus.sense())
-          strand = strand[0]
+            strand = ['+','-']
+            strand.remove(locus.sense())
+            strand = strand[0]
         else:
             strand = locus.sense()
         for read in reads:
             #readStrand = read[1].translate(convert)[0]
-	    #print read[1], read[0]
+            #print read[1], read[0]
             #readStrand = convertDict[read[1]]
             readStrand = convertBitwiseFlag(read[1])
 
@@ -1131,7 +1135,7 @@ class Bam:
                 elif not unique:
                     keptReads.append(read)
             seqDict[read[9]]+=1
-            
+
         return keptReads
 
     def readsToLoci(self,reads,IDtag = 'sequence,seqID,none'):
@@ -1145,8 +1149,8 @@ class Bam:
             return
         #convert = string.maketrans('160','--+')
         #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-'}
-	#convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-'}
-        
+        #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-'}
+
         #BJA added 256 and 272, which correspond to 0 and 16 for multi-mapped reads respectively:
         #http://onetipperday.blogspot.com/2012/04/understand-flag-code-of-sam-format.html
         #convert = string.maketrans('160','--+')
@@ -1162,14 +1166,14 @@ class Bam:
                 ID = read[0]
             else:
                 ID = ''
-                
+
             length = len(read[9])
             start = int(read[3])
             if read[5].count('N') == 1:
                 #this awful oneliner first finds all of the numbers in the read string
                 #then it filters out the '' and converts them to integers
                 #only works for reads that span one junction
-                
+
                 [first,gap,second] = [int(x) for x in filter(lambda x: len(x) > 0, re.findall(numPattern,read[5]))][0:3]
                 if IDtag == 'sequence':
                     loci.append(Locus(chrom,start,start+first,strand,ID[0:first]))
@@ -1188,9 +1192,9 @@ class Bam:
         gets all of the reads for a given locus
         '''
         reads = self.getRawReads(locus,sense,unique,includeJxnReads)
-        
+
         loci = self.readsToLoci(reads,IDtag)
-            
+
         return loci
 
     def getReadSequences(self,locus,sense = 'both',unique = True,includeJxnReads = False):
@@ -1198,18 +1202,18 @@ class Bam:
         reads = self.getRawReads(locus,sense,unique,includeJxnReads)
 
         return [read[9] for read in reads]
-    
+
     def getReadStarts(self,locus,sense = 'both',unique = False,includeJxnReads = False):
         reads = self.getRawReads(locus,sense,unique,includeJxnReads)
 
         return [int(read[3]) for read in reads]
-        
+
 
     def getReadCount(self,locus,sense = 'both',unique = True,includeJxnReads = False):
         reads = self.getRawReads(locus,sense,unique,includeJxnReads)
 
         return len(reads)
-                                    
+
 
 
 #==================================================================
@@ -1224,7 +1228,7 @@ class Bam:
 #Used under a creative commons license
 #sourced from  here: http://www.peterbe.com/plog/uniqifiers-benchmark
 
-def uniquify(seq, idfun=None): 
+def uniquify(seq, idfun=None):
     # order preserving
     if idfun is None:
         def idfun(x): return x
@@ -1257,7 +1261,7 @@ def order(x, NoneIsLast = True, decreasing = False):
     if NoneIsLast == None:
         NoneIsLast = True
         omitNone = True
-        
+
     n  = len(x)
     ix = range(n)
     if None not in x:
@@ -1273,7 +1277,7 @@ def order(x, NoneIsLast = True, decreasing = False):
                 return elem is None, elem
         ix = range(n)
         ix.sort(key=key, reverse=decreasing)
-            
+
     if omitNone:
         n = len(x)
         for i in range(n-1, -1, -1):
@@ -1315,7 +1319,7 @@ def fetchSeq(directory,chrom,start,end,UCSC=False,lineBreaks=True,header = True)
     span = ((end+nEnd-1)-(start+nStart-1))
     # if UCSC:
     #     span+=1
-    
+
     read = fh.read(span)
     if lineBreaks:
         read = read.replace('\n','')
@@ -1341,11 +1345,11 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
         except:
             continue
         if ticker%1000 == 0: print(ticker)
-        
+
         if useID:
-               name = '>' + line[1]
+            name = '>' + line[1]
         else:
-               name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'|')
+            name = '>'+ join([genome.lower(),line[0],str(line[3]),str(line[4]),line[6]],'|')
         fastaList.append(name)
         if line[6] == '-':
             #print(line[3])
