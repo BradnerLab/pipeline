@@ -2511,7 +2511,7 @@ def finishMetas(metaFolder,settingsFileList=[]):
 #==========================================================================
 
     
-def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outputFolder,mappedFolder,relative=False):
+def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outputFolder,mappedFolder,relative=False,useBackground=False):
 
     '''
     calls a heatmap ordered by a single dataset
@@ -2542,18 +2542,30 @@ def callHeatPlotOrdered(dataFile,gffFile,namesList,orderByName,geneListFile,outp
     for name in namesList:
 
         mappedGFF = mappedFolder + gffName + '/' + gffName + '_'+name + '.gff'
+
+        if useBackground:
+            backgroundName = dataDict[name]['background']
+            if backgroundName == 'NONE':
+                backgroundGFF = 'NONE'
+            backgroundGFF = mappedFolder + gffName + '/' + gffName + '_' + backgroundName + '.gff'
+        else:
+            backgroundGFF = 'NONE'
         
         color = dataDict[name]['color']
         output = outputFolder + '%s_%s_%s_order.png' % (gffName,name,orderByName)
+
+        cmd = "R --no-save %s %s %s %s %s" % (referenceMappedGFF,mappedGFF,color,output,geneListFile)
         if relative:
-            cmd = "R --no-save %s %s %s %s %s %s < /ark/home/cl512/pipeline/heatMapOrdered.R &" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
-            #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,1)
-            
+            cmd += ' 1'
         else:
-            cmd = "R --no-save %s %s %s %s %s %s < /ark/home/cl512/pipeline/heatMapOrdered.R &" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
-            #cmd = "bsub ' 'R --no-save %s %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R'" % (referenceMappedGFF,mappedGFF,color,output,geneListFile,0)
-            
-        #cmd = 'R --no-save %s %s %s %s %s < /nfs/young_ata/scripts/heatMapOrdered.R' % (referenceMappedGFF,mappedGFF,color,output,geneListFile)
+            cmd += ' 0'
+
+        #now add the background stuff
+        cmd += ' %s' % (backgroundGFF)
+
+        #now finish the command
+        cmd += ' < /ark/home/cl512/pipeline/heatMapOrdered.R &'
+
         print(cmd)
         os.system(cmd)
 
@@ -2817,7 +2829,7 @@ def makeCuffTable(dataFile,analysisName,gtfFile,cufflinksFolder,groupList=[],bas
 
 
     #now we'll want to pipe the output into the R script for RNA_Seq normalization
-    geneFPKMFile = '%s%s_cuffnorm/genes.fpkm_table' % (analysisName,cufflinksFolder)
+    geneFPKMFile = '%s%s_cuffnorm/genes.fpkm_table' % (cufflinksFolder,analysisName)
 
 
     

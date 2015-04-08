@@ -25,7 +25,7 @@ library(graphics)
 
 args <- commandArgs()
 
-print(args[3:8])
+print(args[3:9])
 
 referenceGFF = args[3]
 mappedGFF = args[4]
@@ -34,7 +34,7 @@ color = rgb(colorVector[1],colorVector[2],colorVector[3],maxColorValue=255)
 output = args[6]
 geneListFile = args[7]
 relative = as.numeric(args[8])
-
+backgroundGFF = args[9]
 
 
 #getting the reference order and color spectrum
@@ -49,6 +49,20 @@ geneList = as.vector(geneListTable[,1])}else{geneList = as.vector(seq(1,nrow(ref
 mappedData <- read.delim(file=mappedGFF,sep="\t",header=TRUE)
 mappedData <- as.matrix(mappedData[geneList,3:ncol(mappedData)])  #remove GENE_ID  & locusLine and force to matrix
 colnames(mappedData) <- NULL
+
+#performing background correction
+if(backgroundGFF != 'NONE' | nchar(backgroundGFF) > 5){
+
+  print('PERFORMING BACKGROUND CORRECTION')
+  backgroundData <- read.delim(file=backgroundGFF,sep="\t",header=TRUE)	
+  backgroundData <- as.matrix(backgroundData[geneList,3:ncol(backgroundData)])  #remove GENE_ID  & locusLine and force to matrix
+  colnames(backgroundData) <- NULL
+  mappedData = mappedData - backgroundData
+  mappedData[which(mappedData < 0)] <- 0
+}
+
+
+
 
 referenceData <- as.matrix(referenceData[geneList,3:ncol(referenceData)])  #remove GENE_ID  & locusLine and force to matrix
 colnames(referenceData) <- NULL
