@@ -168,7 +168,7 @@ def makeNameDict(dataFile,roseFolder,namesList=[],enhancerType='super'):
 
 
 
-def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhancerType,maskFile=''):
+def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,tssDistance,enhancerType,maskFile=''):
 
     '''
     launches enhancer mapping if needed from enriched region files
@@ -195,7 +195,7 @@ def launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhan
             enrichedFile = nameDict[name]['enrichedFile']
             #call rose
             print "CALLING ROSE FOR %s" % (name)
-            bashFileName = pipeline_dfci.callRose2(dataFile,'',roseOutputFolder,[name],[],enrichedFile,2500,stitch,mask=maskFile)
+            bashFileName = pipeline_dfci.callRose2(dataFile,'',roseOutputFolder,[name],[],enrichedFile,tssDistance,stitch,mask=maskFile)
             print bashFileName
             os.system('bash %s &' % (bashFileName))
             #add name to queue list
@@ -517,7 +517,8 @@ def main():
     parser.add_option("-e","--enhancer-type", dest="enhancer_type",nargs = 1,default='super',
                       help = "specify type of enhancer to analyze: super, stretch, superStretch")
 
-
+    parser.add_option("-t","--tss", dest="tss",nargs = 1, default=2500,
+                      help = "specify a tss exclusion window. default is 2500bp")
 
     parser.add_option("--mask",dest="mask",nargs=1,default=None,
                       help = 'Create a mask set of regions to filter out of analysis. must be .bed or .gff format')
@@ -572,6 +573,9 @@ def main():
         else:
             stitch = ''
 
+        #check for the tss parameter
+        tssDistance = int(options.tss)
+
         #check enhancer type
         enhancerType = string.lower(options.enhancer_type)
         if ['super','superstretch','stretch'].count(enhancerType) == 0:
@@ -616,7 +620,7 @@ def main():
         #=====================================================
         
         print "\n\n\nLAUNCHING ENHANCER MAPPING (IF NECESSARY)"
-        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,enhancerType,maskFile)
+        nameDict = launchEnhancerMapping(dataFile,nameDict,outputFolder,roseFolder,stitch,tssDistance,enhancerType,maskFile)
         print nameDict
 
         #sys.exit()
