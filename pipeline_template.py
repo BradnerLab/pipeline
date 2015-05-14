@@ -4,7 +4,7 @@
 '''
 The MIT License (MIT)
 
-Copyright (c) 2013 Charles Lin
+Copyright (c) 2015 Charles Lin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,9 @@ import pipeline_dfci
 
 
 
-projectName = 'liver'
-dataFile = '/grail/projects/%s/LIVER_TABLE.txt' % (projectName)
-genome ='mm9'
+projectName = 'projectName'
+dataFile = '/grail/projects/%s/DATA_TABLE.txt' % (projectName)
+genome ='hg19'
 annotFile = '/ark/home/cl512/src/pipeline/annotation/%s_refseq.ucsc' % (genome)
 
 #project folders
