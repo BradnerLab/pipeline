@@ -59,6 +59,9 @@ import time
 import re
 import random
 import string
+import numpy
+
+from collections import defaultdict
 
 #==========================================================================
 #===========================TABLE OF CONTENTS==============================
@@ -173,6 +176,11 @@ import string
 #MAPPING BAMS TO GFFS
 #def mapBams(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
 #def mapBamsQsub(dataFile,cellTypeList,gffList,mappedFolder,nBin = 200,overWrite =False,nameList = []):
+#def mapBamsBatch(dataFile,gffList,mappedFolder,overWrite =False,namesList = [],extension=200)
+
+#FORMATTING MAPPING SIGNAL
+#def makeSignalTable(dataFile,gffFile,mappedFolder,namesList = [],medianNorm=False,output =''):
+
 
 #MAKING GFF LISTS
 #def makeGFFListFile(mappedEnrichedFile,setList,output,annotFile=''):
@@ -680,7 +688,7 @@ def getTONYInfo(uniqueID,column =''):
 #===================CALLING BOWTIE TO MAP DATA=============================
 #==========================================================================
 
-def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,mismatchN=0):
+def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,paramString=''):
 
     '''
     makes a mapping bash script and launches 
@@ -713,6 +721,7 @@ def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,misma
         #see if the dataset is already entered into TONY
         #get the parent tony folder
         tonyFolder = getTONYInfo(uniqueID,column = 30)
+        print(tonyFolder)
         if tonyFolder:
             outputFolder = tonyFolder
         else:
@@ -721,11 +730,7 @@ def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,misma
         outputFolder = formatFolder(outputFolder,create=True)
 
         #setting up the folder for linking
-        if int(mismatchN) ==1:
-            linkFolder = '/grail/bam/mismatch/%s/' % (string.lower(genome))
-            linkFolder = formatFolder(linkFolder,create=True)
-        else:
-            linkFolder = '/grail/bam/%s/' % (string.lower(genome))
+        linkFolder = '/grail/bam/%s/' % (string.lower(genome))
 
         #decide whether or not to run
         try:
@@ -742,8 +747,10 @@ def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,misma
         if run:
     
             cmd = "python /ark/home/cl512/pipeline/callBowtie2.py -f %s -g %s -u %s -o %s --link-folder %s" % (fastqFile,genome,uniqueID,outputFolder,linkFolder)
-            if int(mismatchN) == 1:
-                cmd += ' -N 1'
+            
+            #add the param string
+            cmd += " --param '%s'" % (paramString)
+            
             if pairedEnd:
                 cmd += ' -p'
                 
@@ -751,7 +758,7 @@ def makeBowtieBashJobs(dataFile,namesList = [],launch=True,overwrite=False,misma
             os.system(cmd)
             if launch:
                 time.sleep(1)
-                cmd = "bash %s%s_bwt.sh &" % (outputFolder,uniqueID)
+                cmd = "bash %s%s_bwt2.sh &" % (outputFolder,uniqueID)
                 os.system(cmd)
 
 
@@ -2126,6 +2133,63 @@ def mapBamsBatch(dataFile,gffList,mappedFolder,overWrite =False,namesList = [],e
                 else:
                     print("ERROR: No output found for %s mapping to %s" % (name,gffFile))
 
+
+
+
+#==========================================================================
+#===================FORMATTING MAPPING SIGNAL==============================
+#==========================================================================
+
+def makeSignalTable(dataFile,gffFile,mappedFolder,namesList = [],medianNorm=False,output =''):
+
+    '''
+    for each sample, make a dictionary keyed by locus ID
+    '''
+
+    dataDict = loadDataTable(dataFile)
+
+    if len(namesList) == 0:
+        namesList = dataDict.keys()
+
+    signalDict = {}
+    for name in namesList:
+        signalDict[name] = defaultdict(float)
+
+
+    #now start filling in the signal dict
+    gffName = gffFile.split('/')[-1].split('.')[0]
+    
+    for name in namesList:
+
+        print("MAKING SIGNAL DICT FOR %s" % (name))
+        
+        mappedFile = '%s%s/%s_%s.txt' % (mappedFolder,gffName,gffName,name)
+
+        mappedTable = parseTable(mappedFile,'\t')
+        if medianNorm == True:
+            medianSignal = numpy.median([float(line[2]) for line in mappedTable[1:]])
+        else:
+            medianSignal = 1
+        
+        for line in mappedTable[1:]:
+
+            signalDict[name][line[0]] = float(line[2])/medianSignal
+
+    #now make the signal table
+    signalTable = []
+    header = ['GENE_ID','locusLine'] + namesList
+    signalTable.append(header)
+
+    for line in mappedTable[1:]:
+        locusID = line[0]
+        sigLine = line[0:2] + [signalDict[name][locusID] for name in namesList]
+        signalTable.append(sigLine)
+
+    if len(output) == 0:
+        return signalTable
+    else:
+        unParseTable(signalTable,output,'\t')
+        return signalTable
 
 
 
