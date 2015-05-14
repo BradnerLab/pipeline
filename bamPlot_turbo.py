@@ -77,6 +77,8 @@ def loadAnnotFile(genome, skip_cache=False):
         'mm9': 'annotation/mm9_refseq.ucsc',
         'HG19': 'annotation/hg19_refseq.ucsc',
         'hg19': 'annotation/hg19_refseq.ucsc',
+        'hg19_ribo': 'annotation/hg19_refseq.ucsc',
+        'HG19_RIBO': 'annotation/hg19_refseq.ucsc',
         'rn4': 'annotation/rn4_refseq.ucsc',
         'RN4': 'annotation/rn4_refseq.ucsc',
         }
@@ -501,9 +503,9 @@ def main():
         # bringing in any beds
         if args.bed:
             bedFileList = args.bed
-            if len(args.bed) == 1:
-                bedFileList = args.bed[0].split(',')
-
+            if type(bedFileList) == str:
+                bedFileList = args.bed.split(',')
+            print(bedFileList)
             bedCollection = makeBedCollection(bedFileList)
         else:
             bedCollection = utils.LocusCollection([], 50)
@@ -570,11 +572,11 @@ def main():
 
         # Sanity test the gff object
         assert(all([e[6] in valid_sense_options for e in gff]))  # All strands are sane
-        assert(all([e[3] < e[4] for e in gff]))  # All start/stops are ordered
+        assert(all([int(e[3]) < int(e[4]) for e in gff]))  # All start/stops are ordered
 
         # bring in the genome
         genome = args.genome.upper()
-        if ['HG18', 'HG19', 'MM9', 'MM10', 'RN4'].count(genome) == 0:
+        if ['HG18', 'HG19', 'HG19_RIBO','MM9', 'MM10', 'RN4'].count(genome) == 0:
             print('ERROR: UNSUPPORTED GENOME TYPE %s. USE HG19,HG18, RN4, MM9, or MM10' % (genome))
             parser.print_help()
             exit()
