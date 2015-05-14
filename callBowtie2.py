@@ -42,7 +42,7 @@ import utils
 #command arguments
 bowtieString = 'bowtie2'
 samtoolsString = 'samtools'
-tempParentFolder = '/raider/BOWTIE_TEMP/'
+tempParentFolder = '/grail/BOWTIE_TEMP/'
 fastqcString = '/usr/local/FastQC/fastqc'
 fastqDelimiter = '::'
 
@@ -70,7 +70,7 @@ def stripExtension(fileName):
 #print stripExtension('CGATGT-s_8_1_sequence.txt')
 
 
-def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,linkFolder,mismatchN,uniqueID='',pairedEnd = False):
+def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,linkFolder,uniqueID='',pairedEnd = False):
 
     '''
     creates a dictionary w/ all filenames
@@ -95,7 +95,7 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,li
     fileNameDict['fastqName'] = fastqName
 
     #make the temp Folder
-    tempFolder = tempParentFolder + 'bwt_' + fastqName + tempString + '/'    
+    tempFolder = tempParentFolder + 'bwt2_' + fastqName + tempString + '/'    
     fileNameDict['tempFolder'] = tempFolder
 
     if pairedEnd:
@@ -115,13 +115,13 @@ def makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,finalFolder,li
     tempBamFile = tempFolder + fastqName + '.bam'
     fileNameDict['tempBamFile'] = tempBamFile
 
-    tempSortedBamFile = tempFolder + fastqName + '.%s.bwt.N%s.sorted' % (genome,mismatchN)
+    tempSortedBamFile = tempFolder + fastqName + '.%s.bwt2.sorted' % (genome)
     fileNameDict['tempSortedBamFile'] = tempSortedBamFile
 
-    sortedSamFile = fastqName + '.%s.bwt.N%s.sorted.sam' % (genome,mismatchN)
+    sortedSamFile = fastqName + '.%s.bwt2.sorted.sam' % (genome)
     fileNameDict['sortedSamFile'] = sortedSamFile
 
-    groupHeader = tempFolder + fastqName + '.%s.bwt.N%s' % (genome,mismatchN)
+    groupHeader = tempFolder + fastqName + '.%s.bwt2' % (genome)
     fileNameDict['groupHeader'] = groupHeader
 
     fileNameDict['finalFolder'] = finalFolder
@@ -204,7 +204,7 @@ def runFastQC(fastqcString,fileNameDict,pairedEnd = False):
 
     return cmd
 
-def bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd=False):
+def bowtieCmd(bowtieString,paramString,bowtieIndex,fileNameDict,pairedEnd=False):
 
     '''
     creates the bowtie command call
@@ -217,13 +217,13 @@ def bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd=False):
         tempFastqFile1 = fileNameDict['tempFastqFile_1']
         tempFastqFile2 = fileNameDict['tempFastqFile_2']
         tempSamFile = fileNameDict['tempSamFile']
-        cmd = "%s -p 4 -X2000 -N %s -x %s -1 %s -2 %s -S %s" % (bowtieString,mismatchN,bowtieIndex,tempFastqFile1,tempFastqFile2,tempSamFile)
+        cmd = "%s %s -x %s -1 %s -2 %s -S %s" % (bowtieString,paramString,bowtieIndex,tempFastqFile1,tempFastqFile2,tempSamFile)
 
     else:
         tempFastqFile = fileNameDict['tempFastqFile']
         tempSamFile = fileNameDict['tempSamFile']
 
-        cmd = "%s -p 4 -N %s -x %s -U %s -S %s" % (bowtieString,mismatchN,bowtieIndex,tempFastqFile,tempSamFile)
+        cmd = "%s %s -x %s -U %s -S %s" % (bowtieString,paramString,bowtieIndex,tempFastqFile,tempSamFile)
     return cmd
 
 
@@ -334,8 +334,9 @@ def linkBamCmd(fileNameDict):
     groupHeader = fileNameDict['groupHeader']
     finalFolder = fileNameDict['finalFolder']
     linkFolder = fileNameDict['linkFolder']
+    groupName = groupHeader.split('/')[-1]
 
-    cmd = "ln %s%s* %s" % (finalFolder,groupHeader,linkFolder)
+    cmd = "ln %s%s* %s" % (finalFolder,groupName,linkFolder)
     
     return cmd
 
@@ -375,8 +376,8 @@ def main():
 
 
     #optional arguments
-    parser.add_option("-N","--mismatch",dest="mismatchN",nargs =1, default = 0,
-                      help = "Specify 0 or 1 for allowed mismatches")
+    parser.add_option("--param",dest="paramString",nargs =1, default = '',
+                      help = "A string of bowtie parameters")
     parser.add_option("--link-folder",dest="linkFolder",nargs =1, default = None,
                       help = "Specify a folder to symlink the bam")
     parser.add_option("-p","--paired",dest="paired",action='store_true',default = False,
@@ -405,7 +406,7 @@ def main():
     outputFolder = utils.formatFolder(outputFolder,True)
 
     #retrieve optional arguments
-    mismatchN = options.mismatchN
+    paramString = options.paramString
     if options.linkFolder:
 
         linkFolder = options.linkFolder
@@ -419,6 +420,8 @@ def main():
         'hg19':'/raider/index/hg19/Bowtie2Index/genome',
         'hg18':'/grail/genomes/Homo_sapiens/human_gp_mar_06_no_random/bowtie/hg18',
         'geckov2':'/grail/genomes/gecko/GeCKOv2/Sequence/Bowtie2Index/gecko',
+        'ribo':'/raider/temp/rDNA/hg19_45S_index/genome',
+        'hg19_ribo':'/grail/genomes/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index_ribo/genome',
         }
 
     bowtieIndex = bowtieDict[string.lower(genome)]
@@ -426,10 +429,10 @@ def main():
     #get the temp string
     tempString = '_%s' % str(random.randint(1,10000))
     
-    fileNameDict = makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,outputFolder,linkFolder,mismatchN,uniqueID,pairedEnd)
+    fileNameDict = makeFileNameDict(fastqFile,genome,tempString,tempParentFolder,outputFolder,linkFolder,uniqueID,pairedEnd)
 
     #open the bashfile to write to
-    bashFileName = "%s%s_bwt.sh" % (outputFolder,uniqueID)
+    bashFileName = "%s%s_bwt2.sh" % (outputFolder,uniqueID)
     bashFile = open(bashFileName,'w')
 
     #shebang
@@ -449,7 +452,7 @@ def main():
         bashFile.write(cmd+'\n')
 
     #call bowtie
-    cmd = bowtieCmd(bowtieString,mismatchN,bowtieIndex,fileNameDict,pairedEnd)
+    cmd = bowtieCmd(bowtieString,paramString,bowtieIndex,fileNameDict,pairedEnd)
     bashFile.write(cmd+'\n')
 
     #remove temp fastq
