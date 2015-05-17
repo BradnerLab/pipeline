@@ -44,11 +44,11 @@ print(name)
 #========================================================================
 #=========================HARD CODED STUFF===============================
 #========================================================================
-erccTable = read.delim("/ark/home/cl512/ressrv19/genomes/ERCC_Technical_Data/ERCC_Controls_Analysis.txt")
+erccTable = read.delim("/grail/genomes/ERCC_Technical_Data/ERCC_Controls_Analysis.txt")
 
 #primeviewcdf_env <- make.cdf.env(filename="PrimeView_withERCC_binary.cdf", cdf.path="/ark/home/cl512/ressrv19/annotations/platforms/GPL16043/annotation/",compress=FALSE)
 
-primeviewcdf_env <- make.cdf.env(filename="PrimeView_withERCC_binary.cdf", cdf.path="/ark/home/cl512/ressrv19/annotations/platforms/GPL16043/annotation/",compress=FALSE)
+primeviewcdf_env <- make.cdf.env(filename="PrimeView_withERCC_binary.cdf", cdf.path="/grail/annotations/platforms/GPL16043/annotation/",compress=FALSE)
 
 #========================================================================
 #=============================FUNCTIONS==================================
