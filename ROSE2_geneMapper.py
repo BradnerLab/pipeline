@@ -47,6 +47,19 @@ from collections import defaultdict
 
 
 #==================================================================
+#=========================GLOBAL===================================
+#==================================================================
+
+# Get the script's full local path
+whereAmI = os.path.dirname(os.path.realpath(__file__))
+print(whereAmI)
+# Get the script folder
+codeFolder = utils.formatFolder(whereAmI,False)
+
+print('RUNNING ROSE2_META.py FROM %s' % (whereAmI))
+
+
+#==================================================================
 #===========MAPPING GENES TO ENHANCERS WITHOUT BAM RANKING=========
 #==================================================================
 
@@ -678,14 +691,14 @@ def main():
     print('USING %s AS THE GENOME' % genome)
 
     # GETTING THE CORRECT ANNOT FILE
-    cwd = os.getcwd()
+
     genomeDict = {
-        'HG18': '%s/annotation/hg18_refseq.ucsc' % (cwd),
-        'MM9': '%s/annotation/mm9_refseq.ucsc' % (cwd),
-        'HG19': '%s/annotation/hg19_refseq.ucsc' % (cwd),
-        'MM8': '%s/annotation/mm8_refseq.ucsc' % (cwd),
-        'MM10': '%s/annotation/mm10_refseq.ucsc' % (cwd),
-        'RN4': '%s/annotation/rn4_refseq.ucsc' % (cwd),
+        'HG18': '%s/annotation/hg18_refseq.ucsc' % (codeFolder),
+        'MM9': '%s/annotation/mm9_refseq.ucsc' % (codeFolder),
+        'HG19': '%s/annotation/hg19_refseq.ucsc' % (codeFolder),
+        'MM8': '%s/annotation/mm8_refseq.ucsc' % (codeFolder),
+        'MM10': '%s/annotation/mm10_refseq.ucsc' % (codeFolder),
+        'RN4': '%s/annotation/rn4_refseq.ucsc' % (codeFolder),
     }
 
     annotFile = genomeDict[genome.upper()]
