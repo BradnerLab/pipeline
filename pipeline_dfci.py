@@ -2705,7 +2705,7 @@ def callRose(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = []
 
 
 
-def callRose2(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch='',bashFileName ='',mask=''):
+def callRose2(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [],inputFile='',tss=2500,stitch='',bashFileName ='',mask='',useBackground=True):
 
     '''
     calls rose w/ standard parameters
@@ -2736,7 +2736,7 @@ def callRose2(dataFile,macsEnrichedFolder,parentFolder,namesList=[],extraMap = [
         bamFile = dataDict[name]['bam']
         
         backgroundName = dataDict[name]['background']
-        if dataDict.has_key(backgroundName):
+        if useBackground and dataDict.has_key(backgroundName):
             backgroundBamFile = dataDict[backgroundName]['bam']
             hasBackground = True
         else:
