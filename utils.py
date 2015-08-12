@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #SET OF GENERAL UTILITY FUNCTIONS FOR SEQ DATA
-#last modified 131031
+#last modified 141217
 
 #please edit this to the location of the samtools program
 samtoolsString ='samtools'
@@ -30,7 +30,7 @@ THE SOFTWARE.
 '''
 
 
-#Locus, LocusCollection, and Gene classes were generously provided by Graham Ruby
+#Locus, LocusCollection, and Gene classes were generously provided by Graham Ruby and Charles Lin
 #Additional functions are found from online sources and are noted in the comments
 
 
@@ -44,6 +44,7 @@ import gzip
 import time
 import re
 import sys
+import math
 
 # Very pretty error reporting, where available
 try:
@@ -55,6 +56,7 @@ except ImportError:
 from string import join
 
 import subprocess
+import datetime
 
 from collections import defaultdict
 
@@ -259,16 +261,15 @@ def checkOutput(fileName, waitTime = 1, timeOut = 30):
     if it exists, returns True
     default is 1 minute with a max timeOut of 30 minutes
     '''
-    waitTime = int(waitTime * 60)
+    waitTime = int(waitTime)*60
 
-    timeOut = int(timeOut * 60)
+    timeOut = int(timeOut)*60
 
     maxTicker = timeOut/waitTime
     ticker = 0
 
     fileExists = False
     while not fileExists:
-
         try:
             size1 = os.stat(fileName).st_size
             time.sleep(.1)
@@ -473,9 +474,7 @@ def makeTranscriptCollection(annotFile,upSearch,downSearch,window = 500,geneList
                 if ticker%1000 == 0:
                     print(ticker)
 
-
     transCollection = LocusCollection(locusList, window)
-
     return transCollection
 
 
@@ -560,7 +559,7 @@ class Locus:
     # sense = '+' or '-' (or '.' for an ambidexterous locus)
     # start,end = ints of the start and end coords of the locus;
     #      end coord is the coord of the last nucleotide.
-    def __init__(self,chr,start,end,sense,ID=''):
+    def __init__(self,chr,start,end,sense,ID='',score=0):
         coords = sorted([int(start), int(end)])
         # this method for assigning chromosome should help avoid storage of
         # redundant strings.
@@ -570,11 +569,13 @@ class Locus:
         self._start = int(coords[0])
         self._end = int(coords[1])
         self._ID = ID
+        self._score = score
     def ID(self): return self._ID
     def chr(self): return self._chr
     def start(self): return self._start  ## returns the smallest coordinate
     def end(self): return self._end   ## returns the biggest coordinate
     def len(self): return self._end - self._start + 1
+    def score(self): return self._score
     def getAntisenseLocus(self):
         if self._sense=='.': return self
         else:
@@ -670,9 +671,8 @@ class Locus:
         return phastSum/self.len()
 
 
-
 class LocusCollection:
-    def __init__(self,loci,windowSize):
+    def __init__(self,loci,windowSize=50):
         ### top-level keys are chr, then strand, no space
         self.__chrToCoordToLoci = dict()
         self.__loci = dict()
@@ -713,6 +713,14 @@ class LocusCollection:
 
     def getWindowSize(self): return self.__winSize
     def getLoci(self): return self.__loci.keys()
+
+    def getSize(self):
+           size = 0
+           for locus in self.__loci:
+                  newsize = int(locus.end())-int(locus.start())
+                  size += newsize
+           return size
+
     def getChrList(self):
         # i need to remove the strand info from the chromosome keys and make
         # them non-redundant.
@@ -890,6 +898,7 @@ class Gene:
         self._cdExons = []
         self._introns = []
 
+        cd_exon_count = 0
 
         for n in range(len(exStarts)):
             first_locus = Locus(chr,exStarts[n],exStarts[n],sense)
@@ -983,7 +992,13 @@ def locusCollectionToGFF(locusCollection):
 
 
 
+def bedToLocusCollection(bedfile):
 
+    table = parseTable(bedfile, '\t')
+    loci = [Locus(x[0], x[1], x[2], '.') for x in table]
+    collection = LocusCollection(loci, 50)
+
+    return collection
 
 def gffToLocusCollection(gff,window =500):
 
@@ -1108,7 +1123,7 @@ class Bam:
             reads = filter(lambda x: x[5].count('N') < 1,reads)
 
         #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-'}
-        # convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
+        #convertDict = {'16':'-','0':'+','64':'+','65':'+','80':'-','81':'-','129':'+','145':'-','256':'+','272':'-','99':'+','147':'-'}
 
 
         #BJA added 256 and 272, which correspond to 0 and 16 for multi-mapped reads respectively:
@@ -1214,7 +1229,16 @@ class Bam:
 
         return len(reads)
 
+    def liquidateLocus(self,locus,sense='.'):
 
+           bamliquidatorCmd = 'bamliquidator %s %s %s %s %s 1 200' % (self._bam, locus.chr(),
+                                                                     str(locus.start()), str(locus.end()),
+                                                                     sense)
+
+           bamliquidatorOut = subprocess.Popen(bamliquidatorCmd, stdout = subprocess.PIPE, shell=True)
+           score = bamliquidatorOut.communicate()[0]
+
+           return score
 
 #==================================================================
 #========================MISC FUNCTIONS============================
