@@ -146,7 +146,7 @@ gtest:
 	(cd gtest/build; cmake ..; make)
 
 cpp_test: gtest test.cpp bamliquidator_util.h
-	$(CC)	$(CPPFLAGS) -I gtest/include gtest/build/libgtest.a test.cpp -o cpp_test
+	$(CC) $(CPPFLAGS) -o cpp_test -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
 
 test: cpp_test 
 	./cpp_test
