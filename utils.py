@@ -261,9 +261,9 @@ def checkOutput(fileName, waitTime = 1, timeOut = 30):
     if it exists, returns True
     default is 1 minute with a max timeOut of 30 minutes
     '''
-    waitTime = int(waitTime)*60
+    waitTime = int(waitTime*60)
 
-    timeOut = int(timeOut)*60
+    timeOut = int(timeOut*60)
 
     maxTicker = timeOut/waitTime
     ticker = 0
