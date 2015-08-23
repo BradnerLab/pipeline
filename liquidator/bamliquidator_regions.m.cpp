@@ -1,5 +1,5 @@
 #include "bamliquidator.h"
-#include "bamliquidator_util.h"
+#include "liquidator_util.h"
 #include "bamliquidator_regions.h"
 
 #include <cmath>
@@ -25,6 +25,8 @@
 #ifdef time_region_parsing 
 #include <boost/timer/timer.hpp>
 #endif
+
+using namespace liquidator;
 
 class Liquidator 
 {

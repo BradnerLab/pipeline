@@ -11,35 +11,8 @@
 
 #include <boost/lexical_cast.hpp>
 
-// todo: use a namespace here
-
-inline int count(const std::string& haystack, const std::string& needle)
+namespace liquidator
 {
-  // naive implementation just to get started
-  const char match_any_char = 'N';
-
-  int count = 0;
-
-  for (size_t i=0; i < haystack.size(); ++i)
-  {
-    for (size_t j=0; j < needle.size() && (j + i) < haystack.size(); ++j)
-    {
-      if (needle[j] != match_any_char)
-      {
-        if (needle[j] != haystack[j + i])
-        {
-          break;
-        }
-      }
-      if (j == needle.size() - 1)
-      {
-        ++count;
-      }
-    }
-  }
-
-  return count;
-}
 
 inline char complement(char c)
 {
@@ -143,6 +116,8 @@ extract_chromosome_lengths(int argc, char* argv[], int chr1_arg)
       std::make_pair(argv[arg], boost::lexical_cast<size_t>(argv[arg+1])));
   }
   return chromosome_lengths;
+}
+
 }
 
 /* The MIT License (MIT) 

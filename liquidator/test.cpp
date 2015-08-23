@@ -1,0 +1,79 @@
+#include "gtest/gtest.h"
+
+#include "score_matrix.h"
+#include "detail/score_matrix_detail.h"
+
+using namespace liquidator;
+
+const std::array<double, AlphabetSize> uniform_bg = {.25, .25, .25, .25};
+
+TEST(ScoreMatrix, read_single_uniform_no_pseudo_sites)
+{
+    /*
+    const std::string input_str = R("MEME version 4
+
+ALPHABET= ACGT
+
+strands: +
+
+Background letter frequencies
+A 0.29 C 0.21 G 0.21 T 0.29
+
+MOTIF JASPAR2014.MA0107.1 RELA
+
+letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
+  0.000000        0.222222        0.611111        0.166667
+  0.000000        0.000000        0.944444        0.055556
+  0.000000        0.000000        1.000000        0.000000
+  0.611111        0.000000        0.388889        0.000000
+  0.555556        0.166667        0.222222        0.055556
+  0.111111        0.000000        0.000000        0.888889
+  0.000000        0.000000        0.000000        1.000000
+  0.000000        0.111111        0.000000        0.888889
+  0.000000        1.000000        0.000000        0.000000
+  0.000000        1.000000        0.000000        0.000000)";
+
+    std::istringstream ss(input_str);
+    const double psuedo_sites = .1;
+    std::vector<ScoreMatrix> matrices = read(ss, uniform_bg, psuedo_sites);
+    ASSERT_EQ(1, matrices.size());
+    const auto& matrix = matrices[0];
+    ASSERT_EQ(10, matrix.size());
+    const auto& row = matrix[0];
+    ASSERT_EQ(4, row.size());
+
+    const double likelihood = 0.222222;
+    const double likelihood_ratio = likelihood / uniform_bg[0];
+    //EXPECT_FLOAT_EQ(std::log2(likelihood_ratio), matrix.value(0, 1));
+    //EXPECT_FLOAT_EQ(
+    */
+}
+
+int main(int argc, char **argv)
+{
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+
+/* The MIT License (MIT) 
+
+   Copyright (c) 2015 John DiMatteo (jdimatteo@gmail.com)
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE. 
+ */

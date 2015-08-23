@@ -1,1 +1,1 @@
-bamliquidator_internal/bamliquidatorbatch/bamliquidator_batch.py
+liquidator/bamliquidatorbatch/bamliquidator_batch.py

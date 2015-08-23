@@ -1,4 +1,4 @@
-#include "bamliquidator_util.h"
+#include "liquidator_util.h"
 
 #include <iostream>
 #include <fstream>
@@ -11,6 +11,9 @@ namespace
   
   bool include_warnings(true);
 }
+
+namespace liquidator
+{
 
 void Logger::configure(const std::string& log_file_path, bool include_warnings_in_stderr)
 {
@@ -62,6 +65,8 @@ Logger::Logger(const Logger& logger):
 {
   ss << logger.ss.str();
   logger.copied = true;
+}
+
 }
 
 /* The MIT License (MIT) 

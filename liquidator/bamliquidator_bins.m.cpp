@@ -1,5 +1,5 @@
 #include "bamliquidator.h"
-#include "bamliquidator_util.h"
+#include "liquidator_util.h"
 
 #include <cmath>
 #include <fstream>
@@ -19,6 +19,8 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
+
+using namespace liquidator;
 
 // this CountH5Record must match exactly the structure in HDF5
 // -- see bamliquidator_batch.py function create_count_table

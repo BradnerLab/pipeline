@@ -79,27 +79,22 @@ setup(
 endef
 export SETUP_PY
 
-all: bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator motif_global_liquidator motif_region_liquidator
+all: bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
 bamliquidator: bamliquidator.m.o bamliquidator.o
 	$(CC) $(LDFLAGS) -o bamliquidator bamliquidator.o bamliquidator.m.o $(LDLIBS) 
 
-bamliquidator_bins: bamliquidator_bins.m.o bamliquidator.o bamliquidator_util.o
-	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o bamliquidator_util.o \
+bamliquidator_bins: bamliquidator_bins.m.o bamliquidator.o liquidator_util.o
+	$(CC) $(LDFLAGS) -o bamliquidator_bins bamliquidator.o bamliquidator_bins.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS)
 
-bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o bamliquidator_util.o bamliquidator_regions.h
-	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o bamliquidator_util.o \
+bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util.o bamliquidator_regions.h
+	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
-motif_liquidator: motif_liquidator.m.cpp
+motif_liquidator: motif_liquidator.m.cpp score_matrix.h fimo_style_printer.h liquidator_util.o
 	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
-
-motif_global_liquidator: motif_global_liquidator.m.cpp bamliquidator_util.o
-	$(CC) $(CPPFLAGS) motif_global_liquidator.m.cpp bamliquidator_util.o $(LDFLAGS) -o motif_global_liquidator $(LDLIBS)
-
-motif_region_liquidator: motif_region_liquidator.m.cpp bamliquidator_util.o bamliquidator_regions.h
-	$(CC) $(CPPFLAGS) motif_region_liquidator.m.cpp bamliquidator_util.o $(LDFLAGS) -o motif_region_liquidator $(LDLIBS)
+#	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -113,8 +108,8 @@ bamliquidator_regions.m.o: bamliquidator_regions.m.cpp
 bamliquidator.o: bamliquidator.cpp bamliquidator.h
 	$(CC) $(CPPFLAGS) -pthread -c bamliquidator.cpp
 
-bamliquidator_util.o: bamliquidator_util.cpp bamliquidator_util.h
-	$(CC) $(CPPFLAGS) -c bamliquidator_util.cpp
+liquidator_util.o: liquidator_util.cpp liquidator_util.h
+	$(CC) $(CPPFLAGS) -c liquidator_util.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator motif_global_liquidator
 
@@ -145,7 +140,7 @@ gtest:
 	mkdir gtest/build
 	(cd gtest/build; cmake ..; make)
 
-cpp_test: gtest test.cpp bamliquidator_util.h
+cpp_test: gtest test.cpp motif_liquidator 
 	$(CC) $(CPPFLAGS) -o cpp_test -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
 
 test: cpp_test 

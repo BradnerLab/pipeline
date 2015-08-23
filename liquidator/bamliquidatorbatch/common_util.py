@@ -23,12 +23,11 @@ def most_appropriate_executable_path(executable):
     # or from a user install so that the exectuable is on the path.  If it seems like this is a git checkout,
     # then we return the developer executable path, else just use standard path
 
-    if basename(dirname(dirname(os.path.realpath(__file__)))) == 'bamliquidator_internal':
+    if basename(dirname(dirname(os.path.realpath(__file__)))) == 'liquidator':
         # look for developer executable location 
         executable_path = os.path.join(dirname(dirname(os.path.realpath(__file__))), executable)
-        if not os.path.isfile(executable_path):
-            exit("%s is missing -- try cd'ing into the directory and running 'make'" % executable_path)
-        return executable_path
+        if os.path.isfile(executable_path):
+            return executable_path
     else:
         # just look on standard path
         return executable

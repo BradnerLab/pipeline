@@ -63,6 +63,8 @@ std::vector<Region> parse_regions(const std::string& region_file_path,
                                   const std::map<std::string, size_t>& chromosome_to_length = std::map<std::string, size_t>(), 
                                   const char default_strand = '_') 
 {
+  using namespace liquidator;
+
   unsigned int chromosome_column = 0;
   unsigned int name_column = 0;
   unsigned int start_column = 0;
