@@ -2,3 +2,6 @@ bamliquidator_bins
 bamliquidator_regions
 bamliquidator
 *.o
+cpp_test
+motif_liquidator
+gtest

@@ -1,6 +1,8 @@
 #ifndef LIQUIDATOR_SCORE_MATRIX_H_INCLUDED
 #define LIQUIDATOR_SCORE_MATRIX_H_INCLUDED
 
+#include "liquidator_util.h"
+
 #include <array>
 #include <iostream>
 #include <string>
@@ -8,8 +10,6 @@
 
 namespace liquidator
 {
-
-const int AlphabetSize=4;
 
 // motif position weight matrix (pwm) for scoring sequences 
 class ScoreMatrix
@@ -68,14 +68,20 @@ public:
     // Matrix value for the sequence position (row) and base letter (column).
     // Value is a log likelihood ratio, adjusted with a psuedo count and scaled.
     // Base should be ACGT/acgt -- else throws exception.
-    int value(size_t position, char base);
+    // position is 0 based and must be < length() -- else undefined behavior.
+    int value(size_t position, char base)
+    {
+        const int column = alphabet_index(base);
+        if ( column >= AlphabetSize ) throw std::runtime_error("Invalid base " + std::string(1, base));
+        return m_matrix[position][column];
+    }
 
 private:
-    ScoreMatrix() {}
+    ScoreMatrix();
 
     std::string m_name;
-
     std::vector<std::array<int, AlphabetSize>> m_matrix;
+    double m_min;
 
     Score score_sequence(const std::string& sequence, size_t begin, size_t end);
 };

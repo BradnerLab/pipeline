@@ -14,17 +14,48 @@
 namespace liquidator
 {
 
+const int AlphabetSize=4;
+
 inline char complement(char c)
 {
     switch(c)
     {
-      case 'A': return 'T';
-      case 'C': return 'G';
-      case 'G': return 'C';
-      case 'T': return 'A';
-      case 'N': return 'N';
+      case 'A':
+      case 'a':
+          return 'T';
+      case 'C':
+      case 'c':
+          return 'G';
+      case 'G':
+      case 'g':
+          return 'C';
+      case 'T': 
+      case 't':
+          return 'A';
     }
     throw std::runtime_error("no known complement for " + std::string(1, c));
+}
+
+inline int alphabet_index(char c)
+{
+    switch(c)
+    {
+    case 'a':
+    case 'A':
+        return 0;
+    case 'c':
+    case 'C':
+        return 1;
+    case 'g':
+    case 'G':
+        return 2;
+    case 't':
+    case 'T':
+        return 3;
+    }
+
+    // Invalid alphabet character
+    return 99;
 }
 
 inline std::string complement(const std::string& sequence)

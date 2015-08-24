@@ -38,7 +38,7 @@ CC=g++
 
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
-CPPFLAGS := -std=c++11 -O3 -g -Wall
+CPPFLAGS := -std=c++11 -O3 -g -Wall -I ./
 LDFLAGS := -O3 -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
@@ -92,9 +92,8 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util
 	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
-motif_liquidator: motif_liquidator.m.cpp score_matrix.h fimo_style_printer.h liquidator_util.o
+motif_liquidator: motif_liquidator.m.cpp score_matrix.h detail/score_matrix_detail.h fimo_style_printer.h liquidator_util.o
 	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
-#	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp

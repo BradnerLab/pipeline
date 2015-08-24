@@ -7,10 +7,9 @@ using namespace liquidator;
 
 const std::array<double, AlphabetSize> uniform_bg = {.25, .25, .25, .25};
 
-TEST(ScoreMatrix, read_single_uniform_no_pseudo_sites)
+TEST(ScoreMatrix, read_pwm_matrix)
 {
-    /*
-    const std::string input_str = R("MEME version 4
+    const std::string input_str = R"(MEME version 4
 
 ALPHABET= ACGT
 
@@ -34,19 +33,52 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
   0.000000        1.000000        0.000000        0.000000)";
 
     std::istringstream ss(input_str);
-    const double psuedo_sites = .1;
-    std::vector<ScoreMatrix> matrices = read(ss, uniform_bg, psuedo_sites);
-    ASSERT_EQ(1, matrices.size());
-    const auto& matrix = matrices[0];
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    ASSERT_EQ(1, pwms.size());
+    
+    const auto& name = pwms[0].name;
+    EXPECT_EQ("JASPAR2014.MA0107.1", name);
+
+    const auto& matrix = pwms[0].matrix;
     ASSERT_EQ(10, matrix.size());
     const auto& row = matrix[0];
     ASSERT_EQ(4, row.size());
 
-    const double likelihood = 0.222222;
-    const double likelihood_ratio = likelihood / uniform_bg[0];
-    //EXPECT_FLOAT_EQ(std::log2(likelihood_ratio), matrix.value(0, 1));
-    //EXPECT_FLOAT_EQ(
-    */
+    EXPECT_FLOAT_EQ(0, matrix[0][0]);
+    EXPECT_FLOAT_EQ(0.222222, matrix[0][1]);
+    EXPECT_FLOAT_EQ(0.388889, matrix[3][2]);
+    EXPECT_FLOAT_EQ(1, matrix[6][3]);
+    EXPECT_FLOAT_EQ(1, matrix[9][1]);
+}
+
+TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
+{
+    const double number_of_sites = 18;
+    detail::PWM pwm;
+    pwm.number_of_sites = number_of_sites;
+    pwm.matrix = { {.25, .25, .25, .25},
+                   {0, 0, 1, 0} };
+    const double number_of_pseudo_sites=.1;
+
+    const auto min_max = detail::log_adjusted_likelihood_ratio(pwm, uniform_bg);
+    EXPECT_EQ(number_of_sites, pwm.number_of_sites);
+    ASSERT_EQ(2, pwm.matrix.size());
+    ASSERT_EQ(4, pwm.matrix[0].size());
+
+    const double zero = std::log2(number_of_pseudo_sites * uniform_bg[0] / ( number_of_sites + number_of_pseudo_sites)/uniform_bg[0]);
+    const double one = std::log2((number_of_sites+number_of_pseudo_sites*uniform_bg[0]) / (number_of_sites + number_of_pseudo_sites)/uniform_bg[0]);
+    const double quarter = std::log2((.25*number_of_sites+number_of_pseudo_sites*uniform_bg[0]) / ( number_of_sites + number_of_pseudo_sites) /uniform_bg[0]);
+    EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][0]);
+    EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][1]);
+    EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][2]);
+    EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][3]);
+    EXPECT_FLOAT_EQ(zero,    pwm.matrix[1][0]);
+    EXPECT_FLOAT_EQ(zero,    pwm.matrix[1][1]);
+    EXPECT_FLOAT_EQ(one,     pwm.matrix[1][2]);
+    EXPECT_FLOAT_EQ(zero,    pwm.matrix[1][3]);
+
+    EXPECT_FLOAT_EQ(min_max.first,  zero);
+    EXPECT_FLOAT_EQ(min_max.second, one);
 }
 
 int main(int argc, char **argv)
