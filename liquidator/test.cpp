@@ -53,9 +53,8 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
 
 TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 {
-    const double number_of_sites = 18;
-    detail::PWM pwm;
-    pwm.number_of_sites = number_of_sites;
+    const int number_of_sites = 18;
+    detail::PWM pwm { /*number_of_sites =*/ number_of_sites };
     pwm.matrix = { {.25, .25, .25, .25},
                    {0, 0, 1, 0} };
     const double number_of_pseudo_sites=.1;
@@ -67,7 +66,7 @@ TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 
     const double zero = std::log2(number_of_pseudo_sites * uniform_bg[0] / ( number_of_sites + number_of_pseudo_sites)/uniform_bg[0]);
     const double one = std::log2((number_of_sites+number_of_pseudo_sites*uniform_bg[0]) / (number_of_sites + number_of_pseudo_sites)/uniform_bg[0]);
-    const double quarter = std::log2((.25*number_of_sites+number_of_pseudo_sites*uniform_bg[0]) / ( number_of_sites + number_of_pseudo_sites) /uniform_bg[0]);
+    const double quarter = 0; // matching a base for a position where all bases are equally likely scores zero points
     EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][0]);
     EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][1]);
     EXPECT_FLOAT_EQ(quarter, pwm.matrix[0][2]);
@@ -79,6 +78,32 @@ TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 
     EXPECT_FLOAT_EQ(min_max.first,  zero);
     EXPECT_FLOAT_EQ(min_max.second, one);
+}
+
+TEST(ScoreMatrix, scale)
+{
+    detail::PWM pwm { /*number_of_sites =*/ 10 };
+    pwm.matrix = { {0, 0, 0, 0},
+                   {-8, -8, 2, -8} };
+    const detail::ScaledPWM scaled = detail::scale(pwm, std::make_pair(-8.0, 2.0), 30);
+
+    const auto& matrix = scaled.matrix;
+    ASSERT_EQ(2, matrix.size());
+
+    EXPECT_EQ(10, scaled.number_of_sites);
+    EXPECT_EQ(-8, scaled.min);
+    EXPECT_EQ(3, scaled.scale); // max - min = 10, 10*3 = 30, so scale is 3
+    EXPECT_EQ(30, scaled.range);
+
+    EXPECT_EQ(24, matrix[0][0]); // (0 - -8) * 3 = 24
+    EXPECT_EQ(24, matrix[0][1]);
+    EXPECT_EQ(24, matrix[0][2]);
+    EXPECT_EQ(24, matrix[0][3]);
+
+    EXPECT_EQ(0, matrix[1][0]); // (-8 - -8) * 3
+    EXPECT_EQ(0, matrix[1][1]);
+    EXPECT_EQ(30, matrix[1][2]); // (2 - -8) * 3
+    EXPECT_EQ(0, matrix[1][3]);
 }
 
 int main(int argc, char **argv)

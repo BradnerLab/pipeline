@@ -13,9 +13,19 @@ namespace liquidator { namespace detail {
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 struct PWM
 {
+    const size_t number_of_sites;
     std::string name;
     std::vector<std::array<double, AlphabetSize>> matrix;
-    size_t number_of_sites;
+};
+
+struct ScaledPWM
+{
+    const size_t number_of_sites;
+    const int min;
+    const int scale;
+    const int range;
+    std::string name;
+    std::vector<std::array<int, AlphabetSize>> matrix;
 };
 
 // Transforms PWM probability values into log pseudo-site-adjusted likelihood ratio values.
@@ -42,6 +52,36 @@ log_adjusted_likelihood_ratio(PWM& pwm,
     return std::make_pair(min, max);
 }
 
+inline ScaledPWM
+scale(const PWM& pwm, std::pair<double, double> min_max, int range)
+{
+    double min = min_max.first;
+    const double max = min_max.second;
+    if (min == max)
+    {
+        min = max - 1;        
+    }
+    min = std::floor(min);
+
+    const int scale = std::floor(range/(max-min));
+    ScaledPWM scaled_pwm { /*number_of_sites=*/ pwm.number_of_sites,
+                           /*min=*/ int(min),
+                           /*scale=*/ scale,
+                           /*range=*/ range,
+                           /*name=*/ pwm.name };
+    scaled_pwm.matrix.reserve(pwm.matrix.size());
+    for (auto& row : pwm.matrix)
+    {
+        std::array<int, AlphabetSize> scaled_row;
+        for (int alphabet_index=0; alphabet_index < AlphabetSize; ++alphabet_index)
+        {
+            scaled_row[alphabet_index] = std::round((row[alphabet_index] - min) * scale);  
+        }
+        scaled_pwm.matrix.push_back(scaled_row);
+    }
+    return scaled_pwm;
+}
+
 inline std::vector<PWM> read_pwm(std::istream& input)
 {
     // todo: replace below hack with spirit parsing,
@@ -49,8 +89,8 @@ inline std::vector<PWM> read_pwm(std::istream& input)
     //       should read nsites and maybe E,
     //       should read multiple matrices and return an empty vector if none (not throw),
     //       and add tests for all these changes 
-    PWM pwm;
-    pwm.number_of_sites = 18; // todo: read this in if provided, else default to 20 like FIMO
+    PWM pwm { /*number_of_sites =*/ 18 };
+    // todo: read number_of_sites in if provided, else default to 20 like FIMO
 
     bool matrixFirstLineSeen = false;
     for(std::string line; getline(input, line); )
@@ -102,3 +142,26 @@ inline std::vector<PWM> read_pwm(std::istream& input)
 } }
 
 #endif
+
+/* The MIT License (MIT) 
+
+   Copyright (c) 2015 John DiMatteo (jdimatteo@gmail.com)
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE. 
+ */
