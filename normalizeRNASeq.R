@@ -2,9 +2,10 @@ library(affy)
 library(graphics)
 
 
+
 # The MIT License (MIT)
 
-# Copyright (c) 2013 Charles Lin
+# Copyright (c) 2015 Charles Lin
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -57,8 +58,8 @@ groupVector=unlist(strsplit(groupString,','))
 #========================================================================
 #=========================HARD CODED STUFF===============================
 #========================================================================
+#set as path of the ERCC_Controls_Analysis.txt
 erccTable = read.delim("/grail/genomes/ERCC_Technical_Data/ERCC_Controls_Analysis.txt")
-
 
 
 #========================================================================
@@ -195,9 +196,37 @@ makeColorVector <- function(x){
 
 
 #formatting the genes.fpkm file
+
 all_fpkm_exprs = read.delim(geneFPKMFile)
 
-all_fpkm_exprs = all_fpkm_exprs[,2:ncol(all_fpkm_exprs)]
+
+#gene row names must be unique.
+#this finds all uniquely named rows (takes first instance)
+usedGenes = c()
+uniqueRows = c()
+for(i in 1:nrow(all_fpkm_exprs)){
+	geneName = as.character(all_fpkm_exprs[i,1])
+	if(!(geneName %in% usedGenes)){
+		uniqueRows = c(uniqueRows,i)
+		usedGenes = c(usedGenes,geneName)
+		
+	}
+	
+}
+if(length(uniqueRows) != nrow(all_fpkm_exprs)){
+	print("WARNING: GENE ROW NAMES NOT UNIQUE. USING FIRST INSTANCE OF EACH GENE")
+	}
+
+
+#now get the unique gene row names
+geneRowNames = as.character(all_fpkm_exprs[uniqueRows,1])
+
+#now we need to remove any NAs
+geneRowNames[which(is.na(geneRowNames))] <- 'GENE_NA'
+
+#now subset the initial expression table
+all_fpkm_exprs = all_fpkm_exprs[uniqueRows,2:ncol(all_fpkm_exprs)]
+rownames(all_fpkm_exprs)= geneRowNames
 
 #set a sane lower limit on expression
 all_fpkm_exprs = apply(all_fpkm_exprs,c(1,2),function(x){x[intersect(which(x < 0.01),which(x >0))] = 0.01;x})
