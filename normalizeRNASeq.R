@@ -197,8 +197,9 @@ makeColorVector <- function(x){
 
 #formatting the genes.fpkm file
 
-all_fpkm_exprs = read.delim(geneFPKMFile)
+all_fpkm_exprs = read.table(geneFPKMFile,header=TRUE)
 
+print(all_fpkm_exprs[1:5,])
 
 #gene row names must be unique.
 #this finds all uniquely named rows (takes first instance)
@@ -206,6 +207,7 @@ usedGenes = c()
 uniqueRows = c()
 for(i in 1:nrow(all_fpkm_exprs)){
 	geneName = as.character(all_fpkm_exprs[i,1])
+
 	if(!(geneName %in% usedGenes)){
 		uniqueRows = c(uniqueRows,i)
 		usedGenes = c(usedGenes,geneName)
@@ -213,12 +215,16 @@ for(i in 1:nrow(all_fpkm_exprs)){
 	}
 	
 }
+
+
+
 if(length(uniqueRows) != nrow(all_fpkm_exprs)){
 	print("WARNING: GENE ROW NAMES NOT UNIQUE. USING FIRST INSTANCE OF EACH GENE")
 	}
 
 
 #now get the unique gene row names
+
 geneRowNames = as.character(all_fpkm_exprs[uniqueRows,1])
 
 #now we need to remove any NAs
