@@ -94,7 +94,7 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
 {
     assert(end >= begin);
     assert((end-begin) <= matrix.size());
-    assert(sequence.size() <= end);
+    assert(end <= sequence.size());
 
     unsigned score = 0;
     for (size_t position=begin, row=0; position < end; ++position, ++row)
