@@ -106,6 +106,30 @@ TEST(ScoreMatrix, scale)
     EXPECT_EQ(0, matrix[1][3]);
 }
 
+TEST(ScoreMatrix, scaled_score)
+{
+    const std::vector<std::array<int, AlphabetSize>> matrix =
+    //  A   C   G   T
+    { { 24, 24, 24, 0 },
+      { 0,  0,  30, 0 } };
+
+    EXPECT_EQ(0, detail::score(matrix, "", 0, 0));
+    EXPECT_EQ(0, detail::score(matrix, "AA", 0, 0));
+    EXPECT_EQ(0, detail::score(matrix, "AG", 2, 2));
+
+    EXPECT_EQ(24, detail::score(matrix, "A", 0, 1));
+    EXPECT_EQ(0,  detail::score(matrix, "T", 0, 1));
+    EXPECT_EQ(-1, detail::score(matrix, "N", 0, 1));
+    EXPECT_EQ(-1, detail::score(matrix, "Z", 0, 1));
+
+    EXPECT_EQ(24, detail::score(matrix, "AA", 0, 2));
+    EXPECT_EQ(24, detail::score(matrix, "AA", 1, 2));
+    EXPECT_EQ(54, detail::score(matrix, "AG", 0, 2));
+    EXPECT_EQ(54, detail::score(matrix, "ag", 0, 2));
+    EXPECT_EQ(54, detail::score(matrix, "AGN", 0, 2));
+    EXPECT_EQ(54, detail::score(matrix, "NAGN", 1, 3));
+}
+
 int main(int argc, char **argv)
 {
   ::testing::InitGoogleTest(&argc, argv);

@@ -82,6 +82,24 @@ scale(const PWM& pwm, std::pair<double, double> min_max, int range)
     return scaled_pwm;
 }
 
+// precondition: (end-begin) <= matrix.size() && sequence.size() <= end && end >= begin
+// postcondition: returns score or -1 if not scorable due to invalid alphabet char
+int score(const std::vector<std::array<int, AlphabetSize>>& matrix, const std::string& sequence, size_t begin, size_t end)
+{
+    int score = 0;
+    for (size_t position=begin, row=0; position < end; ++position, ++row)
+    {
+        auto column = alphabet_index(sequence[position]);
+        if (column >= AlphabetSize)
+        {
+            return -1;
+        }
+
+        score += matrix[row][column];
+    }
+    return score;
+}
+
 inline std::vector<PWM> read_pwm(std::istream& input)
 {
     // todo: replace below hack with spirit parsing,

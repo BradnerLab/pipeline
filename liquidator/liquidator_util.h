@@ -36,7 +36,7 @@ inline char complement(char c)
     throw std::runtime_error("no known complement for " + std::string(1, c));
 }
 
-inline int alphabet_index(char c)
+inline unsigned int alphabet_index(char c)
 {
     switch(c)
     {
