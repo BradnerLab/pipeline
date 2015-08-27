@@ -38,8 +38,10 @@ CC=g++
 
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
-CPPFLAGS := -std=c++11 -O3 -g -Wall -I ./
-LDFLAGS := -O3 -g -Wall
+OPTIMIZATION_LEVEL := -O3 -DNDEBUG # normally -O3 with asserts disabled for performance
+#OPTIMIZATION_LEVEL := -O0 # -O0 and asserts enabled for easier debugging
+CPPFLAGS := -std=c++11 $(OPTIMIZATION_LEVEL) -g -Wall -I ./
+LDFLAGS := $(OPTIMIZATION_LEVEL) -g -Wall
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
@@ -148,7 +150,7 @@ test: cpp_test
 
 clean:
 	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
-	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist gtest cpp_test
+	rm -rf bamliquidator*precise* bamliquidator*trusty* BamLiquidatorBatch.egg-info dist bamliquidatorbatch_* deb_dist cpp_test #gtest
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)

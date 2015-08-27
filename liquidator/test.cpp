@@ -130,22 +130,56 @@ TEST(ScoreMatrix, scaled_score)
     EXPECT_EQ(54, detail::score(matrix, "NAGN", 1, 3));
 }
 
-/*
 TEST(ScoreMatrix, probability_distribution)
 {
-    std::vector<double> pvalues = detaill::pvalue_table(0);
-    EXPECT_EQ(0, pvalues.size());
+    using namespace detail;
 
-    pvalues = detaill::pvalue_table(1);
-    //ASSERT_EQ(1, pvalues.size());
-    EXPECT_FLOAT_EQ(1, pvalues[0]);
+    // score of 0 is 100% probable when empty matrix
+    const std::vector<std::array<unsigned, AlphabetSize>> empty_matrix;
+    std::vector<double> probabilities = probability_distribution(empty_matrix, uniform_bg);
+    ASSERT_EQ(1, probabilities.size());
+    EXPECT_FLOAT_EQ(1, probabilities[0]);
 
-    pvalues = detaill::pvalue_table(2);
-    ASSERT_EQ(2, pvalues.size());
-    EXPECT_EQ(1, pvalues[0]); // score of 0 or better is 100% probable
-    EXPECT_LT(0, pvalues[1]); // score of 1 or better has minimum probability
+    // score of 0 is 100% probable for a zero matrix
+    const std::vector<std::array<unsigned, AlphabetSize>> zero_matrix =
+    //  A   C   G   T
+    { { 0,  0,  0, 0 },
+      { 0,  0,  0, 0 } };
+    probabilities = probability_distribution(zero_matrix, uniform_bg);
+    ASSERT_EQ(1, probabilities.size());
+    EXPECT_FLOAT_EQ(1, probabilities[0]);
+
+    const std::vector<std::array<unsigned, AlphabetSize>> length_one_matrix =
+    //  A   C   G   T
+    { { 0,  0,  1, 0 } };
+
+    // sequence length 1 with max 1 per base can have values 0 or 1
+    // value of 0 with 75% probability
+    // value of 1 with 25% probability
+    probabilities = probability_distribution(length_one_matrix, uniform_bg);
+    ASSERT_EQ(2, probabilities.size());
+    EXPECT_FLOAT_EQ(.75, probabilities[0]);
+    EXPECT_FLOAT_EQ(.25, probabilities[1]);
+
+    const std::vector<std::array<unsigned, AlphabetSize>> length_two_matrix =
+    //  A   C   G   T
+    { { 0,  0,  1, 1 },
+      { 1,  0,  1, 0 } };
+    // Scores for every possible sequence:
+    // AA: 1, AC: 0, AG: 1, AT: 0
+    // CA: 1, CC: 0, CG: 1, CT: 0
+    // GA: 2, GC: 1, GG: 2, GT: 1
+    // TA: 2, TC: 1, TG: 2, TT: 1
+    // 16 sequences
+    // 4 ways to score 0: 25%
+    // 8 ways to score 1: 50%
+    // 4 ways to score 2: 25%
+    probabilities = probability_distribution(length_two_matrix, uniform_bg);
+    ASSERT_EQ(3, probabilities.size());
+    EXPECT_FLOAT_EQ(.25, probabilities[0]);
+    EXPECT_FLOAT_EQ(.50, probabilities[1]);
+    EXPECT_FLOAT_EQ(.25, probabilities[2]);
 }
-*/
 
 int main(int argc, char **argv)
 {

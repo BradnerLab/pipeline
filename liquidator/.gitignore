@@ -5,3 +5,4 @@ bamliquidator
 cpp_test
 motif_liquidator
 gtest
+*.creator.user

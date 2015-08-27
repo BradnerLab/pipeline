@@ -35,7 +35,7 @@ struct ScaledPWM
 inline std::pair<double, double>
 log_adjusted_likelihood_ratio(PWM& pwm, 
                               const std::array<double, AlphabetSize>& background, 
-                              double number_of_pseudo_sites=.1)
+                              const double number_of_pseudo_sites=.1)
 {
     double min = std::numeric_limits<double>::infinity();
     double max = -std::numeric_limits<double>::infinity();
@@ -56,7 +56,7 @@ log_adjusted_likelihood_ratio(PWM& pwm,
 
 // precondition: min_max.first <= min_max.second
 inline ScaledPWM
-scale(const PWM& pwm, std::pair<double, double> min_max, unsigned range)
+scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned range)
 {
     double min = min_max.first;
     const double max = min_max.second;
@@ -87,7 +87,10 @@ scale(const PWM& pwm, std::pair<double, double> min_max, unsigned range)
 
 // precondition: (end-begin) <= matrix.size() && sequence.size() <= end && end >= begin
 // postcondition: returns score; sequences with invalid characters return 0.
-unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix, const std::string& sequence, size_t begin, size_t end)
+unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
+               const std::string& sequence,
+               const size_t begin,
+               const size_t end)
 {
     unsigned score = 0;
     for (size_t position=begin, row=0; position < end; ++position, ++row)
@@ -95,9 +98,10 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix, co
         const auto column = alphabet_index(sequence[position]);
         if (column >= AlphabetSize)
         {
-            // exception can be slow, especially since this function will likely be called in a loop
-            // returning magic number like -1 or max unsigned might not not be checked.
-            // in practice, we only care about sequences scoring above a threshold, so scoring 
+            // Exceptions can be too slow, since this function will likely be called many times with invalid characters (e.g. 'N').
+            // Returning magic number like -1 or max unsigned is error prone.
+            // Expected<unsigned> is tempting, but overkill.
+            // In practice, we only care about sequences scoring above a threshold, so scoring 
             // 0 for invalid sequences is natural since they won't meet any reasonable threshold.
             return 0;
         }
@@ -109,7 +113,7 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix, co
 inline std::vector<PWM> read_pwm(std::istream& input)
 {
     // todo: replace below hack with spirit parsing,
-    //       should throw if alphabet size isn't ACGT,
+    //       should throw if alphabet isn't ACGT,
     //       should read nsites and maybe E,
     //       should read multiple matrices and return an empty vector if none (not throw),
     //       and add tests for all these changes 
@@ -163,23 +167,61 @@ inline std::vector<PWM> read_pwm(std::istream& input)
     return pwms;
 }
 
-// returns probability distribution values for all possible (positive) integer scores
-// for the given length and single base max score
-std::vector<double>
-probability_distribution_function(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
-                                  size_t sequence_length,
-                                  unsigned single_base_max_score,
-                                  const std::array<double, AlphabetSize>& background)
+unsigned max(const std::vector<std::array<unsigned, AlphabetSize>>& matrix)
 {
-    const size_t max_score = single_base_max_score * sequence_length;
+    unsigned max = 0;
+    for (const auto& row : matrix)
+    {
+        for (unsigned value : row)
+        {
+            max = std::max(max, value);
+        }
+    }
+    return max;
+}
 
-    // max_score is a valid value, so need to add 1 for the vector size
-    std::vector<double> prior_pdf(max_score + 1, 0);
-    std::vector<double> current_pdf(prior_pdf); 
+// returns probability distribution values (based on background) indexed by
+// all possible integer scores (with the max_score = matrix_max_value * number_of_rows)
+std::vector<double>
+probability_distribution(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
+                         const std::array<double, AlphabetSize>& background)
+{
+    const unsigned max_matrix_value = detail::max(matrix);
+    const size_t max_score = max_matrix_value * matrix.size();
 
-    current_pdf[0] = 1; // a score of 0 or better has probability 100%
-    //for (size_t row=0; row < matrix
-    throw std::runtime_error("todo");
+    // both 0 and max_score are valid scores, so need to add 1 for the vector size
+    std::vector<double> prior(max_score + 1, 0);
+    std::vector<double> current(prior);
+
+    current[0] = 1; // a score of 0 or better has probability 100%
+
+    for (size_t row=0; row < matrix.size(); ++row)
+    {
+        using std::swap;
+        swap(prior, current);
+
+        const size_t max_score_for_row = row*max_matrix_value;
+        assert(max_score_for_row <= max_score);
+
+        std::fill(current.begin(), current.end(), 0);
+        for (size_t column=0; column < AlphabetSize; ++column)
+        {
+            const unsigned matrix_score = matrix[row][column];
+            assert(matrix_score <= max_score);
+            for (size_t score=0; score <= max_score_for_row; ++score)
+            {
+                assert(score <= max_score);
+                const double prior_probability = prior[score];
+                if (prior_probability != 0)
+                {
+                    assert((score+matrix_score) <= max_score);
+                    current[score+matrix_score] += prior_probability * background[column];
+                }
+            }
+        }
+    }
+
+    return current;
 }
 
 } }
