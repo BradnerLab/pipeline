@@ -197,9 +197,11 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
   /* fetch bed items for a region and compute density
   only deal with coord, so use generic item
   */
-  int startArr[spnum], stopArr[spnum];
-  int pieceLength = (stop-start) / spnum;
-  for(int i=0; i<spnum; i++)
+  if (stop < start) throw std::runtime_error("liquidate called with stop < start");
+  const unsigned pieceLength = (stop-start) / spnum;
+
+  unsigned startArr[spnum], stopArr[spnum];
+  for(unsigned int i=0; i<spnum; i++)
   {
     startArr[i] = start + pieceLength*i;
     stopArr[i] = start + pieceLength*(i+1);
@@ -210,7 +212,7 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
   for(const ReadItem& item : items)
   {
     // collapse this bed item onto the density counter
-    for(int i=0; i<spnum; i++)
+    for(unsigned int i=0; i<spnum; i++)
     {
       if(item.start > stopArr[i]) continue;
       if(item.stop < startArr[i]) break;
