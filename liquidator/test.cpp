@@ -91,7 +91,7 @@ TEST(ScoreMatrix, scale)
     ASSERT_EQ(2, matrix.size());
 
     EXPECT_EQ(10, scaled.number_of_sites);
-    EXPECT_EQ(-8, scaled.min);
+    EXPECT_EQ(-8, scaled.min_before_scaling);
     EXPECT_EQ(3, scaled.scale); // max - min = 10, 10*3 = 30, so scale is 3
     EXPECT_EQ(30, scaled.range);
 
@@ -108,7 +108,7 @@ TEST(ScoreMatrix, scale)
 
 TEST(ScoreMatrix, scaled_score)
 {
-    const std::vector<std::array<int, AlphabetSize>> matrix =
+    const std::vector<std::array<unsigned, AlphabetSize>> matrix =
     //  A   C   G   T
     { { 24, 24, 24, 0 },
       { 0,  0,  30, 0 } };
@@ -119,8 +119,8 @@ TEST(ScoreMatrix, scaled_score)
 
     EXPECT_EQ(24, detail::score(matrix, "A", 0, 1));
     EXPECT_EQ(0,  detail::score(matrix, "T", 0, 1));
-    EXPECT_EQ(-1, detail::score(matrix, "N", 0, 1));
-    EXPECT_EQ(-1, detail::score(matrix, "Z", 0, 1));
+    EXPECT_EQ(0, detail::score(matrix, "N", 0, 1));
+    EXPECT_EQ(0, detail::score(matrix, "Z", 0, 1));
 
     EXPECT_EQ(24, detail::score(matrix, "AA", 0, 2));
     EXPECT_EQ(24, detail::score(matrix, "AA", 1, 2));
@@ -129,6 +129,23 @@ TEST(ScoreMatrix, scaled_score)
     EXPECT_EQ(54, detail::score(matrix, "AGN", 0, 2));
     EXPECT_EQ(54, detail::score(matrix, "NAGN", 1, 3));
 }
+
+/*
+TEST(ScoreMatrix, probability_distribution)
+{
+    std::vector<double> pvalues = detaill::pvalue_table(0);
+    EXPECT_EQ(0, pvalues.size());
+
+    pvalues = detaill::pvalue_table(1);
+    //ASSERT_EQ(1, pvalues.size());
+    EXPECT_FLOAT_EQ(1, pvalues[0]);
+
+    pvalues = detaill::pvalue_table(2);
+    ASSERT_EQ(2, pvalues.size());
+    EXPECT_EQ(1, pvalues[0]); // score of 0 or better is 100% probable
+    EXPECT_LT(0, pvalues[1]); // score of 1 or better has minimum probability
+}
+*/
 
 int main(int argc, char **argv)
 {

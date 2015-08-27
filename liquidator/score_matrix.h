@@ -71,7 +71,7 @@ public:
     // position is 0 based and must be < length() -- else undefined behavior.
     int value(size_t position, char base)
     {
-        const int column = alphabet_index(base);
+        const auto column = alphabet_index(base);
         if ( column >= AlphabetSize ) throw std::runtime_error("Invalid base " + std::string(1, base));
         return m_matrix[position][column];
     }

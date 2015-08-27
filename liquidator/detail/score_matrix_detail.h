@@ -21,11 +21,13 @@ struct PWM
 struct ScaledPWM
 {
     const size_t number_of_sites;
-    const int min;
+    const int min_before_scaling; // floored min before scaling
     const unsigned scale;
     const unsigned range;
     std::string name;
-    std::vector<std::array<int, AlphabetSize>> matrix;
+
+    // matrix values are scaled and offset by min so that they are between 0 and range.
+    std::vector<std::array<unsigned, AlphabetSize>> matrix;
 };
 
 // Transforms PWM probability values into log pseudo-site-adjusted likelihood ratio values.
@@ -66,14 +68,14 @@ scale(const PWM& pwm, std::pair<double, double> min_max, unsigned range)
 
     const unsigned scale = std::floor(range/(max-min));
     ScaledPWM scaled_pwm { /*number_of_sites=*/ pwm.number_of_sites,
-                           /*min=*/ int(min),
+                           /*min_before_scaling=*/ int(min),
                            /*scale=*/ scale,
                            /*range=*/ range,
                            /*name=*/ pwm.name };
     scaled_pwm.matrix.reserve(pwm.matrix.size());
     for (auto& row : pwm.matrix)
     {
-        std::array<int, AlphabetSize> scaled_row;
+        std::array<unsigned, AlphabetSize> scaled_row;
         for (size_t alphabet_index=0; alphabet_index < AlphabetSize; ++alphabet_index)
         {
             scaled_row[alphabet_index] = std::round((row[alphabet_index] - min) * scale);  
@@ -84,18 +86,21 @@ scale(const PWM& pwm, std::pair<double, double> min_max, unsigned range)
 }
 
 // precondition: (end-begin) <= matrix.size() && sequence.size() <= end && end >= begin
-// postcondition: returns score or -1 if not scorable due to invalid alphabet char
-int score(const std::vector<std::array<int, AlphabetSize>>& matrix, const std::string& sequence, size_t begin, size_t end)
+// postcondition: returns score; sequences with invalid characters return 0.
+unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix, const std::string& sequence, size_t begin, size_t end)
 {
-    int score = 0;
+    unsigned score = 0;
     for (size_t position=begin, row=0; position < end; ++position, ++row)
     {
-        auto column = alphabet_index(sequence[position]);
+        const auto column = alphabet_index(sequence[position]);
         if (column >= AlphabetSize)
         {
-            return -1;
+            // exception can be slow, especially since this function will likely be called in a loop
+            // returning magic number like -1 or max unsigned might not not be checked.
+            // in practice, we only care about sequences scoring above a threshold, so scoring 
+            // 0 for invalid sequences is natural since they won't meet any reasonable threshold.
+            return 0;
         }
-
         score += matrix[row][column];
     }
     return score;
@@ -156,6 +161,25 @@ inline std::vector<PWM> read_pwm(std::istream& input)
     std::vector<PWM> pwms;
     pwms.push_back(pwm);
     return pwms;
+}
+
+// returns probability distribution values for all possible (positive) integer scores
+// for the given length and single base max score
+std::vector<double>
+probability_distribution_function(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
+                                  size_t sequence_length,
+                                  unsigned single_base_max_score,
+                                  const std::array<double, AlphabetSize>& background)
+{
+    const size_t max_score = single_base_max_score * sequence_length;
+
+    // max_score is a valid value, so need to add 1 for the vector size
+    std::vector<double> prior_pdf(max_score + 1, 0);
+    std::vector<double> current_pdf(prior_pdf); 
+
+    current_pdf[0] = 1; // a score of 0 or better has probability 100%
+    //for (size_t row=0; row < matrix
+    throw std::runtime_error("todo");
 }
 
 } }
