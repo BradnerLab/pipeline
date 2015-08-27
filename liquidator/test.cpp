@@ -53,7 +53,7 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
 
 TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 {
-    const int number_of_sites = 18;
+    const unsigned number_of_sites = 18;
     detail::PWM pwm { /*number_of_sites =*/ number_of_sites };
     pwm.matrix = { {.25, .25, .25, .25},
                    {0, 0, 1, 0} };

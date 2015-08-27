@@ -14,7 +14,7 @@
 namespace liquidator
 {
 
-const int AlphabetSize=4;
+const size_t AlphabetSize=4;
 
 inline char complement(char c)
 {
@@ -36,7 +36,7 @@ inline char complement(char c)
     throw std::runtime_error("no known complement for " + std::string(1, c));
 }
 
-inline unsigned int alphabet_index(char c)
+inline size_t alphabet_index(char c)
 {
     switch(c)
     {

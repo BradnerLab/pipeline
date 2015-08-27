@@ -13,7 +13,7 @@ namespace liquidator { namespace detail {
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 struct PWM
 {
-    const size_t number_of_sites;
+    const unsigned number_of_sites;
     std::string name;
     std::vector<std::array<double, AlphabetSize>> matrix;
 };
@@ -22,8 +22,8 @@ struct ScaledPWM
 {
     const size_t number_of_sites;
     const int min;
-    const int scale;
-    const int range;
+    const unsigned scale;
+    const unsigned range;
     std::string name;
     std::vector<std::array<int, AlphabetSize>> matrix;
 };
@@ -39,7 +39,7 @@ log_adjusted_likelihood_ratio(PWM& pwm,
     double max = -std::numeric_limits<double>::infinity();
     for (auto& row : pwm.matrix)
     {
-        for (int i=0; i < AlphabetSize; ++i)
+        for (size_t i=0; i < AlphabetSize; ++i)
         {
             const double adjusted = (row[i]*pwm.number_of_sites + number_of_pseudo_sites*background[i])/(pwm.number_of_sites+number_of_pseudo_sites);
             const double ratio = adjusted / background[i];
@@ -52,8 +52,9 @@ log_adjusted_likelihood_ratio(PWM& pwm,
     return std::make_pair(min, max);
 }
 
+// precondition: min_max.first <= min_max.second
 inline ScaledPWM
-scale(const PWM& pwm, std::pair<double, double> min_max, int range)
+scale(const PWM& pwm, std::pair<double, double> min_max, unsigned range)
 {
     double min = min_max.first;
     const double max = min_max.second;
@@ -63,7 +64,7 @@ scale(const PWM& pwm, std::pair<double, double> min_max, int range)
     }
     min = std::floor(min);
 
-    const int scale = std::floor(range/(max-min));
+    const unsigned scale = std::floor(range/(max-min));
     ScaledPWM scaled_pwm { /*number_of_sites=*/ pwm.number_of_sites,
                            /*min=*/ int(min),
                            /*scale=*/ scale,
@@ -73,7 +74,7 @@ scale(const PWM& pwm, std::pair<double, double> min_max, int range)
     for (auto& row : pwm.matrix)
     {
         std::array<int, AlphabetSize> scaled_row;
-        for (int alphabet_index=0; alphabet_index < AlphabetSize; ++alphabet_index)
+        for (size_t alphabet_index=0; alphabet_index < AlphabetSize; ++alphabet_index)
         {
             scaled_row[alphabet_index] = std::round((row[alphabet_index] - min) * scale);  
         }
@@ -136,7 +137,7 @@ inline std::vector<PWM> read_pwm(std::istream& input)
             else if (split.size() == AlphabetSize)
             {
                 std::array<double, AlphabetSize> row;
-                for (int i=0; i < AlphabetSize; ++i)
+                for (size_t i=0; i < AlphabetSize; ++i)
                 {
                     row[i] = boost::lexical_cast<double>(split[i]);
                 }
