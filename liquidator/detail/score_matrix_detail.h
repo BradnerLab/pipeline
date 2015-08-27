@@ -54,10 +54,11 @@ log_adjusted_likelihood_ratio(PWM& pwm,
     return std::make_pair(min, max);
 }
 
-// precondition: min_max.first <= min_max.second
 inline ScaledPWM
 scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned range)
 {
+    assert(min_max.first <= min_max.second);
+
     double min = min_max.first;
     const double max = min_max.second;
     if (min == max)
@@ -85,13 +86,16 @@ scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned r
     return scaled_pwm;
 }
 
-// precondition: (end-begin) <= matrix.size() && sequence.size() <= end && end >= begin
-// postcondition: returns score; sequences with invalid characters return 0.
+// returns score; sequences with invalid characters return 0.
 unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
                const std::string& sequence,
                const size_t begin,
                const size_t end)
 {
+    assert(end >= begin);
+    assert((end-begin) <= matrix.size());
+    assert(sequence.size() <= end);
+
     unsigned score = 0;
     for (size_t position=begin, row=0; position < end; ++position, ++row)
     {
@@ -108,63 +112,6 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
         score += matrix[row][column];
     }
     return score;
-}
-
-inline std::vector<PWM> read_pwm(std::istream& input)
-{
-    // todo: replace below hack with spirit parsing,
-    //       should throw if alphabet isn't ACGT,
-    //       should read nsites and maybe E,
-    //       should read multiple matrices and return an empty vector if none (not throw),
-    //       and add tests for all these changes 
-    PWM pwm { /*number_of_sites =*/ 18 };
-    // todo: read number_of_sites in if provided, else default to 20 like FIMO
-
-    bool matrixFirstLineSeen = false;
-    for(std::string line; getline(input, line); )
-    {
-        boost::trim(line);
-
-        std::vector<std::string> split;
-        boost::split(split, line, boost::is_any_of(" "), boost::token_compress_on);
-        if (pwm.name.empty())
-        {
-            if (split.size() >= 2 && split[0] == "MOTIF")
-            {
-                pwm.name = split[1];
-            }
-        }
-        else
-        {
-            if (matrixFirstLineSeen == false)
-            {
-                if (!split.empty() && split.front() == "letter-probability")
-                {
-                    matrixFirstLineSeen = true;
-                }
-            }
-            else if (split.size() == AlphabetSize)
-            {
-                std::array<double, AlphabetSize> row;
-                for (size_t i=0; i < AlphabetSize; ++i)
-                {
-                    row[i] = boost::lexical_cast<double>(split[i]);
-                }
-                pwm.matrix.push_back(row);
-            }
-            else
-            {
-                break;
-            }
-        }
-    }
-    if (pwm.name.empty() || pwm.matrix.empty())
-    {
-        throw std::runtime_error("Failed to read a motif from input");
-    }
-    std::vector<PWM> pwms;
-    pwms.push_back(pwm);
-    return pwms;
 }
 
 unsigned max(const std::vector<std::array<unsigned, AlphabetSize>>& matrix)
@@ -222,6 +169,63 @@ probability_distribution(const std::vector<std::array<unsigned, AlphabetSize>>& 
     }
 
     return current;
+}
+
+inline std::vector<PWM> read_pwm(std::istream& input)
+{
+    // todo: replace below hack with spirit parsing,
+    //       should throw if alphabet isn't ACGT,
+    //       should read nsites and maybe E,
+    //       should read multiple matrices and return an empty vector if none (not throw),
+    //       and add tests for all these changes 
+    PWM pwm { /*number_of_sites =*/ 18 };
+    // todo: read number_of_sites in if provided, else default to 20 like FIMO
+
+    bool matrixFirstLineSeen = false;
+    for(std::string line; getline(input, line); )
+    {
+        boost::trim(line);
+
+        std::vector<std::string> split;
+        boost::split(split, line, boost::is_any_of(" "), boost::token_compress_on);
+        if (pwm.name.empty())
+        {
+            if (split.size() >= 2 && split[0] == "MOTIF")
+            {
+                pwm.name = split[1];
+            }
+        }
+        else
+        {
+            if (matrixFirstLineSeen == false)
+            {
+                if (!split.empty() && split.front() == "letter-probability")
+                {
+                    matrixFirstLineSeen = true;
+                }
+            }
+            else if (split.size() == AlphabetSize)
+            {
+                std::array<double, AlphabetSize> row;
+                for (size_t i=0; i < AlphabetSize; ++i)
+                {
+                    row[i] = boost::lexical_cast<double>(split[i]);
+                }
+                pwm.matrix.push_back(row);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    if (pwm.name.empty() || pwm.matrix.empty())
+    {
+        throw std::runtime_error("Failed to read a motif from input");
+    }
+    std::vector<PWM> pwms;
+    pwms.push_back(pwm);
+    return pwms;
 }
 
 } }
