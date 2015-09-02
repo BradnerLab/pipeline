@@ -10,7 +10,6 @@
 
 namespace liquidator { namespace detail {
 
-// Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 struct PWM
 {
     const unsigned number_of_sites;
@@ -171,6 +170,21 @@ probability_distribution(const std::vector<std::array<unsigned, AlphabetSize>>& 
     return current;
 }
 
+void pdf_to_pvalues(std::vector<double>& p)
+{
+    if (p.size() <= 1) return;
+
+    for (size_t i=p.size() - 2; ; --i)
+    {
+        p[i] = std::min(1.0, p[i] + p[i+1]);
+        if (i == 0)
+        {
+            break;
+        }
+    }
+}
+
+// Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 inline std::vector<PWM> read_pwm(std::istream& input)
 {
     // todo: replace below hack with spirit parsing,

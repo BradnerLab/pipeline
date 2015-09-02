@@ -181,6 +181,38 @@ TEST(ScoreMatrix, probability_distribution)
     EXPECT_FLOAT_EQ(.25, probabilities[2]);
 }
 
+TEST(ScoreMatrix, pvalues)
+{
+    std::vector<double> a;
+    detail::pdf_to_pvalues(a);
+    EXPECT_TRUE(a.empty());
+
+    a = { .1 };
+    detail::pdf_to_pvalues(a);
+    ASSERT_EQ(1, a.size());
+    EXPECT_FLOAT_EQ(.1, a[0]);
+
+    a = { .1, .2 };
+    detail::pdf_to_pvalues(a);
+    ASSERT_EQ(2, a.size());
+    EXPECT_FLOAT_EQ(.2, a[1]);
+    EXPECT_FLOAT_EQ(.1+.2, a[0]);
+
+    a = { .1, .2, .3 };
+    detail::pdf_to_pvalues(a);
+    ASSERT_EQ(3, a.size());
+    EXPECT_FLOAT_EQ(.3, a[2]);
+    EXPECT_FLOAT_EQ(.3+.2, a[1]);
+    EXPECT_FLOAT_EQ(.3+.2+.1, a[0]);
+
+    a = { .9, .2, .3 };
+    detail::pdf_to_pvalues(a);
+    ASSERT_EQ(3, a.size());
+    EXPECT_FLOAT_EQ(.3, a[2]);
+    EXPECT_FLOAT_EQ(.3+.2, a[1]);
+    EXPECT_FLOAT_EQ(1, a[0]);
+}
+
 int main(int argc, char **argv)
 {
   ::testing::InitGoogleTest(&argc, argv);
