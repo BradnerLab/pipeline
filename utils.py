@@ -53,7 +53,7 @@ try:
 except ImportError:
     pass
 
-from string import join
+from string import join, maketrans
 
 import subprocess
 import datetime
