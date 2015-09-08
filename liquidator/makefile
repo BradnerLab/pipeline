@@ -94,8 +94,9 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util
 	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
+# todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev
 motif_liquidator: motif_liquidator.m.cpp score_matrix.h detail/score_matrix_detail.h fimo_style_printer.h liquidator_util.o
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS)
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS) -lboost_program_options
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -112,7 +113,7 @@ bamliquidator.o: bamliquidator.cpp bamliquidator.h
 liquidator_util.o: liquidator_util.cpp liquidator_util.h
 	$(CC) $(CPPFLAGS) -c liquidator_util.cpp
 
-EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator motif_global_liquidator
+EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
 archive:
 	mkdir bamliquidator-$(VERSION)

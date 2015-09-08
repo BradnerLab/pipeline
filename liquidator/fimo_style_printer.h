@@ -10,6 +10,7 @@ namespace liquidator
 // Example of a ScoreConsumer 
 class FimoStylePrinter
 {
+public:
     FimoStylePrinter(std::ostream& out)
     {
         out << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;

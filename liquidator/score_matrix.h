@@ -42,8 +42,6 @@ public:
         private:
             Score(const std::string& sequence, size_t begin, size_t end, float pvalue, float score);
 
-            Score(const Score&) = delete;
-
             const std::string& m_sequence;
             const size_t m_begin;
             const size_t m_end;
@@ -53,7 +51,7 @@ public:
 
     // See fimo_style_printer.h for example of a ScoreConsumer.
     template <typename ScoreConsumer>
-    void score(const std::string& sequence, const std::string& sequence_name, bool forward_strand, ScoreConsumer& consumer)
+    void score(const std::string& sequence, const std::string& sequence_name, bool forward_strand, ScoreConsumer& consumer) const
     {
         for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size(); ++start, ++stop)
         {
@@ -83,7 +81,7 @@ private:
     std::vector<std::array<int, AlphabetSize>> m_matrix;
     double m_min;
 
-    Score score_sequence(const std::string& sequence, size_t begin, size_t end);
+    Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
 };
 
 }
