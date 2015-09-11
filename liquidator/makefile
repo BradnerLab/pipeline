@@ -94,9 +94,12 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util
 	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
+score_matrix.o: score_matrix.h score_matrix.cpp detail/score_matrix_detail.h fimo_style_printer.h
+	$(CC) $(CPPFLAGS) -c score_matrix.cpp 
+
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev
-motif_liquidator: motif_liquidator.m.cpp score_matrix.h detail/score_matrix_detail.h fimo_style_printer.h liquidator_util.o
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator $(LDLIBS) -lboost_program_options
+motif_liquidator: motif_liquidator.m.cpp score_matrix.o fasta_reader.h liquidator_util.o
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o $(LDLIBS) -lboost_program_options
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -142,7 +145,7 @@ gtest:
 	mkdir gtest/build
 	(cd gtest/build; cmake ..; make)
 
-cpp_test: gtest test.cpp motif_liquidator 
+cpp_test: gtest test.cpp score_matrix.o 
 	$(CC) $(CPPFLAGS) -o cpp_test -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
 
 test: cpp_test 

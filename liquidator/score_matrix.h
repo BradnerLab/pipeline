@@ -20,14 +20,20 @@ public:
     static std::vector<ScoreMatrix> read(std::istream& meme_style_pwm,
                                          std::array<double, AlphabetSize> acgt_background = { .25, .25, .25, .25},
                                          double pseudo_sites = 0.1);
+
+    ScoreMatrix(const std::string& name,
+                const std::array<double, AlphabetSize>& background,
+                const std::vector<std::array<double, AlphabetSize>>& pwm,
+                unsigned number_of_sites,
+                double pseudo_sites);
  
-    // Scores reference the sequence string so are intended to be used only 
+    // Scores reference a sequence string so are intended to be used only
     // in the scope of a ScoreConsumer operator.
     class Score
     {
         public:
             // writes the matched sequence
-            inline std::ostream& operator()(std::ostream& out) const;
+            inline std::ostream& matched_sequence(std::ostream& out) const;
             
             // returns a copy of the matched sequence
             inline std::string matched_sequence() const;
@@ -36,12 +42,12 @@ public:
             // Note that NaN < x is false for any double x.
             const double pvalue() { return m_pvalue; }
 
-            // The score, or -1 if sequence was not scorable. 
+            // The score, or 0 if sequence was not scorable.
             const double score() { return m_score; }
 
-        private:
-            Score(const std::string& sequence, size_t begin, size_t end, float pvalue, float score);
+            Score(const std::string& sequence, size_t begin, size_t end, double pvalue, double score);
 
+        private:
             const std::string& m_sequence;
             const size_t m_begin;
             const size_t m_end;
@@ -75,11 +81,12 @@ public:
     }
 
 private:
-    ScoreMatrix();
-
-    std::string m_name;
-    std::vector<std::array<int, AlphabetSize>> m_matrix;
-    double m_min;
+    const std::string m_name;
+    const std::array<double, AlphabetSize> m_background;
+    std::vector<std::array<unsigned, AlphabetSize>> m_matrix;
+    double m_scale;
+    double m_min_before_scaling;
+    std::vector<double> m_pvalues;
 
     Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
 };

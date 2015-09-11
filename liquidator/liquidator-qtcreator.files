@@ -116,3 +116,4 @@ motif_liquidator.m.cpp
 score_matrix.cpp
 score_matrix.h
 test.cpp
+fasta_reader.h

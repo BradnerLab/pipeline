@@ -1,5 +1,6 @@
 #include "score_matrix.h"
 #include "fimo_style_printer.h"
+#include "fasta_reader.h"
 
 #include <boost/program_options.hpp>
 
@@ -85,15 +86,15 @@ int main(int argc, char** argv)
 
     FimoStylePrinter printer(std::cout);
 
-    // todo: FastaReader fasta_reader(fasta);
+    FastaReader fasta_reader(fasta);
     std::string sequence;
     std::string sequence_name;
     char strand = '.';
-    //while (fasta_reader.next_read(sequence, sequence_name, strand))
+    while (fasta_reader.next_read(sequence, sequence_name, strand))
     {
         for (const auto& matrix : matrices)
         {
-            // todo: consider making score function take '+', '-', '.' arg instead of bool
+            // todo: consider making score function take '+', '-', '.' arg... still not sure how to handle strands
             if (strand == '+' || strand == '.')
             {
                 matrix.score(sequence, sequence_name, true, printer);
