@@ -8,32 +8,49 @@
 #include <iostream>
 #include <fstream>
 
+using namespace liquidator;
+
 int process_command_line(int argc,
                          char** argv,
                          std::ifstream& fasta,
-                         std::ifstream& motif,
-                         std::ifstream& background)
+                         std::ifstream& motif)
 {
     namespace po = boost::program_options;
 
     std::string fasta_file_path, motif_file_path, background_file_path;
 
-    po::options_description desc("usage");
-    desc.add_options()
+    // todo: add more info to help, like this:
+    //   meme style position weight matrix (pwm) file
+    //   .fasta file to search for motifs
+    po::options_description options("Usage: motif_liquidator [options] motif fasta|bam\noptions");
+    options.add_options()
         ("help,h", "produce help message")
-        ("fasta,f", po::value(&fasta_file_path)->required(), ".fasta file to search for motifs")
-        ("motif,m", po::value(&motif_file_path)->required(), "meme style position weight matrix (pwm) file")
-        ("background,bg", po::value(&background_file_path)->required(), "meme style background frequency file");
+        ("background,b", po::value(&background_file_path), "meme style background frequency file");
+
+    // todo: manually check if a positional argument is omitted,
+    // since the po exception message describes it as a non-positional argument, which could be confusing.
+    // aside: boost program_options handling of positional arguments is disappointing, but I don't expect another C++ argument parser to be much better while being as easy to package
+    po::options_description hidden;
+    hidden.add_options()
+        ("motif", po::value(&motif_file_path)->required())
+        ("fasta_or_bam", po::value(&fasta_file_path)->required());
+
+    po::options_description combined;
+    combined.add(options).add(hidden);
+
+    po::positional_options_description positional;
+    positional.add("motif", 1);
+    positional.add("fasta", 1);
 
     po::variables_map vm;
 
     try
     {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::store(po::command_line_parser(argc, argv).options(combined).positional(positional).run(), vm);
 
         if (vm.count("help"))
         {
-            std::cerr << desc << std::endl;
+            std::cerr << options << std::endl;
             return 1;
         }
 
@@ -52,18 +69,11 @@ int process_command_line(int argc,
             std::cerr << "failed to open motif file " << motif_file_path << std::endl;
             return 1;
         }
-
-        background.open(background_file_path);
-        if ( !background )
-        {
-            std::cerr << "failed to open background file " << background_file_path << std::endl;
-            return 1;
-        }
     }
     catch(const std::exception& e)
     {
         std::cerr << e.what() << std::endl;
-        std::cerr << desc << "\n";
+        std::cerr << options << "\n";
         return 1;
     }
 
@@ -72,17 +82,16 @@ int process_command_line(int argc,
 
 int main(int argc, char** argv)
 {
-    using namespace liquidator;
-
     std::ifstream fasta;
     std::ifstream motif;
-    std::ifstream background;
 
-    const int rc = process_command_line(argc, argv, fasta, motif, background);
+    // todo: read in background from an optional file, defaulting to {.25, .25, .25, .25}
+    const std::array<double, AlphabetSize> background = {.256, .244, .244, .256};
+
+    const int rc = process_command_line(argc, argv, fasta, motif);
     if ( rc ) return rc;
 
-    // todo: use background file
-    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, {.256, .244, .244, .256});
+    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
     FimoStylePrinter printer(std::cout);
 
