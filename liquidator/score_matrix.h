@@ -23,7 +23,7 @@ public:
                                          bool include_reverse_complement = true,
                                          double pseudo_sites = 0.1);
 
-    // Background format described at http://meme.ebi.edu.au/meme/doc/bfile-format.html
+    // Background format described at http://meme.ebi.edu.au/meme/doc/bfile-format.html .
     // Note that only order 0 values are used.
     static std::array<double, AlphabetSize> read_background(std::istream& background);
 
