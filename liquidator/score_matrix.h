@@ -48,10 +48,13 @@ public:
             // The score, or 0 if sequence was not scorable.
             double score() const { return m_score; }
 
-            Score(const std::string& sequence, size_t begin, size_t end, double pvalue, double score);
+            bool is_reverse_complement() const { return m_is_reverse_complement; }
+
+            Score(const std::string& sequence, bool is_reverse_complement, size_t begin, size_t end, double pvalue, double score);
 
         private:
             const std::string& m_sequence;
+            const bool m_is_reverse_complement;
             const size_t m_begin;
             const size_t m_end;
             const double m_pvalue;
@@ -65,7 +68,7 @@ public:
         for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size(); ++start, ++stop)
         {
             const Score score = score_sequence(sequence, start-1, stop);
-            consumer(m_name, sequence_name, !m_is_reverse_complement, start, stop, score);
+            consumer(m_name, sequence_name, start, stop, score);
         }
     }
 
@@ -97,9 +100,26 @@ private:
 
 inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& score)
 {
-    for (size_t i=score.m_begin; i < score.m_end; ++i)
+    if (score.m_is_reverse_complement)
     {
-        out << char(std::toupper(score.m_sequence[i]));
+        if (score.m_end > score.m_begin)
+        {
+            for (size_t i=score.m_end-1; ; --i)
+            {
+                out << char(std::toupper(complement(score.m_sequence[i])));
+                if ( i == score.m_begin )
+                {
+                    break;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (size_t i=score.m_begin; i < score.m_end; ++i)
+        {
+            out << char(std::toupper(score.m_sequence[i]));
+        }
     }
     return out;
 }

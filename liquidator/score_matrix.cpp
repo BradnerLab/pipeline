@@ -36,7 +36,7 @@ ScoreMatrix::score_sequence(const std::string& sequence, size_t begin, size_t en
     assert(scaled_score < m_pvalues.size());
     const double pvalue = m_pvalues[scaled_score];
     const double unscaled_score = double(scaled_score)/m_scale + m_matrix.size()*m_min_before_scaling;
-    return Score {sequence, begin, end, pvalue, unscaled_score};
+    return Score(sequence, m_is_reverse_complement, begin, end, pvalue, unscaled_score);
 }
 
 std::vector<ScoreMatrix>
@@ -59,8 +59,9 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
     return score_matrices;
 }
 
-ScoreMatrix::Score::Score(const std::string &sequence, size_t begin, size_t end, double pvalue, double score)
+ScoreMatrix::Score::Score(const std::string &sequence, bool is_reverse_complement, size_t begin, size_t end, double pvalue, double score)
     : m_sequence(sequence),
+      m_is_reverse_complement(is_reverse_complement),
       m_begin(begin),
       m_end(end),
       m_pvalue(pvalue),

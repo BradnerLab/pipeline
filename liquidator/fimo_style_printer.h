@@ -21,7 +21,6 @@ public:
 
     void operator()(const std::string& motif_name,
                     const std::string& sequence_name,
-                    bool forward_strand,
                     size_t start,
                     size_t stop,
                     const ScoreMatrix::Score& score)
@@ -32,7 +31,7 @@ public:
                   << sequence_name << '\t' 
                   << start << '\t'
                   << stop << '\t'
-                  << (forward_strand ? '+' : '-') << '\t';
+                  << (score.is_reverse_complement() ? '-' : '+') << '\t';
 
             m_out.precision(6);
             m_out << score.score() << '\t';

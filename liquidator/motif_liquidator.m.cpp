@@ -92,6 +92,7 @@ int main(int argc, char** argv)
     if ( rc ) return rc;
 
     std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
+    std::cerr << "size: " << matrices.size() << std::endl;
 
     FimoStylePrinter printer(std::cout);
 
