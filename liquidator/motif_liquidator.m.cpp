@@ -13,7 +13,8 @@ using namespace liquidator;
 int process_command_line(int argc,
                          char** argv,
                          std::ifstream& fasta,
-                         std::ifstream& motif)
+                         std::ifstream& motif,
+                         std::array<double, AlphabetSize>& background_array)
 {
     namespace po = boost::program_options;
 
@@ -57,17 +58,32 @@ int process_command_line(int argc,
         po::notify(vm);
 
         fasta.open(fasta_file_path);
-        if ( !fasta )
+        if (!fasta)
         {
             std::cerr << "failed to open fasta file " << fasta_file_path << std::endl;
             return 1;
         }
 
         motif.open(motif_file_path);
-        if ( !motif )
+        if (!motif)
         {
             std::cerr << "failed to open motif file " << motif_file_path << std::endl;
             return 1;
+        }
+
+        if (vm.count("background"))
+        {
+            std::ifstream background(background_file_path);
+            if (!background)
+            {
+                std::cerr << "failed to open background file " << background_file_path << std::endl;
+                return 1;
+            }
+            background_array = ScoreMatrix::read_background(background);
+        }
+        else
+        {
+            background_array = {.25, .25, .25, .25};
         }
     }
     catch(const std::exception& e)
@@ -84,11 +100,9 @@ int main(int argc, char** argv)
 {
     std::ifstream fasta;
     std::ifstream motif;
+    std::array<double, AlphabetSize> background;
 
-    // todo: read in background from an optional file, defaulting to {.25, .25, .25, .25}
-    const std::array<double, AlphabetSize> background = {.256, .244, .244, .256};
-
-    const int rc = process_command_line(argc, argv, fasta, motif);
+    const int rc = process_command_line(argc, argv, fasta, motif, background);
     if ( rc ) return rc;
 
     std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);

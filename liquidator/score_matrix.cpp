@@ -1,6 +1,9 @@
 #include "score_matrix.h"
 #include "detail/score_matrix_detail.h"
 
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
 namespace liquidator
 {
 
@@ -57,6 +60,37 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
         }
     }
     return score_matrices;
+}
+
+std::array<double, AlphabetSize>
+ScoreMatrix::read_background(std::istream& background_file)
+{
+    std::array<unsigned, AlphabetSize> counts = {0, 0, 0, 0};
+    std::array<double, AlphabetSize> background;
+    for(std::string line; getline(background_file, line); )
+    {
+        std::vector<std::string> split;
+        boost::split(split, line, boost::is_any_of(" "), boost::token_compress_on);
+        if (split.size() != 2 || split[0].size() != 1)
+        {
+            continue;
+        }
+        const size_t index = alphabet_index(split[0][0]);
+        if (index >= AlphabetSize)
+        {
+            continue;
+        }
+        background[index] = boost::lexical_cast<double>(split[1]);
+        ++counts[index];
+    }
+    for (auto& count : counts)
+    {
+        if (count != 1)
+        {
+            throw std::runtime_error("failed to read background");
+        }
+    }
+    return background;
 }
 
 ScoreMatrix::Score::Score(const std::string &sequence, bool is_reverse_complement, size_t begin, size_t end, double pvalue, double score)
