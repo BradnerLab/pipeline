@@ -8,8 +8,10 @@ ScoreMatrix::ScoreMatrix(const std::string& name,
                          const std::array<double, AlphabetSize>& background,
                          const std::vector<std::array<double, AlphabetSize>>& pwm,
                          unsigned number_of_sites,
+                         bool is_reverse_complement,
                          double pseudo_sites)
     : m_name(name),
+      m_is_reverse_complement(is_reverse_complement),
       m_background(background),
       m_scale(0),
       m_min_before_scaling(0)
@@ -40,13 +42,19 @@ ScoreMatrix::score_sequence(const std::string& sequence, size_t begin, size_t en
 std::vector<ScoreMatrix>
 ScoreMatrix::read(std::istream& meme_style_pwm,
                   std::array<double, AlphabetSize> acgt_background,
+                  bool include_reverse_complement,
                   double pseudo_sites)
 {
     std::vector<detail::PWM> pwms = detail::read_pwm(meme_style_pwm);
     std::vector<ScoreMatrix> score_matrices;
     for (auto& pwm : pwms)
     {
-        score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, pwm.matrix, pwm.number_of_sites, pseudo_sites));
+        score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
+        if (include_reverse_complement)
+        {
+            detail::reverse_complement(pwm.matrix);
+            score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
+        }
     }
     return score_matrices;
 }

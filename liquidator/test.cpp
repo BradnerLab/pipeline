@@ -213,6 +213,24 @@ TEST(ScoreMatrix, pvalues)
     EXPECT_FLOAT_EQ(1, a[0]);
 }
 
+TEST(ScoreMatrix, reverse_complement)
+{
+    std::vector<std::array<double, AlphabetSize>> matrix =
+    { {1, 0, 0, 0},
+      {0, 2, 0, 0},
+      {0, 0, 3, 0},
+      {0, 0, 0, 4},
+      {1, 2, 3, 4} };
+    const std::vector<std::array<double, AlphabetSize>> reverse_complement =
+    { {4, 3, 2, 1},
+      {4, 0, 0, 0},
+      {0, 3, 0, 0},
+      {0, 0, 2, 0},
+      {0, 0, 0, 1} };
+    detail::reverse_complement(matrix);
+    EXPECT_EQ(reverse_complement, matrix);
+}
+
 int main(int argc, char **argv)
 {
   ::testing::InitGoogleTest(&argc, argv);

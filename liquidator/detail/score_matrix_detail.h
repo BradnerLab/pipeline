@@ -184,6 +184,15 @@ void pdf_to_pvalues(std::vector<double>& p)
     }
 }
 
+void reverse_complement(std::vector<std::array<double, AlphabetSize>>& matrix)
+{
+    std::reverse(matrix.begin(), matrix.end());
+    for (auto& row: matrix)
+    {
+        std::reverse(row.begin(), row.end());
+    }
+}
+
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 inline std::vector<PWM> read_pwm(std::istream& input)
 {

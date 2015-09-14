@@ -21,17 +21,21 @@ inline char complement(char c)
     switch(c)
     {
       case 'A':
-      case 'a':
           return 'T';
+      case 'a':
+          return 't';
       case 'C':
-      case 'c':
           return 'G';
+      case 'c':
+          return 'g';
       case 'G':
-      case 'g':
           return 'C';
+      case 'g':
+          return 'c';
       case 'T': 
-      case 't':
           return 'A';
+      case 't':
+          return 'a';
     }
     throw std::runtime_error("no known complement for " + std::string(1, c));
 }

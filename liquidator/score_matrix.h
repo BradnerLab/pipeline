@@ -20,13 +20,15 @@ public:
     // Psuedo count logic described at http://meme-suite.org/doc/general-faq.html .
     static std::vector<ScoreMatrix> read(std::istream& meme_style_pwm,
                                          std::array<double, AlphabetSize> acgt_background = { .25, .25, .25, .25},
+                                         bool include_reverse_complement = true,
                                          double pseudo_sites = 0.1);
 
     ScoreMatrix(const std::string& name,
                 const std::array<double, AlphabetSize>& background,
                 const std::vector<std::array<double, AlphabetSize>>& pwm,
                 unsigned number_of_sites,
-                double pseudo_sites);
+                bool is_reverse_complement = false,
+                double pseudo_sites = 0.1);
  
     // Scores reference a sequence string so are intended to be used only
     // in the scope of a ScoreConsumer operator.
@@ -63,7 +65,7 @@ public:
         for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size(); ++start, ++stop)
         {
             const Score score = score_sequence(sequence, start-1, stop);
-            consumer(m_name, sequence_name, true, start, stop, score);
+            consumer(m_name, sequence_name, !m_is_reverse_complement, start, stop, score);
         }
     }
 
@@ -83,6 +85,7 @@ public:
 
 private:
     const std::string m_name;
+    const bool m_is_reverse_complement;
     const std::array<double, AlphabetSize> m_background;
     std::vector<std::array<unsigned, AlphabetSize>> m_matrix;
     double m_scale;
