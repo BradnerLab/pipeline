@@ -4,6 +4,7 @@
 #include "liquidator_util.h"
 
 #include <array>
+#include <cctype>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -95,7 +96,7 @@ inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& sco
 {
     for (size_t i=score.m_begin; i < score.m_end; ++i)
     {
-        out << score.m_sequence[i];
+        out << char(std::toupper(score.m_sequence[i]));
     }
     return out;
 }
