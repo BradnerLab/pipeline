@@ -33,17 +33,17 @@ public:
     {
         public:
             // writes the matched sequence
-            inline std::ostream& matched_sequence(std::ostream& out) const;
+            friend std::ostream& operator<<(std::ostream& out, const Score& score);
             
             // returns a copy of the matched sequence
             inline std::string matched_sequence() const;
 
             // The pvalue, or NAN if sequence was not scorable.
             // Note that NaN < x is false for any double x.
-            const double pvalue() { return m_pvalue; }
+            double pvalue() const { return m_pvalue; }
 
             // The score, or 0 if sequence was not scorable.
-            const double score() { return m_score; }
+            double score() const { return m_score; }
 
             Score(const std::string& sequence, size_t begin, size_t end, double pvalue, double score);
 
@@ -57,12 +57,12 @@ public:
 
     // See fimo_style_printer.h for example of a ScoreConsumer.
     template <typename ScoreConsumer>
-    void score(const std::string& sequence, const std::string& sequence_name, bool forward_strand, ScoreConsumer& consumer) const
+    void score(const std::string& sequence, const std::string& sequence_name, ScoreConsumer& consumer) const
     {
         for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size(); ++start, ++stop)
         {
             const Score score = score_sequence(sequence, start-1, stop);
-            consumer(sequence_name, forward_strand, start, stop, score);
+            consumer(m_name, sequence_name, true, start, stop, score);
         }
     }
 
@@ -90,6 +90,15 @@ private:
 
     Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
 };
+
+inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& score)
+{
+    for (size_t i=score.m_begin; i < score.m_end; ++i)
+    {
+        out << score.m_sequence[i];
+    }
+    return out;
+}
 
 }
 /* The MIT License (MIT) 

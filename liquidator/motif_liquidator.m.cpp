@@ -40,7 +40,7 @@ int process_command_line(int argc,
 
     po::positional_options_description positional;
     positional.add("motif", 1);
-    positional.add("fasta", 1);
+    positional.add("fasta_or_bam", 1);
 
     po::variables_map vm;
 
@@ -98,20 +98,11 @@ int main(int argc, char** argv)
     FastaReader fasta_reader(fasta);
     std::string sequence;
     std::string sequence_name;
-    char strand = '.';
-    while (fasta_reader.next_read(sequence, sequence_name, strand))
+    while (fasta_reader.next_read(sequence, sequence_name))
     {
         for (const auto& matrix : matrices)
         {
-            // todo: consider making score function take '+', '-', '.' arg... still not sure how to handle strands
-            if (strand == '+' || strand == '.')
-            {
-                matrix.score(sequence, sequence_name, true, printer);
-            }
-            if (strand == '-' || strand == '.')
-            {
-                matrix.score(sequence, sequence_name, false, printer);
-            }
+            matrix.score(sequence, sequence_name, printer);
         }
     }
 
