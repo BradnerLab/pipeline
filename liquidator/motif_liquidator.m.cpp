@@ -3,6 +3,7 @@
 #include "fasta_reader.h"
 
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 
 #include <string>
 #include <iostream>
@@ -10,15 +11,23 @@
 
 using namespace liquidator;
 
+enum InputType
+{
+    bam_input_type,
+    fasta_input_type,
+    invalid_input_type
+};
+
 int process_command_line(int argc,
                          char** argv,
-                         std::ifstream& fasta,
+                         std::ifstream& input,
+                         InputType& input_type,
                          std::ifstream& motif,
                          std::array<double, AlphabetSize>& background_array)
 {
     namespace po = boost::program_options;
 
-    std::string fasta_file_path, motif_file_path, background_file_path;
+    std::string input_file_path, motif_file_path, background_file_path;
 
     // todo: add more info to help, like this:
     //   meme style position weight matrix (pwm) file
@@ -34,7 +43,7 @@ int process_command_line(int argc,
     po::options_description hidden;
     hidden.add_options()
         ("motif", po::value(&motif_file_path)->required())
-        ("fasta_or_bam", po::value(&fasta_file_path)->required());
+        ("fasta_or_bam", po::value(&input_file_path)->required());
 
     po::options_description combined;
     combined.add(options).add(hidden);
@@ -57,10 +66,25 @@ int process_command_line(int argc,
 
         po::notify(vm);
 
-        fasta.open(fasta_file_path);
-        if (!fasta)
+        input.open(input_file_path);
+        if (!input)
         {
-            std::cerr << "failed to open fasta file " << fasta_file_path << std::endl;
+            std::cerr << "failed to open " << input_file_path << std::endl;
+            return 1;
+        }
+
+        const std::string input_extension = boost::filesystem::extension(input_file_path);
+        if (input_extension == ".bam")
+        {
+            input_type = bam_input_type;
+        }
+        else if (input_extension == ".fasta")
+        {
+            input_type = fasta_input_type;
+        }
+        else
+        {
+            std::cerr << "only .bam and .fasta extensions are supported at this time" << std::endl;
             return 1;
         }
 
@@ -96,21 +120,11 @@ int process_command_line(int argc,
     return 0;
 }
 
-int main(int argc, char** argv)
+void process_fasta(const std::vector<ScoreMatrix>& matrices, std::istream& input)
 {
-    std::ifstream fasta;
-    std::ifstream motif;
-    std::array<double, AlphabetSize> background;
-
-    const int rc = process_command_line(argc, argv, fasta, motif, background);
-    if ( rc ) return rc;
-
-    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
-    std::cerr << "size: " << matrices.size() << std::endl;
-
     FimoStylePrinter printer(std::cout);
 
-    FastaReader fasta_reader(fasta);
+    FastaReader fasta_reader(input);
     std::string sequence;
     std::string sequence_name;
     while (fasta_reader.next_read(sequence, sequence_name))
@@ -119,6 +133,33 @@ int main(int argc, char** argv)
         {
             matrix.score(sequence, sequence_name, printer);
         }
+    }
+}
+
+void process_bam(const std::vector<ScoreMatrix>& matrices, std::istream& input)
+{
+
+}
+
+int main(int argc, char** argv)
+{
+    std::ifstream input;
+    std::ifstream motif;
+    InputType input_type = invalid_input_type;
+    std::array<double, AlphabetSize> background;
+
+    const int rc = process_command_line(argc, argv, input, input_type, motif, background);
+    if ( rc ) return rc;
+
+    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
+
+    if (input_type == bam_input_type)
+    {
+        process_bam(matrices, input);
+    }
+    else if (input_type == fasta_input_type)
+    {
+        process_fasta(matrices, input);
     }
 
     return 0;
