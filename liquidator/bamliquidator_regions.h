@@ -1,6 +1,8 @@
 #ifndef PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_REGIONS_H
 #define PIPELINE_BAMLIQUIDATORINTERNAL_BAMLIQUIDATOR_REGIONS_H
 
+#include "liquidator_util.h"
+
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
@@ -15,6 +17,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+namespace liquidator
+{
 
 const size_t region_name_length = 64;
 
@@ -200,6 +205,8 @@ inline void write(hid_t& file, std::vector<Region>& regions)
     ss << "Error appending record, status = " << status;
     throw std::runtime_error(ss.str());
   }
+}
+
 }
 
 #endif

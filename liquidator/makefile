@@ -99,7 +99,7 @@ score_matrix.o: score_matrix.h score_matrix.cpp detail/score_matrix_detail.h fim
 
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev libboost-filesystem1.54-dev
 motif_liquidator: motif_liquidator.m.cpp score_matrix.o fasta_reader.h liquidator_util.o
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp

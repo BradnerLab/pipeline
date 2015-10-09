@@ -1,6 +1,7 @@
 #include "score_matrix.h"
 #include "fimo_style_printer.h"
 #include "fasta_reader.h"
+#include "bamliquidator_regions.h"
 
 #include <samtools/bam.h>
 
@@ -25,7 +26,8 @@ int process_command_line(int argc,
                          std::string& input_file_path,
                          InputType& input_type,
                          std::ifstream& motif,
-                         std::array<double, AlphabetSize>& background_array)
+                         std::array<double, AlphabetSize>& background_array,
+                         std::string& region_file_path)
 {
     namespace po = boost::program_options;
 
@@ -37,7 +39,9 @@ int process_command_line(int argc,
     po::options_description options("Usage: motif_liquidator [options] motif fasta|bam\noptions");
     options.add_options()
         ("help,h", "produce help message")
-        ("background,b", po::value(&background_file_path), "meme style background frequency file");
+        ("background,b", po::value(&background_file_path), "meme style background frequency file")
+        ("region", po::value(&region_file_path), ".bed region file for filtering bam input")
+    ;
 
     // todo: manually check if a positional argument is omitted,
     // since the po exception message describes it as a non-positional argument, which could be confusing.
@@ -81,6 +85,12 @@ int process_command_line(int argc,
         else
         {
             std::cerr << "only .bam and .fasta extensions are supported at this time" << std::endl;
+            return 1;
+        }
+
+        if (vm.count("region_file_path") && input_type != bam_input_type)
+        {
+            std::cerr << "only .bam input files support region filtering" << std::endl;
             return 1;
         }
 
@@ -138,34 +148,107 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
     }
 }
 
-void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& bam_file_path)
+class BamScorer
 {
-    bam1_t* read = bam_init1();
-    bamFile input = bam_open(bam_file_path.c_str(), "r");
-    bam_header_t* header = bam_header_read(input);
-
-    if (read == 0 || input == 0 || header == 0)
+public:
+    BamScorer(const std::string& bam_file_path,
+              const std::vector<ScoreMatrix>& matrices,
+              const std::string& region_file_path = "")
+    :
+        m_input(bam_open(bam_file_path.c_str(), "r")),
+        m_header(bam_header_read(m_input)),
+        m_index(bam_index_load(bam_file_path.c_str())),
+        m_matrices(matrices),
+        m_read_count(0),
+        m_read_hit_count(0),
+        m_total_hit_count(0)
     {
-        throw std::runtime_error("failed to open " + bam_file_path);
+        if (m_input == 0 || m_header == 0)
+        {
+            throw std::runtime_error("failed to open " + bam_file_path);
+        }
+
+        if (!region_file_path.empty())
+        {
+            score_regions(region_file_path);
+        }
+        else
+        {
+            score_all_reads();
+        }
     }
 
-    std::string sequence;
-    size_t read_count = 0;
-    size_t total_hit_count = 0;
-    size_t read_hit_count = 0;
+    ~BamScorer()
+    {
+        const auto percentage_printer = [&](const size_t hits) {
+            std::cout << hits << "/" << m_read_count << " = " << 100*(double(hits)/m_read_count) << "%" << std::endl;
+        };
+        percentage_printer(m_read_hit_count);
+        percentage_printer(m_total_hit_count);
 
-    auto hit_counter = [&](const std::string& motif_name,
-                                    const std::string& sequence_name,
-                                    size_t start,
-                                    size_t stop,
-                                    const ScoreMatrix::Score& score) {
+        bam_index_destroy(m_index);
+        bam_header_destroy(m_header);
+        bam_close(m_input);
+    }
+
+    void operator()(const std::string& motif_name,
+                    const std::string& sequence_name,
+                    size_t start,
+                    size_t stop,
+                    const ScoreMatrix::Score& score)
+    {
         if (score.pvalue() < 0.0001)
         {
-            ++total_hit_count;
+            ++m_total_hit_count;
         }
-    };
+    }
 
-    while (bam_read1(input, read) >= 0)
+private:
+    void score_all_reads()
+    {
+        // todo: what if throws before bam_destroy1 called? wrap read in unique_ptr or something with bam_destroy1 the deleter
+        bam1_t* read = bam_init1();
+        while (bam_read1(m_input, read) >= 0)
+        {
+            score_read(read);
+        }
+        bam_destroy1(read);
+    }
+
+    void score_regions(const std::string& region_file_path)
+    {
+        for (const Region& region : parse_regions(region_file_path, "bed", 0))
+        {
+            // todo: don't I just need to parse_region once per chromosome to get the tid? perhaps there is a faster way to do this without parsing a whole region string?
+            // todo: consider adding a util function to do this and remove duplicate code in bamliquidator.cpp
+             std::stringstream coord;
+            coord << region.chromosome << ':' << region.start << '-' << region.stop;
+
+            int ref,beg,end;
+            const int region_parse_rc = bam_parse_region(m_header,coord.str().c_str(), &ref, &beg, &end);
+            if (region_parse_rc != 0)
+            {
+                std::stringstream error_msg;
+                error_msg << "bam_parse_region failed with return code " << region_parse_rc;
+                throw std::runtime_error(error_msg.str());
+            }
+            if(ref<0)
+            {
+                // this bam doesn't have this chromosome
+                continue;
+            }
+
+            const int fetch_rc = bam_fetch(m_input, m_index, ref, beg, end, this, bam_fetch_func);
+            if (fetch_rc != 0)
+            {
+                std::stringstream error_msg;
+                error_msg << "bam_fetch failed with return code " << fetch_rc;
+                throw std::runtime_error(error_msg.str());
+            }
+        }
+    }
+
+    void score_read(const bam1_t* read)
     {
         const bam1_core_t *c = &read->core;
         uint8_t *s = bam1_seq(read);
@@ -176,55 +259,64 @@ void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& ba
         // to search integers without using bam_nt16_rev_table (and I wouldn't have
         // to worry about the packing complexity).
 
-        if (sequence.size() != size_t(c->l_qseq))
+        if (m_sequence.size() != size_t(c->l_qseq))
         {
             // assuming that all reads are uniform length, this will only happen once
-            sequence = std::string(c->l_qseq, ' ');
+            m_sequence = std::string(c->l_qseq, ' ');
         }
-
         for (int i = 0; i < c->l_qseq; ++i)
         {
-            sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
+            m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
-        ++read_count;
+        ++m_read_count;
 
-        const size_t hit_count_before_this_read = total_hit_count;
-        const static std::string sequence_name = "???";
-        for (const auto& matrix : matrices)
+        const size_t hit_count_before_this_read = m_total_hit_count;
+        const static std::string no_sequence_name;
+        for (const auto& matrix : m_matrices)
         {
-            matrix.score(sequence, sequence_name, hit_counter);
+            matrix.score(m_sequence, no_sequence_name, *this);
         }
-        if (total_hit_count > hit_count_before_this_read)
+        if (m_total_hit_count > hit_count_before_this_read)
         {
-            ++read_hit_count;
+            ++m_read_hit_count;
         }
     }
 
-    bam_header_destroy(header);
-    bam_close(input);
-    bam_destroy1(read);
+    static int bam_fetch_func(const bam1_t* read, void* handle)
+    {
+        BamScorer& scorer = *static_cast<BamScorer*>(handle);
+        scorer.score_read(read);
+        return 0;
+    }
 
-    std::cout << read_hit_count << "/" << read_count << " = " << 100*(double(read_hit_count)/read_count) << "%" << std::endl;
-    std::cout << total_hit_count << "/" << read_count << " = " << 100*(double(total_hit_count)/read_count) << "%" << std::endl;
-}
+private:
+    bamFile m_input;
+    bam_header_t* m_header;
+    bam_index_t* m_index;
+    const std::vector<ScoreMatrix>& m_matrices;
+    size_t m_read_count;
+    size_t m_read_hit_count;
+    size_t m_total_hit_count;
+    std::string m_sequence;
+};
 
 int main(int argc, char** argv)
 {
     try
     {
-        std::string input_file_path;
+        std::string input_file_path, region_file_path;
         std::ifstream motif;
         InputType input_type = invalid_input_type;
         std::array<double, AlphabetSize> background;
 
-        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background);
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path);
         if ( rc ) return rc;
 
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
         if (input_type == bam_input_type)
         {
-            process_bam(matrices, input_file_path);
+            BamScorer(input_file_path, matrices, region_file_path);
         }
         else if (input_type == fasta_input_type)
         {
