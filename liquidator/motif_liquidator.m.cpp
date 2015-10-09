@@ -2,6 +2,8 @@
 #include "fimo_style_printer.h"
 #include "fasta_reader.h"
 
+#include <samtools/bam.h>
+
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
@@ -20,14 +22,14 @@ enum InputType
 
 int process_command_line(int argc,
                          char** argv,
-                         std::ifstream& input,
+                         std::string& input_file_path,
                          InputType& input_type,
                          std::ifstream& motif,
                          std::array<double, AlphabetSize>& background_array)
 {
     namespace po = boost::program_options;
 
-    std::string input_file_path, motif_file_path, background_file_path;
+    std::string motif_file_path, background_file_path;
 
     // todo: add more info to help, like this:
     //   meme style position weight matrix (pwm) file
@@ -65,13 +67,6 @@ int process_command_line(int argc,
         }
 
         po::notify(vm);
-
-        input.open(input_file_path);
-        if (!input)
-        {
-            std::cerr << "failed to open " << input_file_path << std::endl;
-            return 1;
-        }
 
         const std::string input_extension = boost::filesystem::extension(input_file_path);
         if (input_extension == ".bam")
@@ -120,11 +115,17 @@ int process_command_line(int argc,
     return 0;
 }
 
-void process_fasta(const std::vector<ScoreMatrix>& matrices, std::istream& input)
+void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& fasta_file_path)
 {
+    std::ifstream fasta_input(fasta_file_path);
+    if (!fasta_input)
+    {
+        throw std::runtime_error("failed to open " + fasta_file_path);
+    }
+
     FimoStylePrinter printer(std::cout);
 
-    FastaReader fasta_reader(input);
+    FastaReader fasta_reader(fasta_input);
     std::string sequence;
     std::string sequence_name;
     while (fasta_reader.next_read(sequence, sequence_name))
@@ -136,32 +137,97 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, std::istream& input
     }
 }
 
-void process_bam(const std::vector<ScoreMatrix>& matrices, std::istream& input)
+void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& bam_file_path)
 {
+    bam1_t* read = bam_init1();
+    bamFile input = bam_open(bam_file_path.c_str(), "r");
+    bam_header_t* header = bam_header_read(input);
 
+    if (read == 0 || input == 0 || header == 0)
+    {
+        throw std::runtime_error("failed to open " + bam_file_path);
+    }
+
+    std::string sequence;
+    size_t read_count = 0;
+    size_t hit_count = 0;
+
+    auto hit_counter = [&hit_count](const std::string& motif_name,
+                                    const std::string& sequence_name,
+                                    size_t start,
+                                    size_t stop,
+                                    const ScoreMatrix::Score& score) {
+        if (score.pvalue() < 0.0001)
+        {
+            ++hit_count;
+        }
+    };
+
+    while (bam_read1(input, read) >= 0)
+    {
+        const bam1_core_t *c = &read->core;
+        uint8_t *s = bam1_seq(read);
+
+        // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte.
+        // I bet we could directly search that instead of first copying into a string
+        // but lets get something simple working first. An intermediate step could be
+        // to search integers without using bam_nt16_rev_table (and I wouldn't have
+        // to worry about the packing complexity).
+
+        if (sequence.size() != size_t(c->l_qseq))
+        {
+            // assuming that all reads are uniform length, this will only happen once
+            sequence = std::string(c->l_qseq, ' ');
+        }
+
+        for (int i = 0; i < c->l_qseq; ++i)
+        {
+            sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
+        }
+        ++read_count;
+
+        const static std::string sequence_name = "???";
+        for (const auto& matrix : matrices)
+        {
+            matrix.score(sequence, sequence_name, hit_counter);
+        }
+    }
+
+    bam_header_destroy(header);
+    bam_close(input);
+    bam_destroy1(read);
+
+    std::cout << hit_count << "/" << read_count << " = " << (double(hit_count)/read_count) << std::endl;
 }
 
 int main(int argc, char** argv)
 {
-    std::ifstream input;
-    std::ifstream motif;
-    InputType input_type = invalid_input_type;
-    std::array<double, AlphabetSize> background;
-
-    const int rc = process_command_line(argc, argv, input, input_type, motif, background);
-    if ( rc ) return rc;
-
-    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
-
-    if (input_type == bam_input_type)
+    try
     {
-        process_bam(matrices, input);
-    }
-    else if (input_type == fasta_input_type)
-    {
-        process_fasta(matrices, input);
-    }
+        std::string input_file_path;
+        std::ifstream motif;
+        InputType input_type = invalid_input_type;
+        std::array<double, AlphabetSize> background;
 
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background);
+        if ( rc ) return rc;
+
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
+
+        if (input_type == bam_input_type)
+        {
+            process_bam(matrices, input_file_path);
+        }
+        else if (input_type == fasta_input_type)
+        {
+            process_fasta(matrices, input_file_path);
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
     return 0;
 }
 
