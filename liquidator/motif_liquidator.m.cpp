@@ -40,7 +40,7 @@ int process_command_line(int argc,
     options.add_options()
         ("help,h", "produce help message")
         ("background,b", po::value(&background_file_path), "meme style background frequency file")
-        ("region", po::value(&region_file_path), ".bed region file for filtering bam input")
+        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input")
     ;
 
     // todo: manually check if a positional argument is omitted,
