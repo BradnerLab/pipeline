@@ -45,7 +45,8 @@ int process_command_line(int argc,
     po::options_description hidden;
     hidden.add_options()
         ("motif", po::value(&motif_file_path)->required())
-        ("fasta_or_bam", po::value(&input_file_path)->required());
+        ("fasta_or_bam", po::value(&input_file_path)->required())
+    ;
 
     po::options_description combined;
     combined.add(options).add(hidden);
@@ -150,16 +151,17 @@ void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& ba
 
     std::string sequence;
     size_t read_count = 0;
-    size_t hit_count = 0;
+    size_t total_hit_count = 0;
+    size_t read_hit_count = 0;
 
-    auto hit_counter = [&hit_count](const std::string& motif_name,
+    auto hit_counter = [&](const std::string& motif_name,
                                     const std::string& sequence_name,
                                     size_t start,
                                     size_t stop,
                                     const ScoreMatrix::Score& score) {
         if (score.pvalue() < 0.0001)
         {
-            ++hit_count;
+            ++total_hit_count;
         }
     };
 
@@ -186,10 +188,15 @@ void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& ba
         }
         ++read_count;
 
+        const size_t hit_count_before_this_read = total_hit_count;
         const static std::string sequence_name = "???";
         for (const auto& matrix : matrices)
         {
             matrix.score(sequence, sequence_name, hit_counter);
+        }
+        if (total_hit_count > hit_count_before_this_read)
+        {
+            ++read_hit_count;
         }
     }
 
@@ -197,7 +204,8 @@ void process_bam(const std::vector<ScoreMatrix>& matrices, const std::string& ba
     bam_close(input);
     bam_destroy1(read);
 
-    std::cout << hit_count << "/" << read_count << " = " << (double(hit_count)/read_count) << std::endl;
+    std::cout << read_hit_count << "/" << read_count << " = " << 100*(double(read_hit_count)/read_count) << "%" << std::endl;
+    std::cout << total_hit_count << "/" << read_count << " = " << 100*(double(total_hit_count)/read_count) << "%" << std::endl;
 }
 
 int main(int argc, char** argv)
