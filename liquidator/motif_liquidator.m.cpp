@@ -27,7 +27,8 @@ int process_command_line(int argc,
                          InputType& input_type,
                          std::ifstream& motif,
                          std::array<double, AlphabetSize>& background_array,
-                         std::string& region_file_path)
+                         std::string& region_file_path,
+                         std::string& ouput_file_path)
 {
     namespace po = boost::program_options;
 
@@ -41,6 +42,7 @@ int process_command_line(int argc,
         ("help,h", "produce help message")
         ("background,b", po::value(&background_file_path), "meme style background frequency file")
         ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input")
+        ("output,o", po::value(&ouput_file_path), "file to write matches to.  output is fasta style for fimo input, and output is a .bam for bam input.")
     ;
 
     // todo: manually check if a positional argument is omitted,
@@ -126,7 +128,7 @@ int process_command_line(int argc,
     return 0;
 }
 
-void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& fasta_file_path)
+void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& fasta_file_path, const std::string& output_file_path)
 {
     std::ifstream fasta_input(fasta_file_path);
     if (!fasta_input)
@@ -134,7 +136,8 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
         throw std::runtime_error("failed to open " + fasta_file_path);
     }
 
-    FimoStylePrinter printer(std::cout);
+    std::ofstream output(output_file_path);
+    FimoStylePrinter printer(output);
 
     FastaReader fasta_reader(fasta_input);
     std::string sequence;
@@ -151,21 +154,30 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
 class BamScorer
 {
 public:
-    BamScorer(const std::string& bam_file_path,
+    BamScorer(const std::string& bam_input_file_path,
               const std::vector<ScoreMatrix>& matrices,
+              const std::string& bam_output_file_path,
               const std::string& region_file_path = "")
     :
-        m_input(bam_open(bam_file_path.c_str(), "r")),
+        m_input(bam_open(bam_input_file_path.c_str(), "r")),
+        m_output(0),
         m_header(bam_header_read(m_input)),
-        m_index(bam_index_load(bam_file_path.c_str())),
+        m_index(bam_index_load(bam_input_file_path.c_str())),
         m_matrices(matrices),
+        m_read(0),
         m_read_count(0),
         m_read_hit_count(0),
         m_total_hit_count(0)
     {
-        if (m_input == 0 || m_header == 0)
+        if (m_input == 0 || m_header == 0 || m_index == 0)
         {
-            throw std::runtime_error("failed to open " + bam_file_path);
+            throw std::runtime_error("failed to open " + bam_input_file_path);
+        }
+
+        if (!bam_output_file_path.empty())
+        {
+            m_output = bam_open(bam_output_file_path.c_str(), "w");
+            bam_header_write(m_output, m_header);
         }
 
         if (!region_file_path.empty())
@@ -189,6 +201,11 @@ public:
         bam_index_destroy(m_index);
         bam_header_destroy(m_header);
         bam_close(m_input);
+
+        if (m_output)
+        {
+            bam_close(m_output);
+        }
     }
 
     void operator()(const std::string& motif_name,
@@ -200,17 +217,29 @@ public:
         if (score.pvalue() < 0.0001)
         {
             ++m_total_hit_count;
+            if (m_output)
+            {
+                bam_write1(m_output, m_read);
+            }
         }
     }
 
 private:
     void score_all_reads()
     {
-        // todo: what if throws before bam_destroy1 called? wrap read in unique_ptr or something with bam_destroy1 the deleter
         bam1_t* read = bam_init1();
-        while (bam_read1(m_input, read) >= 0)
+        try
         {
-            score_read(read);
+            while (bam_read1(m_input, read) >= 0)
+            {
+                m_read = read;
+                score_read();
+            }
+        }
+        catch(...)
+        {
+            bam_destroy1(read);
+            throw;
         }
         bam_destroy1(read);
     }
@@ -248,10 +277,10 @@ private:
         }
     }
 
-    void score_read(const bam1_t* read)
+    void score_read()
     {
-        const bam1_core_t *c = &read->core;
-        uint8_t *s = bam1_seq(read);
+        const bam1_core_t *c = &m_read->core;
+        uint8_t *s = bam1_seq(m_read);
 
         // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte.
         // I bet we could directly search that instead of first copying into a string
@@ -285,15 +314,18 @@ private:
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
-        scorer.score_read(read);
+        scorer.m_read = read;
+        scorer.score_read();
         return 0;
     }
 
 private:
     bamFile m_input;
+    bamFile m_output;
     bam_header_t* m_header;
     bam_index_t* m_index;
     const std::vector<ScoreMatrix>& m_matrices;
+    const bam1_t* m_read;
     size_t m_read_count;
     size_t m_read_hit_count;
     size_t m_total_hit_count;
@@ -304,23 +336,23 @@ int main(int argc, char** argv)
 {
     try
     {
-        std::string input_file_path, region_file_path;
+        std::string input_file_path, region_file_path, ouput_file_path;
         std::ifstream motif;
         InputType input_type = invalid_input_type;
         std::array<double, AlphabetSize> background;
 
-        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path);
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path);
         if ( rc ) return rc;
 
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
         if (input_type == bam_input_type)
         {
-            BamScorer(input_file_path, matrices, region_file_path);
+            BamScorer(input_file_path, matrices, ouput_file_path, region_file_path);
         }
         else if (input_type == fasta_input_type)
         {
-            process_fasta(matrices, input_file_path);
+            process_fasta(matrices, input_file_path, ouput_file_path);
         }
     }
     catch(const std::exception& e)
