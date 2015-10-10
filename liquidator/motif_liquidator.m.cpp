@@ -164,7 +164,6 @@ public:
         m_header(bam_header_read(m_input)),
         m_index(bam_index_load(bam_input_file_path.c_str())),
         m_matrices(matrices),
-        m_read(0),
         m_read_count(0),
         m_read_hit_count(0),
         m_total_hit_count(0)
@@ -217,31 +216,19 @@ public:
         if (score.pvalue() < 0.0001)
         {
             ++m_total_hit_count;
-            if (m_output)
-            {
-                bam_write1(m_output, m_read);
-            }
         }
     }
 
 private:
     void score_all_reads()
     {
-        bam1_t* read = bam_init1();
-        try
+        auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
+        std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
+        bam1_t* read = raii_read.get();
+        while (bam_read1(m_input, read) >= 0)
         {
-            while (bam_read1(m_input, read) >= 0)
-            {
-                m_read = read;
-                score_read();
-            }
+            score_read(read);
         }
-        catch(...)
-        {
-            bam_destroy1(read);
-            throw;
-        }
-        bam_destroy1(read);
     }
 
     void score_regions(const std::string& region_file_path)
@@ -277,10 +264,10 @@ private:
         }
     }
 
-    void score_read()
+    void score_read(const bam1_t* read)
     {
-        const bam1_core_t *c = &m_read->core;
-        uint8_t *s = bam1_seq(m_read);
+        const bam1_core_t *c = &read->core;
+        uint8_t *s = bam1_seq(read);
 
         // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte.
         // I bet we could directly search that instead of first copying into a string
@@ -308,14 +295,17 @@ private:
         if (m_total_hit_count > hit_count_before_this_read)
         {
             ++m_read_hit_count;
+            if (m_output)
+            {
+                bam_write1(m_output, read);
+            }
         }
     }
 
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
-        scorer.m_read = read;
-        scorer.score_read();
+        scorer.score_read(read);
         return 0;
     }
 
@@ -325,7 +315,6 @@ private:
     bam_header_t* m_header;
     bam_index_t* m_index;
     const std::vector<ScoreMatrix>& m_matrices;
-    const bam1_t* m_read;
     size_t m_read_count;
     size_t m_read_hit_count;
     size_t m_total_hit_count;
