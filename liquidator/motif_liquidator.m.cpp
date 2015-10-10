@@ -228,13 +228,13 @@ public:
 
         if (!m_only_score_unmapped)
         {
-            print_percent("total hits", m_read_hit_count, "total reads", m_read_count);
-            print_percent("mapped hits", m_read_hit_count - m_unmapped_hit_count, "mapped reads", m_read_count - m_unmapped_count);
+            print_percent("reads hit", m_read_hit_count, "total reads", m_read_count);
+            print_percent("mapped hit", m_read_hit_count - m_unmapped_hit_count, "mapped reads", m_read_count - m_unmapped_count);
         }
-        print_percent("unmapped hits", m_unmapped_hit_count, "unmapped reads", m_unmapped_count);
+        print_percent("unmapped hit", m_unmapped_hit_count, "unmapped reads", m_unmapped_count);
         if (!m_only_score_unmapped)
         {
-            print_percent("unmapped hits", m_unmapped_hit_count, "total hits", m_read_hit_count);
+            print_percent("unmapped hit", m_unmapped_hit_count, "total hit", m_read_hit_count);
         }
         print_percent("unmapped reads", m_unmapped_count, "total reads", m_read_count);
         std::cout << "# total hits: " << m_total_hit_count << " (average hits per hit read = " << double(m_total_hit_count)/m_read_hit_count << ")" << std::endl;
