@@ -28,7 +28,8 @@ int process_command_line(int argc,
                          std::ifstream& motif,
                          std::array<double, AlphabetSize>& background_array,
                          std::string& region_file_path,
-                         std::string& ouput_file_path)
+                         std::string& ouput_file_path,
+                         bool& verbose)
 {
     namespace po = boost::program_options;
 
@@ -39,10 +40,11 @@ int process_command_line(int argc,
     //   .fasta file to search for motifs
     po::options_description options("Usage: motif_liquidator [options] motif fasta|bam\noptions");
     options.add_options()
-        ("help,h", "produce help message")
-        ("background,b", po::value(&background_file_path), "meme style background frequency file")
-        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input")
-        ("output,o", po::value(&ouput_file_path), "file to write matches to.  output is fasta style for fimo input, and output is a .bam for bam input.")
+        ("help,h", "Produce help message.")
+        ("background,b", po::value(&background_file_path), "Meme style background frequency file.")
+        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input.")
+        ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
+        ("verbose,v", "Print verbosely to stdout. For bams, this means writing fimo style output.")
     ;
 
     // todo: manually check if a positional argument is omitted,
@@ -117,6 +119,8 @@ int process_command_line(int argc,
         {
             background_array = {.25, .25, .25, .25};
         }
+
+        verbose = vm.count("verbose") > 0;
     }
     catch(const std::exception& e)
     {
@@ -156,6 +160,7 @@ class BamScorer
 public:
     BamScorer(const std::string& bam_input_file_path,
               const std::vector<ScoreMatrix>& matrices,
+              bool verbose,
               const std::string& bam_output_file_path,
               const std::string& region_file_path = "")
     :
@@ -164,6 +169,8 @@ public:
         m_header(bam_header_read(m_input)),
         m_index(bam_index_load(bam_input_file_path.c_str())),
         m_matrices(matrices),
+        m_verbose(verbose),
+        m_read(0),
         m_read_count(0),
         m_read_hit_count(0),
         m_total_hit_count(0)
@@ -191,11 +198,8 @@ public:
 
     ~BamScorer()
     {
-        const auto percentage_printer = [&](const size_t hits) {
-            std::cout << hits << "/" << m_read_count << " = " << 100*(double(hits)/m_read_count) << "%" << std::endl;
-        };
-        percentage_printer(m_read_hit_count);
-        percentage_printer(m_total_hit_count);
+        std::cout << "# (reads hit) / (total reads) = " << m_read_hit_count << "/" << m_read_count << " = " << 100*(double(m_read_hit_count)/m_read_count) << "%" << std::endl;
+        std::cout << "# total hits: " << m_total_hit_count << " (average hits per hit read = " << double(m_total_hit_count)/m_read_hit_count << ")" << std::endl;
 
         bam_index_destroy(m_index);
         bam_header_destroy(m_header);
@@ -216,6 +220,22 @@ public:
         if (score.pvalue() < 0.0001)
         {
             ++m_total_hit_count;
+            if (m_verbose)
+            {
+                std::cout << motif_name << '\t'
+                          << sequence_name << '\t'
+                          << m_read->core.pos + start << '\t'
+                          << m_read->core.pos + stop << '\t'
+                          << (score.is_reverse_complement() ? '-' : '+') << '\t';
+
+                std::cout.precision(6);
+                std::cout << score.score() << '\t';
+                std::cout.precision(3);
+
+                std::cout << score.pvalue() << '\t'
+                          << '\t' // omit q-value for now
+                          << score << std::endl;
+            }
         }
     }
 
@@ -225,23 +245,29 @@ private:
         auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
         std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
         bam1_t* read = raii_read.get();
+        const std::string no_sequence_name;
         while (bam_read1(m_input, read) >= 0)
         {
-            score_read(read);
+            score_read(read, no_sequence_name);
         }
     }
 
     void score_regions(const std::string& region_file_path)
     {
+        if (m_verbose)
+        {
+            std::cout << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
+        }
         for (const Region& region : parse_regions(region_file_path, "bed", 0))
         {
             // todo: don't I just need to parse_region once per chromosome to get the tid? perhaps there is a faster way to do this without parsing a whole region string?
             // todo: consider adding a util function to do this and remove duplicate code in bamliquidator.cpp
-             std::stringstream coord;
+            std::stringstream coord;
             coord << region.chromosome << ':' << region.start << '-' << region.stop;
 
+            m_region_name = coord.str();
             int ref,beg,end;
-            const int region_parse_rc = bam_parse_region(m_header,coord.str().c_str(), &ref, &beg, &end);
+            const int region_parse_rc = bam_parse_region(m_header, m_region_name.c_str(), &ref, &beg, &end);
             if (region_parse_rc != 0)
             {
                 std::stringstream error_msg;
@@ -264,7 +290,7 @@ private:
         }
     }
 
-    void score_read(const bam1_t* read)
+    void score_read(const bam1_t* read, const std::string& sequence_name)
     {
         const bam1_core_t *c = &read->core;
         uint8_t *s = bam1_seq(read);
@@ -287,10 +313,10 @@ private:
         ++m_read_count;
 
         const size_t hit_count_before_this_read = m_total_hit_count;
-        const static std::string no_sequence_name;
+        m_read = read;
         for (const auto& matrix : m_matrices)
         {
-            matrix.score(m_sequence, no_sequence_name, *this);
+            matrix.score(m_sequence, sequence_name, *this);
         }
         if (m_total_hit_count > hit_count_before_this_read)
         {
@@ -305,7 +331,7 @@ private:
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
-        scorer.score_read(read);
+        scorer.score_read(read, scorer.m_region_name);
         return 0;
     }
 
@@ -315,10 +341,13 @@ private:
     bam_header_t* m_header;
     bam_index_t* m_index;
     const std::vector<ScoreMatrix>& m_matrices;
+    const bool m_verbose;
+    const bam1_t* m_read;
     size_t m_read_count;
     size_t m_read_hit_count;
     size_t m_total_hit_count;
     std::string m_sequence;
+    std::string m_region_name;
 };
 
 int main(int argc, char** argv)
@@ -328,16 +357,17 @@ int main(int argc, char** argv)
         std::string input_file_path, region_file_path, ouput_file_path;
         std::ifstream motif;
         InputType input_type = invalid_input_type;
+        bool verbose = false;
         std::array<double, AlphabetSize> background;
 
-        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path);
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, verbose);
         if ( rc ) return rc;
 
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
         if (input_type == bam_input_type)
         {
-            BamScorer(input_file_path, matrices, ouput_file_path, region_file_path);
+            BamScorer(input_file_path, matrices, verbose, ouput_file_path, region_file_path);
         }
         else if (input_type == fasta_input_type)
         {
