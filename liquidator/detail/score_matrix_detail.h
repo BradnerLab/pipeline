@@ -210,7 +210,7 @@ inline std::vector<PWM> read_pwm(std::istream& input)
         boost::trim(line);
 
         std::vector<std::string> split;
-        boost::split(split, line, boost::is_any_of(" "), boost::token_compress_on);
+        boost::split(split, line, boost::is_space(), boost::token_compress_on);
         if (pwm.name.empty())
         {
             if (split.size() >= 2 && split[0] == "MOTIF")
