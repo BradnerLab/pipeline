@@ -29,7 +29,8 @@ int process_command_line(int argc,
                          std::array<double, AlphabetSize>& background_array,
                          std::string& region_file_path,
                          std::string& ouput_file_path,
-                         bool& verbose)
+                         bool& verbose,
+                         bool& unmapped_only)
 {
     namespace po = boost::program_options;
 
@@ -40,16 +41,14 @@ int process_command_line(int argc,
     //   .fasta file to search for motifs
     po::options_description options("Usage: motif_liquidator [options] motif fasta|bam\noptions");
     options.add_options()
-        ("help,h", "Produce help message.")
         ("background,b", po::value(&background_file_path), "Meme style background frequency file.")
-        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input.")
+        ("help,h", "Display this help and exit.")
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
+        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input.")
+        ("unmapped-only,u", "Only scores unmapped reads from bam.")
         ("verbose,v", "Print verbosely to stdout. For bams, this means writing fimo style output.")
     ;
 
-    // todo: manually check if a positional argument is omitted,
-    // since the po exception message describes it as a non-positional argument, which could be confusing.
-    // aside: boost program_options handling of positional arguments is disappointing, but I don't expect another C++ argument parser to be much better while being as easy to package
     po::options_description hidden;
     hidden.add_options()
         ("motif", po::value(&motif_file_path)->required())
@@ -71,6 +70,15 @@ int process_command_line(int argc,
 
         if (vm.count("help"))
         {
+            std::cerr << options << std::endl;
+            return 1;
+        }
+
+        // manually check if a positional argument is omitted before calling notify,
+        // since the po exception message describes it as a non-positional argument, which is confusing to a user.
+        if (vm.count("motif") != 1 || vm.count("fasta_or_bam") != 1)
+        {
+            std::cerr << "invalid positional arguments" << std::endl;
             std::cerr << options << std::endl;
             return 1;
         }
@@ -121,6 +129,7 @@ int process_command_line(int argc,
         }
 
         verbose = vm.count("verbose") > 0;
+        unmapped_only = vm.count("unmapped-only") > 0;
     }
     catch(const std::exception& e)
     {
@@ -155,12 +164,19 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
     }
 }
 
+bool unmapped(const bam1_t& read)
+{
+    // the 4th bit of the flag if set means the read is unmapped
+    return read.core.flag & (1 << 4);
+}
+
 class BamScorer
 {
 public:
     BamScorer(const std::string& bam_input_file_path,
               const std::vector<ScoreMatrix>& matrices,
               bool verbose,
+              bool only_score_unmapped,
               const std::string& bam_output_file_path,
               const std::string& region_file_path = "")
     :
@@ -170,9 +186,12 @@ public:
         m_index(bam_index_load(bam_input_file_path.c_str())),
         m_matrices(matrices),
         m_verbose(verbose),
+        m_only_score_unmapped(only_score_unmapped),
         m_read(0),
         m_read_count(0),
+        m_unmapped_count(0),
         m_read_hit_count(0),
+        m_unmapped_hit_count(0),
         m_total_hit_count(0)
     {
         if (m_input == 0 || m_header == 0 || m_index == 0)
@@ -184,6 +203,11 @@ public:
         {
             m_output = bam_open(bam_output_file_path.c_str(), "w");
             bam_header_write(m_output, m_header);
+        }
+
+        if (m_verbose)
+        {
+            std::cout << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
         }
 
         if (!region_file_path.empty())
@@ -198,7 +222,20 @@ public:
 
     ~BamScorer()
     {
-        std::cout << "# (reads hit) / (total reads) = " << m_read_hit_count << "/" << m_read_count << " = " << 100*(double(m_read_hit_count)/m_read_count) << "%" << std::endl;
+        auto print_percent = [](const std::string& upper_label, size_t upper_value, const std::string& lower_label, size_t lower_value) {
+            std::cout << "# (" << upper_label << ") / (" << lower_label << ") = " << upper_value << '/' << lower_value << " = " << 100*(double(upper_value)/lower_value) << '%' << std::endl;
+        };
+
+        if (!m_only_score_unmapped)
+        {
+            print_percent("read hits", m_read_hit_count, "total reads", m_read_count);
+        }
+        print_percent("unmapped hits", m_unmapped_hit_count, "total unmapped", m_unmapped_count);
+        if (!m_only_score_unmapped)
+        {
+            print_percent("unmapped hits", m_unmapped_hit_count, "read hits", m_read_hit_count);
+        }
+        print_percent("total unmapped", m_unmapped_count, "total reads", m_read_count);
         std::cout << "# total hits: " << m_total_hit_count << " (average hits per hit read = " << double(m_total_hit_count)/m_read_hit_count << ")" << std::endl;
 
         bam_index_destroy(m_index);
@@ -222,8 +259,18 @@ public:
             ++m_total_hit_count;
             if (m_verbose)
             {
-                std::cout << motif_name << '\t'
-                          << sequence_name << '\t'
+                std::cout << motif_name << '\t';
+
+                if (!sequence_name.empty())
+                {
+                    std::cout << sequence_name;
+                }
+                else
+                {
+                    std::cout << (char*) m_read->data;
+                }
+
+                std::cout << '\t'
                           << m_read->core.pos + start << '\t'
                           << m_read->core.pos + stop << '\t'
                           << (score.is_reverse_complement() ? '-' : '+') << '\t';
@@ -245,19 +292,15 @@ private:
         auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
         std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
         bam1_t* read = raii_read.get();
-        const std::string no_sequence_name;
+        const std::string sequence_name_unset;
         while (bam_read1(m_input, read) >= 0)
         {
-            score_read(read, no_sequence_name);
+            score_read(read, sequence_name_unset);
         }
     }
 
     void score_regions(const std::string& region_file_path)
     {
-        if (m_verbose)
-        {
-            std::cout << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
-        }
         for (const Region& region : parse_regions(region_file_path, "bed", 0))
         {
             // todo: don't I just need to parse_region once per chromosome to get the tid? perhaps there is a faster way to do this without parsing a whole region string?
@@ -292,6 +335,16 @@ private:
 
     void score_read(const bam1_t* read, const std::string& sequence_name)
     {
+        ++m_read_count;
+        if (unmapped(*read))
+        {
+            ++m_unmapped_count;
+        }
+        else if (m_only_score_unmapped)
+        {
+            return;
+        }
+
         const bam1_core_t *c = &read->core;
         uint8_t *s = bam1_seq(read);
 
@@ -310,7 +363,6 @@ private:
         {
             m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
-        ++m_read_count;
 
         const size_t hit_count_before_this_read = m_total_hit_count;
         m_read = read;
@@ -321,6 +373,10 @@ private:
         if (m_total_hit_count > hit_count_before_this_read)
         {
             ++m_read_hit_count;
+            if (unmapped(*read))
+            {
+                ++m_unmapped_hit_count;
+            }
             if (m_output)
             {
                 bam_write1(m_output, read);
@@ -342,9 +398,12 @@ private:
     bam_index_t* m_index;
     const std::vector<ScoreMatrix>& m_matrices;
     const bool m_verbose;
+    const bool m_only_score_unmapped;
     const bam1_t* m_read;
     size_t m_read_count;
+    size_t m_unmapped_count;
     size_t m_read_hit_count;
+    size_t m_unmapped_hit_count;
     size_t m_total_hit_count;
     std::string m_sequence;
     std::string m_region_name;
@@ -358,16 +417,17 @@ int main(int argc, char** argv)
         std::ifstream motif;
         InputType input_type = invalid_input_type;
         bool verbose = false;
+        bool unmapped_only = false;
         std::array<double, AlphabetSize> background;
 
-        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, verbose);
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, verbose, unmapped_only);
         if ( rc ) return rc;
 
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
         if (input_type == bam_input_type)
         {
-            BamScorer(input_file_path, matrices, verbose, ouput_file_path, region_file_path);
+            BamScorer(input_file_path, matrices, verbose, unmapped_only, ouput_file_path, region_file_path);
         }
         else if (input_type == fasta_input_type)
         {
