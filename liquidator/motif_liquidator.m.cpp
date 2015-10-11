@@ -166,8 +166,10 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
 
 bool unmapped(const bam1_t& read)
 {
-    // the 4th bit of the flag if set means the read is unmapped
-    return read.core.flag & (1 << 4);
+    // The 3rd bit being set in the flag means it is unmapped.
+    // Binary with 3rd bit set (0b100) is 4.
+    static const uint32_t unmapped_bit = 4;
+    return read.core.flag & unmapped_bit;
 }
 
 class BamScorer
@@ -290,6 +292,12 @@ public:
 private:
     void score_all_reads()
     {
+        // todo: the unmapped reads seem to all be at the very end of the loop.
+        //       to speed up scoring just the unmapped reads, we could probably skip to the last indexed read and start there.
+        //       although, that might be relying on undocumented behavior that could change in future releases, so maybe that is a bad idea.
+        //       also, there seems to be some mechanism for storing unmapped reads that correspond to a chromosome, so that is probably a doubly bad idea.
+        //       see https://www.biostars.org/p/86405/#86439
+
         auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
         std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
         bam1_t* read = raii_read.get();
