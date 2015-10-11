@@ -158,7 +158,8 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& 
     {
         for (const auto& matrix : matrices)
         {
-            matrix.score(sequence, sequence_name, printer);
+            printer.sequence_name = &sequence_name;
+            matrix.score(sequence, printer);
         }
     }
 }

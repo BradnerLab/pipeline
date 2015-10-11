@@ -103,7 +103,6 @@ public:
     }
 
     void operator()(const std::string& motif_name,
-                    const std::string& sequence_name,
                     size_t start,
                     size_t stop,
                     const ScoreMatrix::Score& score)
@@ -113,18 +112,9 @@ public:
             ++m_total_hit_count;
             if (m_verbose)
             {
-                std::cout << motif_name << '\t';
-
-                if (!sequence_name.empty())
-                {
-                    std::cout << sequence_name;
-                }
-                else
-                {
-                    std::cout << (char*) m_read->data;
-                }
-
-                std::cout << '\t'
+                const char* chromosome = m_read->core.tid >= 0 ? m_header->target_name[m_read->core.tid] : "*";
+                std::cout << motif_name << '\t'
+                          << (unmapped(*m_read) ? "un" : "") << "mapped:" << chromosome << ":" << (char*) m_read->data << '\t'
                           << m_read->core.pos + start << '\t'
                           << m_read->core.pos + stop << '\t'
                           << (score.is_reverse_complement() ? '-' : '+') << '\t';
@@ -152,10 +142,9 @@ private:
         auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
         std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
         bam1_t* read = raii_read.get();
-        const std::string sequence_name_unset;
         while (bam_read1(m_input, read) >= 0)
         {
-            score_read(read, sequence_name_unset);
+            score_read(read);
         }
     }
 
@@ -168,9 +157,8 @@ private:
             std::stringstream coord;
             coord << region.chromosome << ':' << region.start << '-' << region.stop;
 
-            m_region_name = coord.str();
             int ref,beg,end;
-            const int region_parse_rc = bam_parse_region(m_header, m_region_name.c_str(), &ref, &beg, &end);
+            const int region_parse_rc = bam_parse_region(m_header, coord.str().c_str(), &ref, &beg, &end);
             if (region_parse_rc != 0)
             {
                 std::stringstream error_msg;
@@ -193,7 +181,7 @@ private:
         }
     }
 
-    void score_read(const bam1_t* read, const std::string& sequence_name)
+    void score_read(const bam1_t* read)
     {
         ++m_read_count;
         if (unmapped(*read))
@@ -228,7 +216,7 @@ private:
         m_read = read;
         for (const auto& matrix : m_matrices)
         {
-            matrix.score(m_sequence, sequence_name, *this);
+            matrix.score(m_sequence, *this);
         }
         if (m_total_hit_count > hit_count_before_this_read)
         {
@@ -247,7 +235,7 @@ private:
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
-        scorer.score_read(read, scorer.m_region_name);
+        scorer.score_read(read);
         return 0;
     }
 
@@ -266,7 +254,6 @@ private:
     size_t m_unmapped_hit_count;
     size_t m_total_hit_count;
     std::string m_sequence;
-    std::string m_region_name;
 };
 
 }

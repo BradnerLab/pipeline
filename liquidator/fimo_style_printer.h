@@ -13,6 +13,7 @@ class FimoStylePrinter
 public:
     FimoStylePrinter(std::ostream& out, double threshold = 0.0001)
     :
+        sequence_name(0),
         m_out(out),
         m_threshold(threshold)
     {
@@ -20,7 +21,6 @@ public:
     }
 
     void operator()(const std::string& motif_name,
-                    const std::string& sequence_name,
                     size_t start,
                     size_t stop,
                     const ScoreMatrix::Score& score)
@@ -28,7 +28,7 @@ public:
         if (score.pvalue() < m_threshold)
         {
             m_out << motif_name << '\t' 
-                  << sequence_name << '\t' 
+                  << (sequence_name ? *sequence_name : std::string()) << '\t'
                   << start << '\t'
                   << stop << '\t'
                   << (score.is_reverse_complement() ? '-' : '+') << '\t';
@@ -42,6 +42,8 @@ public:
                   << score << std::endl; 
         }
     }
+
+    const std::string* sequence_name;
 
 private:
     std::ostream& m_out;

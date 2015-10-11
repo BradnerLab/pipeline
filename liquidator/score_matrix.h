@@ -67,12 +67,12 @@ public:
 
     // See fimo_style_printer.h for example of a ScoreConsumer.
     template <typename ScoreConsumer>
-    void score(const std::string& sequence, const std::string& sequence_name, ScoreConsumer& consumer) const
+    void score(const std::string& sequence, ScoreConsumer& consumer) const
     {
         for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size(); ++start, ++stop)
         {
             const Score score = score_sequence(sequence, start-1, stop);
-            consumer(m_name, sequence_name, start, stop, score);
+            consumer(m_name, start, stop, score);
         }
     }
 
