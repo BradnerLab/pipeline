@@ -1,7 +1,8 @@
-#include "score_matrix.h"
-#include "fimo_style_printer.h"
-#include "fasta_reader.h"
 #include "bam_scorer.h"
+#include "fasta_reader.h"
+#include "fimo_style_printer.h"
+#include "score_matrix.h"
+#include "version.h"
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -38,7 +39,7 @@ int process_command_line(int argc,
     // todo: add more info to help, like this:
     //   meme style position weight matrix (pwm) file
     //   .fasta file to search for motifs
-    po::options_description options("Usage: motif_liquidator [options] motif fasta|bam\noptions");
+    po::options_description options("usage: motif_liquidator [options] motif fasta|bam\nversion " + std::string(version) + "\noptions");
     options.add_options()
         ("background,b", po::value(&background_file_path), "Meme style background frequency file.")
         ("help,h", "Display this help and exit.")

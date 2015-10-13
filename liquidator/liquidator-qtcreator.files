@@ -118,3 +118,4 @@ score_matrix.h
 test.cpp
 fasta_reader.h
 bam_scorer.h
+version.h

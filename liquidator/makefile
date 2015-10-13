@@ -97,8 +97,11 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util
 score_matrix.o: score_matrix.h score_matrix.cpp detail/score_matrix_detail.h fimo_style_printer.h
 	$(CC) $(CPPFLAGS) -c score_matrix.cpp 
 
+version.h: makefile
+	sed -i -e 's/PLACEHOLDER/$(VERSION)/g' version.h
+
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev libboost-filesystem1.54-dev
-motif_liquidator: motif_liquidator.m.cpp score_matrix.o fasta_reader.h bam_scorer.h liquidator_util.o
+motif_liquidator: motif_liquidator.m.cpp score_matrix.o fasta_reader.h bam_scorer.h liquidator_util.o version.h
 	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
 
 bamliquidator.m.o: bamliquidator.m.cpp
