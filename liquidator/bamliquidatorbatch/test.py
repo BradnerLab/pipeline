@@ -565,7 +565,7 @@ class MotifLiquidatorTest(TempDirTest):
         self.pwm_10a_path = self.create_pwm('10a', ((1,0,0,0),)*10)
         self.pwm_10g_path = self.create_pwm('10g', ((0,0,1,0),)*10)
         self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
-        self.executable_path = '../motif_liquidator'
+        self.executable_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'motif_liquidator')
 
     def create_pwm(self, name, acgt_float_tuple_list):
         path = os.path.join(self.dir_path, name + '_pwm.txt')
