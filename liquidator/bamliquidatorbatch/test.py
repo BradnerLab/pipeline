@@ -29,15 +29,14 @@ def create_bam(dir_path, chromosomes, sequence, file_name='single.bam'):
             sam_file.write(sequence_header)
 
         for chromosome in chromosomes:
-            qual = '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
-
+            qual = len(sequence)*'<'
             #               qname      chr    quality   next read name                                                   
             #               |      flag|   pos|    CIGAR|  next read pos
             #               |      |   |   |  |    |    |  |  template length 
             #               |      |   |   |  |    |    |  |  |  sequence
             #               |      |   |   |  |    |    |  |  |  |   QUAL           
             #               |      |   |   |  |    |    |  |  |  |   |   distance to ref
-            sam_file.write('read1\t16\t%s\t1\t255\t50M\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, sequence, qual))
+            sam_file.write('read1\t16\t%s\t1\t255\t%dM\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, len(sequence), sequence, qual))
    
     # create bam file
     bam_file_path = os.path.join(dir_path, file_name)
@@ -552,6 +551,39 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
             self.assertEqual(self.chromosome, record['chromosome'])
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
+
+def number_hits(motif_liquidator_output):
+    for line in motif_liquidator_output.split('\n'):
+        split = line.split()
+        if len(split) > 3 and split[0:3] == ['#', 'total', 'hits:']:
+            return int(split[3])
+    return None
+
+class MotifLiquidatorTest(TempDirTest):
+    def setUp(self):
+        super(MotifLiquidatorTest, self).setUp()
+        self.pwm_10a_path = self.create_pwm('10a', ((1,0,0,0),)*10)
+        self.pwm_10g_path = self.create_pwm('10g', ((0,0,1,0),)*10)
+        self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
+        self.executable_path = '../motif_liquidator'
+
+    def create_pwm(self, name, acgt_float_tuple_list):
+        path = os.path.join(self.dir_path, name + '_pwm.txt')
+        with open(path, 'w') as pwm_file:
+            pwm_file.write('MOTIF ' + name + '\n')
+            pwm_file.write('letter-probability matrix:\n')
+            for acgt in acgt_float_tuple_list:
+                pwm_file.write('%f\t%f\t%f\t%f\n' % acgt)
+        return path
+    
+    def test_single_read(self):
+        single_bam = create_bam(self.dir_path, ['chr1'], 10*'A')
+        match_output = subprocess.check_output([self.executable_path, self.pwm_10a_path, single_bam])
+        self.assertEqual(1, number_hits(match_output))
+        mismatch_output = subprocess.check_output([self.executable_path, self.pwm_10g_path, single_bam])
+        self.assertEqual(0, number_hits(mismatch_output))
+        reverse_match_output = subprocess.check_output([self.executable_path, self.pwm_10t_path, single_bam])
+        self.assertEqual(1, number_hits(reverse_match_output))
 
 if __name__ == '__main__':
     unittest.main()
