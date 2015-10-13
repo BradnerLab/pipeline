@@ -6,7 +6,7 @@ import sys
 from os.path import dirname 
 from os.path import basename
 
-version = '1.5.0'
+version = '1.6.0'
 
 chromosome_name_length = 64 # Includes 1 for null terminator, so really max of 63 characters.
                             # Note that changing this value requires updating C++ code as well.
