@@ -16,7 +16,7 @@ import tempfile
 import unittest
 
 # one full read for each chromosome
-def create_bam(dir_path, chromosomes, sequence, file_name='single.bam'):
+def create_bam(dir_path, chromosomes, sequence, file_name='single.bam', flag=16):
     # create a sam file, based on instructions at http://genome.ucsc.edu/goldenPath/help/bam.html
     # and http://samtools.github.io/hts-specs/SAMv1.pdf
     sam_file_path = os.path.join(dir_path, 'single.sam') 
@@ -36,7 +36,7 @@ def create_bam(dir_path, chromosomes, sequence, file_name='single.bam'):
             #               |      |   |   |  |    |    |  |  |  sequence
             #               |      |   |   |  |    |    |  |  |  |   QUAL           
             #               |      |   |   |  |    |    |  |  |  |   |   distance to ref
-            sam_file.write('read1\t16\t%s\t1\t255\t%dM\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (chromosome, len(sequence), sequence, qual))
+            sam_file.write('read1\t%d\t%s\t1\t255\t%dM\t*\t0\t0\t%s\t%s\tNM:i:0\n' % (flag, chromosome, len(sequence), sequence, qual))
    
     # create bam file
     bam_file_path = os.path.join(dir_path, file_name)
@@ -553,11 +553,16 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
                                                                   # intersected the bin
 
 def number_hits(motif_liquidator_output):
+    hits = {}
     for line in motif_liquidator_output.split('\n'):
         split = line.split()
-        if len(split) > 3 and split[0:3] == ['#', 'total', 'hits:']:
-            return int(split[3])
-    return None
+        if line.startswith('# total hits: '):
+            hits['total'] = int(split[3]) 
+        elif line.startswith('# (mapped hit) / (mapped reads) = '):
+            hits['mapped'] = int(split[7].split('/')[0])
+        elif line.startswith('# (unmapped hit) / (unmapped reads) = '):
+            hits['unmapped'] = int(split[7].split('/')[0])
+    return hits 
 
 def fimo_style_scores(fimo_style_output):
     scores = []
@@ -583,6 +588,8 @@ class MotifLiquidatorTest(TempDirTest):
         self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
         self.executable_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'motif_liquidator')
         self.bam_a = create_bam(self.dir_path, ['chr1'], 10*'A')
+        self.expected_perfect_score  = 19.9     # I didn't manual verify that this is the right score/pvalue.
+        self.expected_perfect_pvalue = 9.54e-07 # That logic should be tested by C++ unit tests.  Just verifying that value isn't changing
 
     def create_pwm(self, name, acgt_float_tuple_list):
         path = os.path.join(self.dir_path, name + '_pwm.txt')
@@ -596,7 +603,7 @@ class MotifLiquidatorTest(TempDirTest):
     def test_single_matching_read(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
         output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
-        self.assertEqual(1, number_hits(output))
+        self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
         actual_score = scores[0]
@@ -605,8 +612,8 @@ class MotifLiquidatorTest(TempDirTest):
                           'start': 1, 
                           'stop': 10, 
                           'strand': '+',
-                          'score': 19.9,       # I didn't manual verify that this is the right score/pvalue.
-                          'p-value': 9.54e-07, # That logic should be tested by C++ unit tests.  Just verifying that value isn't changing.
+                          'score': self.expected_perfect_score,
+                          'p-value': self.expected_perfect_pvalue, 
                           'q-value': '',
                           'matched sequence': 10*'A'}
         self.assertEqual(expected_score, actual_score)
@@ -617,7 +624,16 @@ class MotifLiquidatorTest(TempDirTest):
     def test_single_mismatching_read(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
         output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10g_path, self.bam_a])
-        self.assertEqual(0, number_hits(output))
+        self.assertEqual({'total':0, 'mapped':0, 'unmapped':0}, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(0, len(scores))
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('', sam_out)
+
+    def test_single_matching_read_filtered_out_due_to_unmapped_arg(self):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        output = subprocess.check_output([self.executable_path, '-u', '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        self.assertEqual({'total':0, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(0, len(scores))
         sam_out = subprocess.check_output(['samtools', 'view', out_bam])
@@ -625,10 +641,32 @@ class MotifLiquidatorTest(TempDirTest):
 
     def test_single_reverse_matching_read(self):
         output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
-        self.assertEqual(1, number_hits(output))
+        self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
         self.assertEqual('-', scores[0]['strand'])
+
+    def test_single_unmapped_read(self):
+        bam_unmapped_a = create_bam(self.dir_path, ['*'], 10*'A', flag=4)
+        out_bam = os.path.join(self.dir_path, 'unmapped_10a.bam')
+        output = subprocess.check_output([self.executable_path, '-u', '-v', '-o', out_bam, self.pwm_10a_path, bam_unmapped_a])
+        self.assertEqual({'total':1, 'unmapped':1}, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(1, len(scores))
+        actual_score = scores[0]
+        expected_score = {'pattern name': '10a', 
+                          'sequence name': 'unmapped:*:read1',
+                          'start': 1,
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': self.expected_perfect_score,
+                          'p-value': self.expected_perfect_pvalue, 
+                          'q-value': '',
+                          'matched sequence': 10*'A'}
+        self.assertEqual(expected_score, actual_score)
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('read1	4	*	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
+                         sam_out)
 
 if __name__ == '__main__':
     unittest.main()
