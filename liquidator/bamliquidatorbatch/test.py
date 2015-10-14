@@ -54,6 +54,12 @@ def create_single_region_gff_file(dir_path, chromosome, start, stop, strand='.',
         region_file.write('%s\t%s\t\t%d\t%d\t\t%s\t\tregion1\n' % (chromosome, region_name, start, stop, strand))
     return region_file_path
 
+def create_single_region_bed_file(dir_path, chromosome, start, stop, region_name='region1'):
+    region_file_path = os.path.join(dir_path, 'single.bed') 
+    with open(region_file_path, 'w') as region_file:
+        region_file.write('%s\t%d\t%d\t%s\t3156.59\n' % (chromosome, start, stop, region_name))
+    return region_file_path
+
 class TempDirTest(unittest.TestCase):
     def setUp(self):
         self.dir_path = tempfile.mkdtemp(prefix='blt_')
@@ -639,6 +645,43 @@ class MotifLiquidatorTest(TempDirTest):
         sam_out = subprocess.check_output(['samtools', 'view', out_bam])
         self.assertEqual('', sam_out)
 
+    def test_single_matching_read_filtered_out_due_to_bed_region(self):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        region_file = create_single_region_bed_file(self.dir_path, 'chr1', 500, 600)
+        output = subprocess.check_output([self.executable_path, '-r', region_file, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        self.assertEqual({'total':0, 'mapped':0, 'unmapped':0}, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(0, len(scores))
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('', sam_out)
+
+    def helper_test_single_matching_region_read(self, region_file):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        output = subprocess.check_output([self.executable_path, '-r', region_file, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(1, len(scores))
+        actual_score = scores[0]
+        expected_score = {'pattern name': '10a', 
+                          'sequence name': 'mapped:chr1:read1',
+                          'start': 1,
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': self.expected_perfect_score,
+                          'p-value': self.expected_perfect_pvalue, 
+                          'q-value': '',
+                          'matched sequence': 10*'A'}
+        self.assertEqual(expected_score, actual_score)
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('read1	16	chr1	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
+                         sam_out)
+
+    def test_single_matching_bed_region_read(self):
+        self.helper_test_single_matching_region_read(create_single_region_bed_file(self.dir_path, 'chr1', 0, 100))
+
+    def test_single_matching_gff_region_read(self):
+        self.helper_test_single_matching_region_read(create_single_region_gff_file(self.dir_path, 'chr1', 0, 100))
+
     def test_single_reverse_matching_read(self):
         output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
@@ -654,8 +697,9 @@ class MotifLiquidatorTest(TempDirTest):
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
         actual_score = scores[0]
+        actual_name = actual_score.pop('sequence name')
+        self.assertIn(actual_name, ['unmapped:*:read1','unmapped:=:read1']) # different versions of samtools seem to handle this differently
         expected_score = {'pattern name': '10a', 
-                          'sequence name': 'unmapped:*:read1',
                           'start': 1,
                           'stop': 10, 
                           'strand': '+',

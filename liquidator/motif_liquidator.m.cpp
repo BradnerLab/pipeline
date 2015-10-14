@@ -44,7 +44,7 @@ int process_command_line(int argc,
         ("background,b", po::value(&background_file_path), "Meme style background frequency file.")
         ("help,h", "Display this help and exit.")
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
-        ("region,r", po::value(&region_file_path), ".bed region file for filtering bam input.")
+        ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
         ("unmapped-only,u", "Only scores unmapped reads from bam.")
         ("verbose,v", "Print verbosely to stdout. For bams, this means writing fimo style output.")
     ;

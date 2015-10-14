@@ -6,6 +6,8 @@
 
 #include <samtools/bam.h>
 
+#include <boost/filesystem.hpp>
+
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -150,7 +152,8 @@ private:
 
     void score_regions(const std::string& region_file_path)
     {
-        for (const Region& region : parse_regions(region_file_path, "bed", 0))
+        const std::string region_extension = boost::filesystem::extension(region_file_path).erase(0, 1);
+        for (const Region& region : parse_regions(region_file_path, region_extension, 0))
         {
             // todo: don't I just need to parse_region once per chromosome to get the tid? perhaps there is a faster way to do this without parsing a whole region string?
             // todo: consider adding a util function to do this and remove duplicate code in bamliquidator.cpp
