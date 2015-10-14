@@ -655,7 +655,7 @@ class MotifLiquidatorTest(TempDirTest):
         sam_out = subprocess.check_output(['samtools', 'view', out_bam])
         self.assertEqual('', sam_out)
 
-    def helper_test_single_matching_region_read(self, region_file):
+    def helper_check_single_matching_region_read(self, region_file):
         out_bam = os.path.join(self.dir_path, '10a.bam')
         output = subprocess.check_output([self.executable_path, '-r', region_file, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
@@ -677,10 +677,10 @@ class MotifLiquidatorTest(TempDirTest):
                          sam_out)
 
     def test_single_matching_bed_region_read(self):
-        self.helper_test_single_matching_region_read(create_single_region_bed_file(self.dir_path, 'chr1', 0, 100))
+        self.helper_check_single_matching_region_read(create_single_region_bed_file(self.dir_path, 'chr1', 0, 100))
 
     def test_single_matching_gff_region_read(self):
-        self.helper_test_single_matching_region_read(create_single_region_gff_file(self.dir_path, 'chr1', 0, 100))
+        self.helper_check_single_matching_region_read(create_single_region_gff_file(self.dir_path, 'chr1', 0, 100))
 
     def test_single_reverse_matching_read(self):
         output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
