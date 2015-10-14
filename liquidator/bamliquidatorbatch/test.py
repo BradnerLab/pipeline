@@ -559,6 +559,22 @@ def number_hits(motif_liquidator_output):
             return int(split[3])
     return None
 
+def fimo_style_scores(fimo_style_output):
+    scores = []
+    for line in fimo_style_output.split('\n'):
+        split = line.split('\t')
+        if len(split) == 9 and split[0][:1] != '#':
+            scores.append({'pattern name': split[0],
+                           'sequence name': split[1],
+                           'start': int(split[2]),
+                           'stop': int(split[3]),
+                           'strand': split[4],
+                           'score': float(split[5]),
+                           'p-value': float(split[6]),
+                           'q-value': split[7],
+                           'matched sequence': split[8]})
+    return scores
+
 class MotifLiquidatorTest(TempDirTest):
     def setUp(self):
         super(MotifLiquidatorTest, self).setUp()
@@ -566,6 +582,7 @@ class MotifLiquidatorTest(TempDirTest):
         self.pwm_10g_path = self.create_pwm('10g', ((0,0,1,0),)*10)
         self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
         self.executable_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'motif_liquidator')
+        self.bam_a = create_bam(self.dir_path, ['chr1'], 10*'A')
 
     def create_pwm(self, name, acgt_float_tuple_list):
         path = os.path.join(self.dir_path, name + '_pwm.txt')
@@ -576,14 +593,42 @@ class MotifLiquidatorTest(TempDirTest):
                 pwm_file.write('%f\t%f\t%f\t%f\n' % acgt)
         return path
     
-    def test_single_read(self):
-        single_bam = create_bam(self.dir_path, ['chr1'], 10*'A')
-        match_output = subprocess.check_output([self.executable_path, self.pwm_10a_path, single_bam])
-        self.assertEqual(1, number_hits(match_output))
-        mismatch_output = subprocess.check_output([self.executable_path, self.pwm_10g_path, single_bam])
-        self.assertEqual(0, number_hits(mismatch_output))
-        reverse_match_output = subprocess.check_output([self.executable_path, self.pwm_10t_path, single_bam])
-        self.assertEqual(1, number_hits(reverse_match_output))
+    def test_single_matching_read(self):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        self.assertEqual(1, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(1, len(scores))
+        actual_score = scores[0]
+        expected_score = {'pattern name': '10a', 
+                          'sequence name': 'mapped:chr1:read1',
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': 19.9,       # I didn't manual verify that this is the right score/pvalue.
+                          'p-value': 9.54e-07, # That logic should be tested by C++ unit tests.  Just verifying that value isn't changing.
+                          'q-value': '',
+                          'matched sequence': 10*'A'}
+        self.assertEqual(expected_score, actual_score)
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('read1	16	chr1	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
+                         sam_out)
+
+    def test_single_mismatching_read(self):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10g_path, self.bam_a])
+        self.assertEqual(0, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(0, len(scores))
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('', sam_out)
+
+    def test_single_reverse_matching_read(self):
+        output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
+        self.assertEqual(1, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(1, len(scores))
+        self.assertEqual('-', scores[0]['strand'])
 
 if __name__ == '__main__':
     unittest.main()
