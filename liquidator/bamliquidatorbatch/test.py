@@ -709,8 +709,9 @@ class MotifLiquidatorTest(TempDirTest):
                           'matched sequence': 10*'A'}
         self.assertEqual(expected_score, actual_score)
         sam_out = subprocess.check_output(['samtools', 'view', out_bam])
-        self.assertEqual('read1	4	*	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
-                         sam_out)
+        self.assertIn(sam_out,
+                      ['read1	4	*	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
+                       'read1	4	=	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n'])
 
 if __name__ == '__main__':
     unittest.main()
