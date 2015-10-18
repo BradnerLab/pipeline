@@ -661,7 +661,6 @@ class MotifLiquidatorTest(TempDirTest):
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
-        actual_score = scores[0]
         expected_score = {'pattern name': '10a', 
                           'sequence name': 'mapped:chr1:read1',
                           'start': 1,
@@ -671,7 +670,7 @@ class MotifLiquidatorTest(TempDirTest):
                           'p-value': self.expected_perfect_pvalue, 
                           'q-value': '',
                           'matched sequence': 10*'A'}
-        self.assertEqual(expected_score, actual_score)
+        self.assertEqual(expected_score, scores[0])
         sam_out = subprocess.check_output(['samtools', 'view', out_bam])
         self.assertEqual('read1	16	chr1	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
                          sam_out)
@@ -686,8 +685,17 @@ class MotifLiquidatorTest(TempDirTest):
         output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
+        expected_score = {'pattern name': '10t', 
+                          'sequence name': 'mapped:chr1:read1',
+                          'start': 1,
+                          'stop': 10, 
+                          'strand': '-',
+                          'score': self.expected_perfect_score,
+                          'p-value': self.expected_perfect_pvalue, 
+                          'q-value': '',
+                          'matched sequence': 10*'T'}
+        self.assertEqual(expected_score, scores[0])
         self.assertEqual(1, len(scores))
-        self.assertEqual('-', scores[0]['strand'])
 
     def test_single_unmapped_read(self):
         bam_unmapped_a = create_bam(self.dir_path, ['*'], 10*'A', flag=4)
