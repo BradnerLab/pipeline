@@ -21,6 +21,8 @@ ScoreMatrix::ScoreMatrix(const std::string& name,
       m_scale(0),
       m_min_before_scaling(0)
 {
+    // To be honest, I don't understand why the original background would ever be used instead of just using the adjusted background everywhere.
+    // This was implemented this way to ensure exact same results as fimo, to ease testing.  This might be bug for bug compatibility.
     const std::array<double, AlphabetSize> adjusted_background = detail::adjust_background(original_background, average_background_for_reverse);
     detail::PWM unscaledPwm {number_of_sites, name, pwm};
     auto min_max = detail::log_adjusted_likelihood_ratio(unscaledPwm, original_background, adjusted_background, pseudo_sites);

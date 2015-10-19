@@ -36,12 +36,18 @@ int process_command_line(int argc,
 
     std::string motif_file_path, background_file_path;
 
-    // todo: add more info to help, like this:
-    //   meme style position weight matrix (pwm) file
-    //   .fasta file to search for motifs
-    po::options_description options("usage: motif_liquidator [options] motif fasta|bam\nversion " + std::string(version) + "\noptions");
+    po::options_description options(std::string("usage: motif_liquidator [options] motif fasta|bam")
+                                  + "\nversion " + std::string(version) +
+                                  + "\n\nScore DNA sequences against a motif, with exact same scores as MEME's FIMO."
+                                  + "\nFor more info, see https://github.com/BradnerLab/pipeline/wiki/motif_liquidator"
+                                  + "\n\npositional arguments:"
+                                  + "\n  motif                   A MEME style position weight matrix file.  Only the"
+                                  + "\n                          matrix floating values are currently read in, and"
+                                  + "\n                          everything else is ignored."
+                                  + "\n  fasta|bam               A fasta file or (sorted and indexed) bam file."
+                                  + "\n\noptional arguments");
     options.add_options()
-        ("background,b", po::value(&background_file_path), "Meme style background frequency file.  Note that only 0-order background (single nucleotide) frequenceis are currently used (just like FIMO).  Backgrounds specified in the motif file are never used (just like default FIMO behavior).")
+        ("background,b", po::value(&background_file_path), "MEME style background frequency file.  Note that only 0-order background (single nucleotide) frequenceis are currently used (just like FIMO).  Backgrounds specified in the motif file are never used (just like default FIMO behavior).")
         ("help,h", "Display this help and exit.")
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")

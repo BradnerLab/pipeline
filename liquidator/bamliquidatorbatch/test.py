@@ -774,6 +774,17 @@ class MotifLiquidatorTest(TempDirTest):
                           'matched sequence': 'GGGAATTTCC'}
         self.assertEqual(expected_score, scores[0])
 
+    def test_default_sites_score(self):
+        # default should be 20
+        self.assertEq(1, 2)
+
+    def test_specified_sites_score(self):
+        # verify something other than 18 (e.g. 5) works.  test before implementing to verify test case is valid (score only very slightly modifies things)
+        self.assertEq(1, 2)
+
+    def test_single_strand(self):
+        self.assertEq(1, 2)
+
 if __name__ == '__main__':
     unittest.main()
 
