@@ -594,8 +594,22 @@ class MotifLiquidatorTest(TempDirTest):
         self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
         self.executable_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'motif_liquidator')
         self.bam_a = create_bam(self.dir_path, ['chr1'], 10*'A')
-        self.expected_perfect_score  = 19.9     # I didn't manual verify that this is the right score/pvalue.
-        self.expected_perfect_pvalue = 9.54e-07 # That logic should be tested by C++ unit tests.  Just verifying that value isn't changing
+        self.expected_perfect_score  = 18.6139  # value calculated by fimo 
+        self.expected_perfect_pvalue = 2.43e-06 # value calculated by fimo 
+        self.p65_pwm_path = self.create_pwm('p65', ((0.000000, 0.222222, 0.611111, 0.166667),
+                                                    (0.000000, 0.000000, 0.944444, 0.055556),
+                                                    (0.000000, 0.000000, 1.000000, 0.000000),
+                                                    (0.611111, 0.000000, 0.388889, 0.000000),
+                                                    (0.555556, 0.166667, 0.222222, 0.055556),
+                                                    (0.111111, 0.000000, 0.000000, 0.888889),
+                                                    (0.000000, 0.000000, 0.000000, 1.000000),
+                                                    (0.000000, 0.111111, 0.000000, 0.888889),
+                                                    (0.000000, 1.000000, 0.000000, 0.000000),
+                                                    (0.000000, 1.000000, 0.000000, 0.000000)))
+        self.fasta_p65_match = os.path.join(self.dir_path, 'p65_match.fasta')
+        self.first_fasta_name = 'fasta_1'
+        with open(self.fasta_p65_match, 'w') as fasta_file:
+            fasta_file.write('>%s\nGGGAATTTCC\n' % self.first_fasta_name)
 
     def create_pwm(self, name, acgt_float_tuple_list):
         path = os.path.join(self.dir_path, name + '_pwm.txt')
@@ -720,6 +734,45 @@ class MotifLiquidatorTest(TempDirTest):
         self.assertIn(sam_out,
                       ['read1	4	*	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
                        'read1	4	*	1	255	10M	=	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n'])
+
+    def test_default_bg_score(self):
+        out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
+        output = subprocess.check_output([self.executable_path, '-o', out_fimo_style_path, self.p65_pwm_path, self.fasta_p65_match])
+        self.assertEqual('', output)
+        with open(out_fimo_style_path, 'r') as out_fimo_style: 
+            scores = fimo_style_scores(out_fimo_style.read())
+        self.assertEqual(1, len(scores))
+        expected_score = {'pattern name': 'p65',
+                          'sequence name': self.first_fasta_name,
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': 17.3265,    # actual fimo value
+                          'p-value': 9.09e-07, # actual fimo value 
+                          'q-value': '',
+                          'matched sequence': 'GGGAATTTCC'}
+        self.assertEqual(expected_score, scores[0])
+
+    def test_not_averaged_nor_normalized_bg_score(self):
+        bg_path = os.path.join(self.dir_path, 'not_averaged_nor_normalized_bg.txt')
+        with open(bg_path, 'w') as bg: 
+            bg.write('A 0.7e-01\nC 0.4e-01\nG 0.5e-01\nT 0.6e-01\n')
+        out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
+        output = subprocess.check_output([self.executable_path, '-b', bg_path, '-o', out_fimo_style_path, self.p65_pwm_path, self.fasta_p65_match])
+        self.assertEqual('', output)
+        with open(out_fimo_style_path, 'r') as out_fimo_style: 
+            scores = fimo_style_scores(out_fimo_style.read())
+        self.assertEqual(1, len(scores))
+        expected_score = {'pattern name': 'p65',
+                          'sequence name': self.first_fasta_name,
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': 17.4691,    # actual fimo value
+                          'p-value': 8.06e-07, # actual fimo value 
+                          'q-value': '',
+                          'matched sequence': 'GGGAATTTCC'}
+        self.assertEqual(expected_score, scores[0])
 
 if __name__ == '__main__':
     unittest.main()

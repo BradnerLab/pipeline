@@ -41,7 +41,7 @@ int process_command_line(int argc,
     //   .fasta file to search for motifs
     po::options_description options("usage: motif_liquidator [options] motif fasta|bam\nversion " + std::string(version) + "\noptions");
     options.add_options()
-        ("background,b", po::value(&background_file_path), "Meme style background frequency file.")
+        ("background,b", po::value(&background_file_path), "Meme style background frequency file.  Note that only 0-order background (single nucleotide) frequenceis are currently used (just like FIMO).  Backgrounds specified in the motif file are never used (just like default FIMO behavior).")
         ("help,h", "Display this help and exit.")
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
@@ -123,11 +123,6 @@ int process_command_line(int argc,
             }
             background_array = ScoreMatrix::read_background(background);
         }
-        else
-        {
-            background_array = {.25, .25, .25, .25};
-        }
-
         verbose = vm.count("verbose") > 0;
         unmapped_only = vm.count("unmapped-only") > 0;
     }
@@ -174,7 +169,7 @@ int main(int argc, char** argv)
         InputType input_type = invalid_input_type;
         bool verbose = false;
         bool unmapped_only = false;
-        std::array<double, AlphabetSize> background;
+        std::array<double, AlphabetSize> background = ScoreMatrix::default_acgt_background;
 
         const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, verbose, unmapped_only);
         if ( rc ) return rc;

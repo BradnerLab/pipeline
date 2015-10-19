@@ -33,7 +33,8 @@ struct ScaledPWM
 // Returns min/max ratio values.
 inline std::pair<double, double>
 log_adjusted_likelihood_ratio(PWM& pwm, 
-                              const std::array<double, AlphabetSize>& background, 
+                              const std::array<double, AlphabetSize>& original_background,
+                              const std::array<double, AlphabetSize>& adjusted_background,
                               const double number_of_pseudo_sites=.1)
 {
     double min = std::numeric_limits<double>::infinity();
@@ -42,8 +43,8 @@ log_adjusted_likelihood_ratio(PWM& pwm,
     {
         for (size_t i=0; i < AlphabetSize; ++i)
         {
-            const double adjusted = (row[i]*pwm.number_of_sites + number_of_pseudo_sites*background[i])/(pwm.number_of_sites+number_of_pseudo_sites);
-            const double ratio = adjusted / background[i];
+            const double adjusted = (row[i]*pwm.number_of_sites + number_of_pseudo_sites*original_background[i])/(pwm.number_of_sites+number_of_pseudo_sites);
+            const double ratio = adjusted / adjusted_background[i];
             const double log_ratio = std::log2(ratio);
             min = std::min(min, log_ratio);
             max = std::max(max, log_ratio);
@@ -191,6 +192,31 @@ void reverse_complement(std::vector<std::array<double, AlphabetSize>>& matrix)
     {
         std::reverse(row.begin(), row.end());
     }
+}
+
+std::array<double, AlphabetSize> adjust_background(std::array<double, AlphabetSize> background, bool average_for_reverse)
+{
+    if (average_for_reverse)
+    {
+        // average A and T
+        background[0] = (background[0] + background[3])/2.0;
+        background[3] = background[0];
+
+        // average C and G
+        background[1] = (background[1] + background[2])/2.0;
+        background[2] = background[1];
+    }
+
+    const double length = background[0] + background[1] + background[2] + background[3];
+    if (length != 1.0)
+    {
+        for (double& frequency : background)
+        {
+            frequency = frequency/length;
+        }
+    }
+
+    return background;
 }
 
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
