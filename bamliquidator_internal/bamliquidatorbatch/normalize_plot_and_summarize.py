@@ -35,7 +35,22 @@ import collections
 import logging
 
 try:
-    import bokeh.plotting as bp
+    try:
+        import bokeh.plotting as bp
+    except:
+        bokeh_import_error = ('Bokeh module not found; consider running the following command to install: '
+                              'sudo pip install bokeh')
+        raise
+
+    try:
+        # bamliquidatorbatch was originally developed for bokeh 0.4.4, but
+        # around version 0.7 the bokeh API had some breaking changes (like requiring the explicit use of vplot).
+        # I confirmed things work with version 0.9.3, and I hope future versions maintain compatability.
+        bp.vplot
+    except:
+        bokeh_import_error = ('Bokeh version is incompatible; consider running the following command to upgrade: '
+                              'sudo pip install bokeh --upgrade')
+        raise
 except:
     bp = None 
 
@@ -105,12 +120,13 @@ def file_keys(counts, cell_type):
     return file_keys_memo[cell_type] 
 
 def plot_summaries(output_directory, normalized_counts, chromosomes):
-    bp.output_file(output_directory + "/summary.html")
-    
+    bp.output_file(output_directory + "/summary.html", mode="cdn")
+    plots = []
     for chromosome in chromosomes:
-        plot_summary(normalized_counts, chromosome)
-
-    bp.save()
+        plot = plot_summary(normalized_counts, chromosome)
+        if plot:
+            plots.append(plot)
+    bp.save(bp.vplot(*plots))
 
 def plot_summary(normalized_counts, chromosome):
     logging.debug(" - plotting %s summary", chromosome)
@@ -126,14 +142,22 @@ def plot_summary(normalized_counts, chromosome):
         logging.info("-- skipping plotting %s because not enough bins (only %d)", chromosome, num_bins)
         return
 
-    overall = bp.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
-    overall.title = chromosome + " counts per bin across all bam files"
+    plot = bp.figure()
+    plot.title = chromosome + " counts per bin across all bam files"
+    plot.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
+    return plot
 
 def plot(output_directory, normalized_counts, chromosome, cell_types):
-    bp.output_file(output_directory + "/" + chromosome + ".html")
+    bp.output_file(output_directory + "/" + chromosome + ".html", mode="cdn")
+    plots = []
 
-    plot_summary(normalized_counts, chromosome)
-
+    summary = plot_summary(normalized_counts, chromosome)
+    if summary:
+        plots.append(summary)
+    else:
+        # if summary can't be plotted, then rest probably can't be plotted either,
+        # so return without even saving the file (the file is never created on disk if not saved)
+        return
     for cell_type in cell_types:
         logging.debug(" - plotting %s", cell_type)
 
@@ -146,10 +170,11 @@ def plot(output_directory, normalized_counts, chromosome, cell_types):
             bin_number.append(row["bin_number"])
             count.append(row["count"])
 
-        cell_type_plot = bp.scatter(bin_number, count)
-        cell_type_plot.title = "%s counts per bin" % cell_type 
-
-    bp.save()
+        plot = bp.figure()
+        plot.title = "%s counts per bin" % cell_type
+        plot.scatter(bin_number, count)
+        plots.append(plot)
+    bp.save(bp.vplot(*plots))
 
 def populate_normalized_counts(normalized_counts, counts, file_key, bin_size, files):
     total_count = length_for_file_key(files, file_key)
@@ -375,10 +400,9 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_p
 
     if not skip_plot:
         if bp is None:
-            logging.error('Skipping plotting because plots require bokeh and it is not installed -- '
-                          'see https://github.com/BradnerLab/pipeline/wiki/bamliquidator#Install . '
-                          'Consider running the following command to install bokeh: '
-                          'sudo pip install bokeh==0.4.4 "openpyxl>=1.6.1,<2.0.0"')
+            logging.error('Skipping plotting because plots require a compatible version of bokeh -- '
+                          'see https://github.com/BradnerLab/pipeline/wiki/bamliquidator#Install . %s'
+                          % bokeh_import_error)
         else:
             logging.info("Plotting")
             for chromosome in chromosomes:
