@@ -272,7 +272,7 @@ def checkOutput(fileName, waitTime = 1, timeOut = 30):
     while not fileExists:
         try:
             size1 = os.stat(fileName).st_size
-            time.sleep(.1)
+            time.sleep(.5)
             size2 = os.stat(fileName).st_size
             if size1 == size2:
                 fileExists = True
@@ -995,7 +995,7 @@ def locusCollectionToGFF(locusCollection):
 def bedToLocusCollection(bedfile):
 
     table = parseTable(bedfile, '\t')
-    loci = [Locus(x[0], x[1], x[2], '.') for x in table]
+    loci = [Locus(x[0], x[1], x[2], '.', ID=x[3]) for x in table]
     collection = LocusCollection(loci, 50)
 
     return collection
