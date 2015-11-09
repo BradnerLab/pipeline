@@ -422,7 +422,7 @@ def main():
     parser = OptionParser(usage=usage)
     # required flags
     parser.add_option("-i", "--i", dest="input", nargs=1, default=None,
-                      help="Enter a .gff or .bed file of binding sites used to make enhancers")
+                      help="Enter a comma separated list of .gff or .bed file of binding sites used to make enhancers")
     parser.add_option("-r", "--rankby", dest="rankby", nargs=1, default=None,
                       help="Enter a comma separated list of bams to rank by")
     parser.add_option("-o", "--out", dest="out", nargs=1, default=None,
