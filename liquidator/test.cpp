@@ -59,7 +59,7 @@ TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
                    {0, 0, 1, 0} };
     const double number_of_pseudo_sites=.1;
 
-    const auto min_max = detail::log_adjusted_likelihood_ratio(pwm, uniform_bg);
+    const auto min_max = detail::log_adjusted_likelihood_ratio(pwm, uniform_bg, uniform_bg);
     EXPECT_EQ(number_of_sites, pwm.number_of_sites);
     ASSERT_EQ(2, pwm.matrix.size());
     ASSERT_EQ(4, pwm.matrix[0].size());
