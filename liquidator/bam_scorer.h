@@ -26,11 +26,18 @@ inline bool unmapped(const bam1_t& read)
 }
 
 class BamScorer
-{
+{   
 public:
+    enum PrintStyle
+    {
+        None,
+        Fimo,
+        MappedFimo
+    };
+
     BamScorer(const std::string& bam_input_file_path,
               const std::vector<ScoreMatrix>& matrices,
-              bool verbose,
+              PrintStyle print_style,
               bool only_score_unmapped,
               const std::string& bam_output_file_path,
               const std::string& region_file_path = "")
@@ -40,7 +47,7 @@ public:
         m_header(bam_header_read(m_input)),
         m_index(bam_index_load(bam_input_file_path.c_str())),
         m_matrices(matrices),
-        m_verbose(verbose),
+        m_print_style(print_style),
         m_only_score_unmapped(only_score_unmapped),
         m_read(0),
         m_read_count(0),
@@ -60,7 +67,7 @@ public:
             bam_header_write(m_output, m_header);
         }
 
-        if (m_verbose)
+        if (m_print_style != None)
         {
             std::cout << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
         }
@@ -112,14 +119,23 @@ public:
         if (score.pvalue() < 0.0001)
         {
             ++m_total_hit_count;
-            if (m_verbose)
+            if (m_print_style != None)
             {
-                const char* chromosome = m_read->core.tid >= 0 ? m_header->target_name[m_read->core.tid] : "*";
-                std::cout << motif_name << '\t'
-                          << (unmapped(*m_read) ? "un" : "") << "mapped:" << chromosome << ":" << (char*) m_read->data << '\t'
-                          << m_read->core.pos + start << '\t'
-                          << m_read->core.pos + stop << '\t'
-                          << (score.is_reverse_complement() ? '-' : '+') << '\t';
+                std::cout << motif_name << '\t';
+                if (m_print_style == MappedFimo)
+                {
+                    const char* chromosome = m_read->core.tid >= 0 ? m_header->target_name[m_read->core.tid] : "*";
+                    std::cout << (unmapped(*m_read) ? "un" : "") << "mapped:" << chromosome << ":" << (char*) m_read->data << '\t'
+                              << m_read->core.pos + start << '\t'
+                              << m_read->core.pos + stop << '\t';
+                }
+                else // m_print_style == Fimo
+                {
+                    std::cout << (char*) m_read->data << '\t'
+                              << start << '\t'
+                              << stop << '\t';
+                }
+                std::cout << (score.is_reverse_complement() ? '-' : '+') << '\t';
 
                 std::cout.precision(6);
                 std::cout << score.score() << '\t';
@@ -248,7 +264,7 @@ private:
     bam_header_t* m_header;
     bam_index_t* m_index;
     const std::vector<ScoreMatrix>& m_matrices;
-    const bool m_verbose;
+    const PrintStyle m_print_style;
     const bool m_only_score_unmapped;
     const bam1_t* m_read;
     size_t m_read_count;

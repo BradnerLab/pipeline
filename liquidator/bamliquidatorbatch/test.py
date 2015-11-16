@@ -625,9 +625,30 @@ class MotifLiquidatorTest(TempDirTest):
                 pwm_file.write('%f\t%f\t%f\t%f\n' % acgt)
         return path
     
-    def test_single_matching_read(self):
+    def test_single_matching_read_fimo_output(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
-        output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-p', 'fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
+        scores = fimo_style_scores(output)
+        self.assertEqual(1, len(scores))
+        actual_score = scores[0]
+        expected_score = {'pattern name': '10a', 
+                          'sequence name': 'read1',
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': self.expected_perfect_score,
+                          'p-value': self.expected_perfect_pvalue, 
+                          'q-value': '',
+                          'matched sequence': 10*'A'}
+        self.assertEqual(expected_score, actual_score)
+        sam_out = subprocess.check_output(['samtools', 'view', out_bam])
+        self.assertEqual('read1	16	chr1	1	255	10M	*	0	0	AAAAAAAAAA	<<<<<<<<<<	NM:i:0\n',
+                         sam_out)
+
+    def test_single_matching_read_mapped_output(self):
+        out_bam = os.path.join(self.dir_path, '10a.bam')
+        output = subprocess.check_output([self.executable_path, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
@@ -648,7 +669,7 @@ class MotifLiquidatorTest(TempDirTest):
 
     def test_single_mismatching_read(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
-        output = subprocess.check_output([self.executable_path, '-v', '-o', out_bam, self.pwm_10g_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10g_path, self.bam_a])
         self.assertEqual({'total':0, 'mapped':0, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(0, len(scores))
@@ -657,7 +678,7 @@ class MotifLiquidatorTest(TempDirTest):
 
     def test_single_matching_read_filtered_out_due_to_unmapped_arg(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
-        output = subprocess.check_output([self.executable_path, '-u', '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-u', '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
         self.assertEqual({'total':0, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(0, len(scores))
@@ -667,7 +688,7 @@ class MotifLiquidatorTest(TempDirTest):
     def test_single_matching_read_filtered_out_due_to_bed_region(self):
         out_bam = os.path.join(self.dir_path, '10a.bam')
         region_file = create_single_region_bed_file(self.dir_path, 'chr1', 500, 600)
-        output = subprocess.check_output([self.executable_path, '-r', region_file, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-r', region_file, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
         self.assertEqual({'total':0, 'mapped':0, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(0, len(scores))
@@ -676,7 +697,7 @@ class MotifLiquidatorTest(TempDirTest):
 
     def helper_check_single_matching_region_read(self, region_file):
         out_bam = os.path.join(self.dir_path, '10a.bam')
-        output = subprocess.check_output([self.executable_path, '-r', region_file, '-v', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-r', region_file, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))
@@ -701,7 +722,7 @@ class MotifLiquidatorTest(TempDirTest):
         self.helper_check_single_matching_region_read(create_single_region_gff_file(self.dir_path, 'chr1', 0, 100))
 
     def test_single_reverse_matching_read(self):
-        output = subprocess.check_output([self.executable_path, "-v", self.pwm_10t_path, self.bam_a])
+        output = subprocess.check_output([self.executable_path, '-p', 'mapped-fimo', self.pwm_10t_path, self.bam_a])
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         expected_score = {'pattern name': '10t', 
@@ -719,7 +740,7 @@ class MotifLiquidatorTest(TempDirTest):
     def test_single_unmapped_read(self):
         bam_unmapped_a = create_bam(self.dir_path, ['*'], 10*'A', flag=4)
         out_bam = os.path.join(self.dir_path, 'unmapped_10a.bam')
-        output = subprocess.check_output([self.executable_path, '-u', '-v', '-o', out_bam, self.pwm_10a_path, bam_unmapped_a])
+        output = subprocess.check_output([self.executable_path, '-u', '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, bam_unmapped_a])
         self.assertEqual({'total':1, 'unmapped':1}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))

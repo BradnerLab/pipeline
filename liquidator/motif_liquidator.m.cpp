@@ -29,12 +29,12 @@ int process_command_line(int argc,
                          std::array<double, AlphabetSize>& background_array,
                          std::string& region_file_path,
                          std::string& ouput_file_path,
-                         bool& verbose,
+                         BamScorer::PrintStyle& bam_print_style,
                          bool& unmapped_only)
 {
     namespace po = boost::program_options;
 
-    std::string motif_file_path, background_file_path;
+    std::string motif_file_path, background_file_path, print_argument;
 
     po::options_description options(std::string("usage: motif_liquidator [options] motif fasta|bam")
                                   + "\nversion " + std::string(version) +
@@ -52,7 +52,7 @@ int process_command_line(int argc,
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
         ("unmapped-only,u", "Only scores unmapped reads from bam.")
-        ("verbose,v", "Print verbosely to stdout. For bams, this means writing fimo style output.")
+        ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify print=fimo for fimo style output or print=mapped-fimo for the sequence name to include the chromosome and the start/stop values to be the map positions.")
     ;
 
     po::options_description hidden;
@@ -129,7 +129,27 @@ int process_command_line(int argc,
             }
             background_array = ScoreMatrix::read_background(background);
         }
-        verbose = vm.count("verbose") > 0;
+
+        if (vm.count("print"))
+        {
+            if (print_argument == "fimo")
+            {
+                bam_print_style = BamScorer::Fimo;
+            } else if (print_argument == "mapped-fimo")
+            {
+                bam_print_style = BamScorer::MappedFimo;
+            }
+            else
+            {
+                std::cerr << "Invalid print argument '" << print_argument << "'; please specify either 'fimo' or 'mapped-fimo'." << std::endl;
+                return 1;
+            }
+        }
+        else
+        {
+            bam_print_style = BamScorer::None;
+        }
+
         unmapped_only = vm.count("unmapped-only") > 0;
     }
     catch(const std::exception& e)
@@ -173,18 +193,18 @@ int main(int argc, char** argv)
         std::string input_file_path, region_file_path, ouput_file_path;
         std::ifstream motif;
         InputType input_type = invalid_input_type;
-        bool verbose = false;
+        BamScorer::PrintStyle bam_print_style = BamScorer::None;
         bool unmapped_only = false;
         std::array<double, AlphabetSize> background = ScoreMatrix::default_acgt_background;
 
-        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, verbose, unmapped_only);
+        const int rc = process_command_line(argc, argv, input_file_path, input_type, motif, background, region_file_path, ouput_file_path, bam_print_style, unmapped_only);
         if ( rc ) return rc;
 
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif, background);
 
         if (input_type == bam_input_type)
         {
-            BamScorer(input_file_path, matrices, verbose, unmapped_only, ouput_file_path, region_file_path);
+            BamScorer(input_file_path, matrices, bam_print_style, unmapped_only, ouput_file_path, region_file_path);
         }
         else if (input_type == fasta_input_type)
         {
