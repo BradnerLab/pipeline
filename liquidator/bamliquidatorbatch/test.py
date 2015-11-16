@@ -800,6 +800,7 @@ class MotifLiquidatorTest(TempDirTest):
                           'matched sequence': 'GGGAATTTCC'}
         self.assertEqual(expected_score, scores[0])
 
+    @unittest.skip('psite parsing not implemented yet')
     def test_default_sites_score(self):
         pwm_default_sites = self.create_pwm('p65', self.p65_floats)
         out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
@@ -818,6 +819,7 @@ class MotifLiquidatorTest(TempDirTest):
                           'matched sequence': 'GGGAATTTCC'}
         self.assertEqual(expected_score, scores[0])
 
+    @unittest.skip('psite parsing not implemented yet')
     def test_specified_sites_score(self):
         pwm_6_sites = self.create_pwm('p65', self.p65_floats, 6)
         out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
@@ -836,8 +838,9 @@ class MotifLiquidatorTest(TempDirTest):
                           'matched sequence': 'GGGAATTTCC'}
         self.assertEqual(expected_score, scores[0])
 
+    @unittest.skip('todo')
     def test_single_strand(self):
-        self.assertEq(1, 2)
+        self.assertEqual(1, 2)
 
 if __name__ == '__main__':
     unittest.main()
