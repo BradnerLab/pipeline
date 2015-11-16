@@ -589,33 +589,38 @@ def fimo_style_scores(fimo_style_output):
 class MotifLiquidatorTest(TempDirTest):
     def setUp(self):
         super(MotifLiquidatorTest, self).setUp()
-        self.pwm_10a_path = self.create_pwm('10a', ((1,0,0,0),)*10)
-        self.pwm_10g_path = self.create_pwm('10g', ((0,0,1,0),)*10)
-        self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10)
+        self.pwm_10a_path = self.create_pwm('10a', ((1,0,0,0),)*10, 18)
+        self.pwm_10g_path = self.create_pwm('10g', ((0,0,1,0),)*10, 18)
+        self.pwm_10t_path = self.create_pwm('10t', ((0,0,0,1),)*10, 18)
         self.executable_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'motif_liquidator')
         self.bam_a = create_bam(self.dir_path, ['chr1'], 10*'A')
         self.expected_perfect_score  = 18.6139  # value calculated by fimo 
         self.expected_perfect_pvalue = 2.43e-06 # value calculated by fimo 
-        self.p65_pwm_path = self.create_pwm('p65', ((0.000000, 0.222222, 0.611111, 0.166667),
-                                                    (0.000000, 0.000000, 0.944444, 0.055556),
-                                                    (0.000000, 0.000000, 1.000000, 0.000000),
-                                                    (0.611111, 0.000000, 0.388889, 0.000000),
-                                                    (0.555556, 0.166667, 0.222222, 0.055556),
-                                                    (0.111111, 0.000000, 0.000000, 0.888889),
-                                                    (0.000000, 0.000000, 0.000000, 1.000000),
-                                                    (0.000000, 0.111111, 0.000000, 0.888889),
-                                                    (0.000000, 1.000000, 0.000000, 0.000000),
-                                                    (0.000000, 1.000000, 0.000000, 0.000000)))
+        self.p65_floats = ((0.000000, 0.222222, 0.611111, 0.166667),
+                           (0.000000, 0.000000, 0.944444, 0.055556),
+                           (0.000000, 0.000000, 1.000000, 0.000000),
+                           (0.611111, 0.000000, 0.388889, 0.000000),
+                           (0.555556, 0.166667, 0.222222, 0.055556),
+                           (0.111111, 0.000000, 0.000000, 0.888889),
+                           (0.000000, 0.000000, 0.000000, 1.000000),
+                           (0.000000, 0.111111, 0.000000, 0.888889),
+                           (0.000000, 1.000000, 0.000000, 0.000000),
+                           (0.000000, 1.000000, 0.000000, 0.000000))
+        self.p65_pwm_path = self.create_pwm('p65', self.p65_floats, 18)
         self.fasta_p65_match = os.path.join(self.dir_path, 'p65_match.fasta')
         self.first_fasta_name = 'fasta_1'
         with open(self.fasta_p65_match, 'w') as fasta_file:
             fasta_file.write('>%s\nGGGAATTTCC\n' % self.first_fasta_name)
 
-    def create_pwm(self, name, acgt_float_tuple_list):
+    def create_pwm(self, name, acgt_float_tuple_list, nsites=None):
         path = os.path.join(self.dir_path, name + '_pwm.txt')
         with open(path, 'w') as pwm_file:
+            pwm_file.write('MEME version 4\n')
             pwm_file.write('MOTIF ' + name + '\n')
-            pwm_file.write('letter-probability matrix:\n')
+            nsites_text = ''
+            if nsites:
+                nsites_text = ' nsites= %d' % nsites
+            pwm_file.write('letter-probability matrix:' + nsites_text + '\n')
             for acgt in acgt_float_tuple_list:
                 pwm_file.write('%f\t%f\t%f\t%f\n' % acgt)
         return path
@@ -775,12 +780,40 @@ class MotifLiquidatorTest(TempDirTest):
         self.assertEqual(expected_score, scores[0])
 
     def test_default_sites_score(self):
-        # default should be 20
-        self.assertEq(1, 2)
+        pwm_default_sites = self.create_pwm('p65', self.p65_floats)
+        out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
+        output = subprocess.check_output([self.executable_path, '-o', out_fimo_style_path, pwm_default_sites, self.fasta_p65_match])
+        with open(out_fimo_style_path, 'r') as out_fimo_style: 
+            scores = fimo_style_scores(out_fimo_style.read())
+        self.assertEqual('', output)
+        expected_score = {'pattern name': 'p65',
+                          'sequence name': self.first_fasta_name,
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': 17.3367,    # actual fimo value
+                          'p-value': 9.09e-07, # actual fimo value 
+                          'q-value': '',
+                          'matched sequence': 'GGGAATTTCC'}
+        self.assertEqual(expected_score, scores[0])
 
     def test_specified_sites_score(self):
-        # verify something other than 18 (e.g. 5) works.  test before implementing to verify test case is valid (score only very slightly modifies things)
-        self.assertEq(1, 2)
+        pwm_6_sites = self.create_pwm('p65', self.p65_floats, 6)
+        out_fimo_style_path = os.path.join(self.dir_path, 'fimo_out.txt')
+        output = subprocess.check_output([self.executable_path, '-o', out_fimo_style_path, pwm_6_sites, self.fasta_p65_match])
+        with open(out_fimo_style_path, 'r') as out_fimo_style: 
+            scores = fimo_style_scores(out_fimo_style.read())
+        self.assertEqual('', output)
+        expected_score = {'pattern name': 'p65',
+                          'sequence name': self.first_fasta_name,
+                          'start': 1, 
+                          'stop': 10, 
+                          'strand': '+',
+                          'score': 17.2213,    # actual fimo value
+                          'p-value': 9.09e-07, # actual fimo value 
+                          'q-value': '',
+                          'matched sequence': 'GGGAATTTCC'}
+        self.assertEqual(expected_score, scores[0])
 
     def test_single_strand(self):
         self.assertEq(1, 2)
