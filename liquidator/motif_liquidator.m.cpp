@@ -52,7 +52,7 @@ int process_command_line(int argc,
         ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
         ("unmapped-only,u", "Only scores unmapped reads from bam.")
-        ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify print=fimo for fimo style output or print=mapped-fimo for the sequence name to include the chromosome and the start/stop values to be the map positions.")
+        ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify '-p fimo' for fimo style output or '-p mapped-fimo' for the sequence name to include the chromosome and the for start/stop values to be the mapped positions.")
     ;
 
     po::options_description hidden;

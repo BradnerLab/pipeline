@@ -636,7 +636,7 @@ class MotifLiquidatorTest(TempDirTest):
                           'sequence name': 'read1',
                           'start': 1, 
                           'stop': 10, 
-                          'strand': '+',
+                          'strand': '-',
                           'score': self.expected_perfect_score,
                           'p-value': self.expected_perfect_pvalue, 
                           'q-value': '',

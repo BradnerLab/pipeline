@@ -25,6 +25,14 @@ inline bool unmapped(const bam1_t& read)
     return read.core.flag & unmapped_bit;
 }
 
+inline bool reverse_complemented(const bam1_t& read)
+{
+    // The 5th bit being set in the flag means it is reverse complemented.
+    // Binary with 5th bit set (0b10000) is 16.
+    static const uint32_t reverse_complemented_bit = 16;
+    return read.core.flag & reverse_complemented_bit;
+}
+
 class BamScorer
 {   
 public:
@@ -127,15 +135,27 @@ public:
                     const char* chromosome = m_read->core.tid >= 0 ? m_header->target_name[m_read->core.tid] : "*";
                     std::cout << (unmapped(*m_read) ? "un" : "") << "mapped:" << chromosome << ":" << (char*) m_read->data << '\t'
                               << m_read->core.pos + start << '\t'
-                              << m_read->core.pos + stop << '\t';
+                              << m_read->core.pos + stop << '\t'
+                              << (score.is_reverse_complement() ? '-' : '+') << '\t';
                 }
                 else // m_print_style == Fimo
                 {
+                    // fimo reading a fasta has no way of determining if a sequence is reverse or forward mapping,
+                    // so if read is reverse complemented then we should reverse the direction to get perfect fimo matching.
+                    bool fimo_reverse = score.is_reverse_complement();
+                    size_t fimo_start = start;
+                    size_t fimo_stop  = stop;
+                    if (reverse_complemented(*m_read))
+                    {
+                        fimo_reverse = !fimo_reverse;
+                        fimo_start = m_read->core.l_qseq - stop  + 1;
+                        fimo_stop  = m_read->core.l_qseq - start + 1;
+                    }
                     std::cout << (char*) m_read->data << '\t'
-                              << start << '\t'
-                              << stop << '\t';
+                              << fimo_start << '\t'
+                              << fimo_stop << '\t'
+                              << (fimo_reverse ? '-' : '+') << '\t';
                 }
-                std::cout << (score.is_reverse_complement() ? '-' : '+') << '\t';
 
                 std::cout.precision(6);
                 std::cout << score.score() << '\t';
