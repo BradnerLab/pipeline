@@ -40,7 +40,7 @@ CC=g++
 # work on platforms besides the one used for the build
 CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 LDFLAGS := -O3 -g -Wall
-LDLIBS := -lbam -lz -lpthread
+LDLIBS := -lbam -lz -lpthread -lhts
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
 
 # if someone else does a ppa dput upload, first change the name/email and commit it
