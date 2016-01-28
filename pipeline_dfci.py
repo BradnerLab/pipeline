@@ -2163,8 +2163,20 @@ def makeSignalTable(dataFile,gffFile,mappedFolder,namesList = [],medianNorm=Fals
 
         print("MAKING SIGNAL DICT FOR %s" % (name))
         
+        #try opening the batch mapping output first
         mappedFile = '%s%s/%s_%s.txt' % (mappedFolder,gffName,gffName,name)
-
+        
+        if checkOutput(mappedFile,.02,.02):
+            print('FOUND MAPPED FILE FOR %s AT %s' % (name,mappedFile))
+        else:   
+            mappedFile = '%s%s/%s_%s.gff' % (mappedFolder,gffName,gffName,name)
+        
+        if checkOutput(mappedFile,.02,.02):
+            print('FOUND MAPPED FILE FOR %s AT %s' % (name,mappedFile))
+        else:
+            print('ERROR NO MAPPED FILE FOUND FOR %s' % (name))
+            sys.exit()
+            
         mappedTable = parseTable(mappedFile,'\t')
         if medianNorm == True:
             medianSignal = numpy.median([float(line[2]) for line in mappedTable[1:]])

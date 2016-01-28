@@ -572,7 +572,7 @@ def main():
 
         # Sanity test the gff object
         assert(all([e[6] in valid_sense_options for e in gff]))  # All strands are sane
-        assert(all([int(e[3]) < int(e[4]) for e in gff]))  # All start/stops are ordered
+        #assert(all([int(e[3]) < int(e[4]) for e in gff]))  # All start/stops are ordered
 
         # bring in the genome
         genome = args.genome.upper()
