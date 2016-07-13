@@ -51,6 +51,7 @@ public:
               const std::string& region_file_path = "")
     :
         m_input(bam_open(bam_input_file_path.c_str(), "r")),
+        m_bam_output_file_path(bam_output_file_path),
         m_output(0),
         m_header(bam_header_read(m_input)),
         m_index(bam_index_load(bam_input_file_path.c_str())),
@@ -116,6 +117,15 @@ public:
         if (m_output)
         {
             bam_close(m_output);
+
+            // Suprisingly the bam seems already sorted, even if regions provided
+            // in such a way that bam_write1 I expect is called out of order.
+            // At some point I expect that I will need to do some kind of explicit sort.
+            int index_rc = bam_index_build(m_bam_output_file_path.c_str());
+            if (index_rc != 0)
+            {
+                std::cerr << "Failed to build index for " << m_bam_output_file_path << std::endl;
+            }
         }
     }
 
@@ -280,6 +290,7 @@ private:
 
 private:
     bamFile m_input;
+    const std::string m_bam_output_file_path;
     bamFile m_output;
     bam_header_t* m_header;
     bam_index_t* m_index;

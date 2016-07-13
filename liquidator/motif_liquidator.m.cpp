@@ -49,7 +49,7 @@ int process_command_line(int argc,
     options.add_options()
         ("background,b", po::value(&background_file_path), "MEME style background frequency file.  Note that only 0-order background (single nucleotide) frequenceis are currently used (just like FIMO).  Backgrounds specified in the motif file are never used (just like default FIMO behavior).")
         ("help,h", "Display this help and exit.")
-        ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a .bam for bam input.")
+        ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a (sorted/indexed) .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
         ("unmapped-only,u", "Only scores unmapped reads from bam.")
         ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify '-p fimo' for fimo style output or '-p mapped-fimo' for the sequence name to include the chromosome and the for start/stop values to be the mapped positions.")
