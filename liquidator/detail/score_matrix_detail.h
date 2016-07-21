@@ -239,7 +239,8 @@ inline std::vector<PWM> read_pwm(std::istream& input)
     namespace phoenix = boost::phoenix;
 
     uint meme_version = 0;
-    std::string alphabet;
+    const std::string default_alphabet = "ACGT";
+    std::string alphabet = default_alphabet;
     std::string strands = "+ -";
 
     std::vector<std::string> motif_names;
@@ -335,9 +336,9 @@ inline std::vector<PWM> read_pwm(std::istream& input)
         throw std::runtime_error("motif pwm parse failed, stopped at: [" + std::string(begin, end) + "]");
     }
 
-    if (alphabet != "ACGT")
+    if (alphabet != default_alphabet)
     {
-        throw std::runtime_error("only AGCT motif pwm alphabet supported, but found " + alphabet);
+        throw std::runtime_error("only " + default_alphabet + " motif pwm alphabet supported, but found " + alphabet);
     }
 
     if (strands != "+ -")
