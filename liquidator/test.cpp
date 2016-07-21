@@ -13,7 +13,7 @@ TEST(ScoreMatrix, read_pwm_matrix)
 
 ALPHABET= ACGT
 
-strands: +
+strands: + -
 
 Background letter frequencies
 A 0.29 C 0.21 G 0.21 T 0.29
@@ -49,6 +49,92 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
     EXPECT_FLOAT_EQ(0.388889, matrix[3][2]);
     EXPECT_FLOAT_EQ(1, matrix[6][3]);
     EXPECT_FLOAT_EQ(1, matrix[9][1]);
+}
+
+TEST(ScoreMatrix, read_multiple_pwm)
+{
+    const std::string input_str = R"(MEME version 4
+
+            ALPHABET= ACGT
+
+            strands: + -
+
+            Background letter frequencies
+            A 0.303 C 0.183 G 0.209 T 0.306
+
+            MOTIF crp
+            letter-probability matrix: alength= 4 w= 19 nsites= 17 E= 4.1e-009
+             0.000000  0.176471  0.000000  0.823529
+             0.000000  0.058824  0.647059  0.294118
+             0.000000  0.058824  0.000000  0.941176
+             0.176471  0.000000  0.764706  0.058824
+             0.823529  0.058824  0.000000  0.117647
+             0.294118  0.176471  0.176471  0.352941
+             0.294118  0.352941  0.235294  0.117647
+             0.117647  0.235294  0.352941  0.294118
+             0.529412  0.000000  0.176471  0.294118
+             0.058824  0.235294  0.588235  0.117647
+             0.176471  0.235294  0.294118  0.294118
+             0.000000  0.058824  0.117647  0.823529
+             0.058824  0.882353  0.000000  0.058824
+             0.764706  0.000000  0.176471  0.058824
+             0.058824  0.882353  0.000000  0.058824
+             0.823529  0.058824  0.058824  0.058824
+             0.176471  0.411765  0.058824  0.352941
+             0.411765  0.000000  0.000000  0.588235
+             0.352941  0.058824  0.000000  0.588235
+
+            MOTIF lexA
+            letter-probability matrix: alength= 4 w= 18 nsites= 14 E= 3.2e-035
+             0.214286  0.000000  0.000000  0.785714
+             0.857143  0.000000  0.071429  0.071429
+             0.000000  1.000000  0.000000  0.000000
+             0.000000  0.000000  0.000000  1.000000
+             0.000000  0.000000  1.000000  0.000000
+             0.000000  0.000000  0.000000  1.000000
+             0.857143  0.000000  0.071429  0.071429
+             0.000000  0.071429  0.000000  0.928571
+             0.857143  0.000000  0.071429  0.071429
+             0.142857  0.000000  0.000000  0.857143
+             0.571429  0.071429  0.214286  0.142857
+             0.285714  0.285714  0.000000  0.428571
+             1.000000  0.000000  0.000000  0.000000
+             0.285714  0.214286  0.000000  0.500000
+             0.428571  0.500000  0.000000  0.071429
+             0.000000  1.000000  0.000000  0.000000
+             1.000000  0.000000  0.000000  0.000000
+             0.000000  0.000000  0.785714  0.214286
+)";
+
+    std::istringstream ss(input_str);
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    ASSERT_EQ(2, pwms.size());
+
+    EXPECT_EQ("crp", pwms[0].name);
+    EXPECT_EQ("lexA", pwms[1].name);
+
+    EXPECT_EQ(17, pwms[0].number_of_sites);
+    EXPECT_EQ(14, pwms[1].number_of_sites);
+
+    {
+        const auto& matrix = pwms[0].matrix;
+        ASSERT_EQ(19, matrix.size());
+
+        EXPECT_FLOAT_EQ(0, matrix[0][0]);
+        EXPECT_FLOAT_EQ(0.176471, matrix[0][1]);
+        EXPECT_FLOAT_EQ(0.764706, matrix[3][2]);
+        EXPECT_FLOAT_EQ(0.117647, matrix[6][3]);
+        EXPECT_FLOAT_EQ(0.058824, matrix[18][1]);
+    }
+
+    {
+        const auto& matrix = pwms[1].matrix;
+        ASSERT_EQ(18, matrix.size());
+
+        EXPECT_FLOAT_EQ(0.214286, matrix[0][0]);
+        EXPECT_FLOAT_EQ(0, matrix[17][0]);
+        EXPECT_FLOAT_EQ(0.214286, matrix[17][3]);
+    }
 }
 
 TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
