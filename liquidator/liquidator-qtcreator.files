@@ -119,3 +119,7 @@ test.cpp
 fasta_reader.h
 bam_scorer.h
 version.h
+detail/parsing_detail.cpp
+detail/parsing_detail.h
+detail/pwm_detail.h
+makefile

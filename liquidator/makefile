@@ -120,8 +120,8 @@ version.h: bamliquidatorbatch/common_util.py
 	echo "$$VERSION_H" > version.h
 
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev libboost-filesystem1.54-dev
-motif_liquidator: motif_liquidator.m.cpp score_matrix.o fasta_reader.h bam_scorer.h liquidator_util.o version.h
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
+motif_liquidator: motif_liquidator.m.cpp score_matrix.o parsing_detail.o fasta_reader.h bam_scorer.h liquidator_util.o version.h
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o parsing_detail.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -137,6 +137,9 @@ bamliquidator.o: bamliquidator.cpp bamliquidator.h
 
 liquidator_util.o: liquidator_util.cpp liquidator_util.h
 	$(CC) $(CPPFLAGS) -c liquidator_util.cpp
+
+parsing_detail.o: detail/parsing_detail.cpp liquidator_util.h detail/pwm_detail.h
+	$(CC) $(CPPFLAGS) -c detail/parsing_detail.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
@@ -167,8 +170,8 @@ gtest:
 	mkdir gtest/build
 	(cd gtest/build; cmake ..; make)
 
-cpp_test: gtest test.cpp score_matrix.o 
-	$(CC) $(CPPFLAGS) -o cpp_test -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
+cpp_test: gtest test.cpp score_matrix.o parsing_detail.o
+	$(CC) $(CPPFLAGS) -o cpp_test parsing_detail.o -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
 
 test: cpp_test 
 	./cpp_test

@@ -41,9 +41,7 @@ int process_command_line(int argc,
                                   + "\n\nScore DNA sequences against a motif, with exact same scores as MEME's FIMO."
                                   + "\nFor more info, see https://github.com/BradnerLab/pipeline/wiki/motif_liquidator"
                                   + "\n\npositional arguments:"
-                                  + "\n  motif                   A MEME style position weight matrix file.  Only the"
-                                  + "\n                          matrix floating values are currently read in, and"
-                                  + "\n                          everything else is ignored."
+                                  + "\n  motif                   A MEME style position weight matrix file."
                                   + "\n  fasta|bam               A fasta file or (sorted and indexed) bam file."
                                   + "\n\noptional arguments");
     options.add_options()
