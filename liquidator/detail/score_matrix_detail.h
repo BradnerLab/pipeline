@@ -223,6 +223,7 @@ std::array<double, AlphabetSize> adjust_background(std::array<double, AlphabetSi
     return background;
 }
 
+// todo: put this and spirit headers in a .cpp file so the slow to compile spirit stuff doesn't slow down development
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
 inline std::vector<PWM> read_pwm(std::istream& input)
 {
