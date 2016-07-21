@@ -37,7 +37,13 @@ import logging
 from common_util import chromosome_name_length
 
 try:
-    import bokeh.plotting as bp
+    from bokeh import __version__ as bokeh_version
+    (bokeh_major_version, bokeh_minor_version, _) = [int(version) for version in bokeh_version.split('.')]
+    if bokeh_major_version == 0 and bokeh_minor_version == 9:
+        import bokeh.plotting as bp
+    else:
+        # we only support version 0.9 at this time
+        bp = None
 except:
     bp = None 
 
@@ -374,10 +380,11 @@ def normalize_plot_and_summarize(counts_file, output_directory, bin_size, skip_p
 
     if not skip_plot:
         if bp is None:
-            logging.error('Skipping plotting because plots require bokeh and it is not installed -- '
-                          'see https://github.com/BradnerLab/pipeline/wiki/bamliquidator#Install . '
+            logging.error('Skipping plotting because plots require bokeh and it is not installed '
+                          'or is the wrong version -- see '
+                          'https://github.com/BradnerLab/pipeline/wiki/bamliquidator#Install . '
                           'Consider running the following command to install bokeh: '
-                          'sudo pip install bokeh==0.4.4 "openpyxl>=1.6.1,<2.0.0"')
+                          'sudo pip install bokeh==0.9.3 "openpyxl>=1.6.1,<2.0.0"')
         else:
             logging.info("Plotting")
             for chromosome in chromosomes:
