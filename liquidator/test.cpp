@@ -317,6 +317,66 @@ TEST(ScoreMatrix, reverse_complement)
     EXPECT_EQ(reverse_complement, matrix);
 }
 
+TEST(ScoreMatrix, compress_sequence)
+{
+    std::string sequence = "AAAA";
+    // Compressing ACGT sequences requires 2 bits per base pair,
+    // so we can fit 4 base pairs into each uint8_t.
+
+    // Since we need to quickly be able to get the compressed value at any start position,
+    // we compress the sequence 4 times, corresponding to offset 0, 1, 2, and 3.
+    // We don't need an offset 4 (or greater), since offset 4 starts at the second byte of offset 0 (and so on for larger offsets).
+    std::array<std::vector<uint8_t>, 4> compressed_by_offset = detail::compress_sequence(sequence);
+    for (const auto& compressed : compressed_by_offset)
+    {
+        ASSERT_EQ(1, compressed.size());
+        EXPECT_EQ(0, compressed[0]);
+    }
+
+    sequence = "ACGTC";
+    compressed_by_offset = detail::compress_sequence(sequence);
+
+    // with no offset, ACGTA is compressed into two bytes
+    ASSERT_EQ(2, compressed_by_offset[0].size());
+
+    // first byte compresses ACGT, bits 0-1 storing A, 2-3 storing C, 4-5 storing G, 6-7 storing T
+    // A is 00, C is 01, G is 10, T is 11, so
+    //                                          11 10 01 00
+    // high order bits are the last base pair T -^       ^- low order bits are first base pair (A)
+    // 11100100 is decimal 228
+    EXPECT_EQ(228, compressed_by_offset[0][0]);
+
+    // next byte compresses the remaining C
+    // 00 00 00 01
+    EXPECT_EQ(1, compressed_by_offset[0][1]);
+
+    // offset 1 starts at the position 1, just single byte needed to compress CGTC
+    ASSERT_EQ(1, compressed_by_offset[1].size());
+
+    // CGTC -> C T G C -> 01 11 10 01 -> decimal 121
+    EXPECT_EQ(121, compressed_by_offset[1][0]);
+
+    // offset 2 starts at position 2, just single byte needed to compress GTC
+    ASSERT_EQ(1, compressed_by_offset[2].size());
+
+    // GTC_ -> _ C T G -> 00 01 11 10 -> decimal 57
+    //                    ^- unspecified base pair left as zero value
+    EXPECT_EQ(30, compressed_by_offset[2][0]);
+
+    // offset by 3 starts at position 3, just single byte needed to compress TC
+    ASSERT_EQ(1, compressed_by_offset[3].size());
+
+    // TC__ -> _ _ C T -> 00 00 01 11 -> 7
+
+    // no bytes needed to compress empty string
+    sequence = "";
+    compressed_by_offset = detail::compress_sequence(sequence);
+    for (const auto& compressed : compressed_by_offset)
+    {
+        ASSERT_TRUE(compressed.empty());
+    }
+}
+
 int main(int argc, char **argv)
 {
   ::testing::InitGoogleTest(&argc, argv);

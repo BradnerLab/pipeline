@@ -211,6 +211,40 @@ std::array<double, AlphabetSize> adjust_background(std::array<double, AlphabetSi
     return background;
 }
 
+std::array<std::vector<uint8_t>, 4>
+compress_sequence(const std::string& ascii)
+{
+    std::array<std::vector<uint8_t>, 4> compressed_indexed_by_offset;
+    for (unsigned offset = 0; offset < 4; ++offset)
+    {
+        std::vector<uint8_t>& compressed = compressed_indexed_by_offset[offset];
+        compressed.resize(ascii.size() > offset
+                        ? std::ceil((ascii.size()-offset)/4.0)
+                        : 0);
+        for (size_t outer = 0; outer < compressed.size(); ++outer)
+        {
+            const size_t outer_ascii_position = outer*4 + offset;
+            for (size_t inner = 0; inner < 4; ++inner)
+            {
+                const size_t ascii_position = outer_ascii_position + inner;
+                if (ascii_position >= ascii.size())
+                {
+                    break;
+                }
+                char ascii_base_pair = ascii[ascii_position];
+                uint8_t binary_base_pair = alphabet_index(ascii_base_pair);
+                if (binary_base_pair > 3)
+                {
+                    // Invalid base pair like an N.
+                    throw std::runtime_error("todo test and handle N base pairs");
+                }
+                compressed[outer] += (binary_base_pair << 2*inner);
+            }
+        }
+    }
+    return compressed_indexed_by_offset;
+}
+
 } }
 
 #endif
