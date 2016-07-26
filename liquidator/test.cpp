@@ -375,6 +375,89 @@ TEST(ScoreMatrix, compress_sequence)
     {
         ASSERT_TRUE(compressed.empty());
     }
+
+    sequence = "ACTAGAACG";
+    compressed_by_offset = detail::compress_sequence(sequence);
+
+    // offset 0:
+    // ACTA GAAC G___
+    // A T C A  C A A G  _ _ _ G
+    // 00110100 01000010 00000010
+    // 52       66       2
+    ASSERT_EQ(3, compressed_by_offset[0].size());
+    EXPECT_EQ(52, compressed_by_offset[0][0]);
+    EXPECT_EQ(66, compressed_by_offset[0][1]);
+    EXPECT_EQ(2, compressed_by_offset[0][2]);
+
+    // offset 1:
+    // CTAG AACG
+    // G A T C  G C A A
+    // 10001101 10010000
+    // 141      144
+    ASSERT_EQ(2, compressed_by_offset[1].size());
+    EXPECT_EQ(141, compressed_by_offset[1][0]);
+    EXPECT_EQ(144, compressed_by_offset[1][1]);
+
+    // offset 2:
+    // TAGA ACG_
+    // A G A T  _ G C A
+    // 00100011 00100100
+    // 35       36
+    ASSERT_EQ(2, compressed_by_offset[2].size());
+    EXPECT_EQ(35, compressed_by_offset[2][0]);
+    EXPECT_EQ(36, compressed_by_offset[2][1]);
+
+    // offset 3:
+    // AGAA CG__
+    // A A G A  _ _ G C
+    // 00001000 00001001
+    // 8        9
+    ASSERT_EQ(2, compressed_by_offset[3].size());
+    EXPECT_EQ(8, compressed_by_offset[3][0]);
+    EXPECT_EQ(9, compressed_by_offset[3][1]);
+}
+
+TEST(ScoreMatrix, binary_matrix)
+{
+    std::vector<std::array<unsigned, AlphabetSize>> uncompressed_matrix =
+    // A  C  G  T
+    { {1, 3, 5, 9},   // 0
+      {0, 2, 6, 0},   // 1
+      {9, 0, 3, 0},   // 2
+      {6, 0, 3, 4},   // 3
+      {1, 5, 3, 4} }; // 4
+
+    auto binary_matrix = detail::compress_matrix(uncompressed_matrix);
+
+    // 5 long sequence, 5 long matrix
+    std::string sequence = "ACTAG";
+    auto compressed_by_offset = detail::compress_sequence(sequence);
+    size_t start = 0;
+    EXPECT_EQ(detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()),
+              detail::score(binary_matrix, compressed_by_offset, start));
+
+    // 6 long sequence, 5 long matrix
+    sequence = "ACTAGA";
+    compressed_by_offset = detail::compress_sequence(sequence);
+    EXPECT_EQ(detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()),
+              detail::score(binary_matrix, compressed_by_offset, start));
+
+    // 9 long sequence, 5 long matrix
+    sequence = "ACTAGAACG";
+    //          1+2+0+6+3=12
+    ASSERT_EQ(12, detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()));
+    compressed_by_offset = detail::compress_sequence(sequence);
+    //
+    EXPECT_EQ(12, detail::score(binary_matrix, compressed_by_offset, start));
+
+    // 18 long sequence, 5 long matrix
+    sequence = "ACTAGAACGCGCGTCACC";
+    compressed_by_offset = detail::compress_sequence(sequence);
+    for (start = 0; start <= (sequence.size() - uncompressed_matrix.size()); ++start)
+    {
+        EXPECT_EQ(detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()),
+                  detail::score(binary_matrix, compressed_by_offset, start));
+    }
 }
 
 int main(int argc, char **argv)

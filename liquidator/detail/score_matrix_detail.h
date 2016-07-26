@@ -24,7 +24,7 @@ struct ScaledPWM
 // Transforms PWM probability values into log pseudo-site-adjusted likelihood ratio values.
 // Returns min/max ratio values.
 inline std::pair<double, double>
-log_adjusted_likelihood_ratio(PWM& pwm, 
+log_adjusted_likelihood_ratio(PWM& pwm,
                               const std::array<double, AlphabetSize>& original_background,
                               const std::array<double, AlphabetSize>& adjusted_background,
                               const double number_of_pseudo_sites=.1)
@@ -55,7 +55,7 @@ scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned r
     const double max = min_max.second;
     if (min == max)
     {
-        min = max - 1;        
+        min = max - 1;
     }
     min = std::floor(min);
 
@@ -71,7 +71,7 @@ scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned r
         std::array<unsigned, AlphabetSize> scaled_row;
         for (size_t alphabet_index=0; alphabet_index < AlphabetSize; ++alphabet_index)
         {
-            scaled_row[alphabet_index] = std::round((row[alphabet_index] - min) * scale);  
+            scaled_row[alphabet_index] = std::round((row[alphabet_index] - min) * scale);
         }
         scaled_pwm.matrix.push_back(scaled_row);
     }
@@ -97,10 +97,26 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
             // Exceptions can be too slow, since this function will likely be called many times with invalid characters (e.g. 'N').
             // Returning magic number like -1 or max unsigned is error prone.
             // Expected<unsigned> is tempting, but overkill.
-            // In practice, we only care about sequences scoring above a threshold, so scoring 
+            // In practice, we only care about sequences scoring above a threshold, so scoring
             // 0 for invalid sequences is natural since they won't meet any reasonable threshold.
             return 0;
         }
+        score += matrix[row][column];
+    }
+    return score;
+}
+
+unsigned score(const std::vector<std::array<uint16_t, 256>>& matrix,
+               const std::array<std::vector<uint8_t>, 4>& sequence_by_offset,
+               const size_t uncompressed_begin_index)
+{
+    const std::vector<uint8_t>& sequence = sequence_by_offset[uncompressed_begin_index % 4];
+    unsigned score = 0;
+    for (size_t position=uncompressed_begin_index/4, row=0; row < matrix.size(); position++, ++row)
+    {
+        assert(position < sequence.size());
+        const auto column = sequence[position];
+        assert(column < 256);
         score += matrix[row][column];
     }
     return score;
@@ -245,11 +261,44 @@ compress_sequence(const std::string& ascii)
     return compressed_indexed_by_offset;
 }
 
+std::vector<std::array<uint16_t, 256>>
+compress_matrix(const std::vector<std::array<unsigned, AlphabetSize>>& uncompressed)
+{
+    std::vector<std::array<uint16_t, 256>> binary_matrix(std::ceil(uncompressed.size()/4.0));
+    for (size_t binary_row = 0; binary_row < binary_matrix.size(); ++binary_row)
+    {
+        const size_t uncompressed_row_from_binary_row = binary_row*4;
+
+        for (size_t binary_col = 0; binary_col < 256; ++binary_col)
+        {
+            // Each cell in the binary matrix is the score for a 4 base pair sequence.
+            // The binary column encodes the 4 base pair sequence in 8 bits, 2 bits per base pair.
+            // Bits 0,1 are for bp0; bits 1,2 are for bp1; bits 3,4 are for bp2; bits 4,5 are for bp3
+
+            // todo: do a loop instead of this repetitive code:
+            const uint8_t three = 3;
+            uint8_t bp0_uncompressed_col = uint8_t(binary_col) & (three);
+            uint8_t bp1_uncompressed_col = (uint8_t(binary_col) & (three << 2)) >> 2;
+            uint8_t bp2_uncompressed_col = (uint8_t(binary_col) & (three << 4)) >> 4;
+            uint8_t bp3_uncompressed_col = (uint8_t(binary_col) & (three << 6)) >> 6;
+
+            binary_matrix[binary_row][binary_col] =  uncompressed[uncompressed_row_from_binary_row + 0][bp0_uncompressed_col];
+            if (uncompressed_row_from_binary_row + 1 < uncompressed.size())
+                binary_matrix[binary_row][binary_col] += uncompressed[uncompressed_row_from_binary_row + 1][bp1_uncompressed_col];
+            if (uncompressed_row_from_binary_row + 2 < uncompressed.size())
+                binary_matrix[binary_row][binary_col] += uncompressed[uncompressed_row_from_binary_row + 2][bp2_uncompressed_col];
+            if (uncompressed_row_from_binary_row + 3 < uncompressed.size())
+                binary_matrix[binary_row][binary_col] += uncompressed[uncompressed_row_from_binary_row + 3][bp3_uncompressed_col];
+        }
+    }
+    return binary_matrix;
+}
+
 } }
 
 #endif
 
-/* The MIT License (MIT) 
+/* The MIT License (MIT)
 
    Copyright (c) 2015 John DiMatteo (jdimatteo@gmail.com)
 
@@ -269,5 +318,5 @@ compress_sequence(const std::string& ascii)
    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE. 
+   THE SOFTWARE.
  */
