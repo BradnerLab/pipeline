@@ -458,6 +458,26 @@ TEST(ScoreMatrix, binary_matrix)
         EXPECT_EQ(detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()),
                   detail::score(binary_matrix, compressed_by_offset, start));
     }
+
+    // sequence starting with an N
+    sequence = "NCTAG";
+    std::vector<size_t> unsupported_bp_locations;
+    compressed_by_offset = detail::compress_sequence(sequence, unsupported_bp_locations);
+    start = 0;
+    EXPECT_EQ(0, detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()));
+    ASSERT_EQ(1, unsupported_bp_locations.size());
+    EXPECT_EQ(0, unsupported_bp_locations[0]);
+    // can't score since unsupported location inside [start, stop)
+
+    // sequence starting with an N that can be ignored
+    sequence = "NACTAG";
+    unsupported_bp_locations.clear();
+    compressed_by_offset = detail::compress_sequence(sequence, unsupported_bp_locations);
+    ASSERT_EQ(1, unsupported_bp_locations.size());
+    EXPECT_EQ(0, unsupported_bp_locations[0]);
+    start = 1;
+    EXPECT_EQ(detail::score(uncompressed_matrix, sequence, start, start+uncompressed_matrix.size()),
+              detail::score(binary_matrix, compressed_by_offset, start));
 }
 
 int main(int argc, char **argv)

@@ -137,6 +137,20 @@ public:
     {
         if (score.pvalue() < 0.0001)
         {
+            if (!m_invalid_bp_locations.empty())
+            {
+                auto it = std::lower_bound(m_invalid_bp_locations.begin(),
+                                           m_invalid_bp_locations.end(),
+                                           start);
+                if (it != m_invalid_bp_locations.end() && *it < stop)
+                {
+                    // lower_bound finds the first value greater than or equal to the provided value.
+                    // so we are finding the first invalid location greater than or equal to the start.
+                    // if that value is less than the stop, then our range contains an invalid bp so the score is invalid.
+                    return;
+                }
+            }
+
             ++m_total_hit_count;
             if (m_print_style != None)
             {
@@ -261,36 +275,29 @@ private:
         {
             m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
-        try
-        {
-            auto compressed_sequence = detail::compress_sequence(m_sequence);
 
-            const size_t hit_count_before_this_read = m_total_hit_count;
-            m_read = read;
-            for (const auto& matrix : m_matrices)
-            {
-                matrix.score(compressed_sequence, m_sequence, *this);
-                // puh: why does below work but not above?
-                //matrix.score(m_sequence, *this);
-            }
-            if (m_total_hit_count > hit_count_before_this_read)
-            {
-                ++m_read_hit_count;
-                if (unmapped(*read))
-                {
-                    ++m_unmapped_hit_count;
-                }
-                if (m_output)
-                {
-                    bam_write1(m_output, read);
-                }
-            }
-        }
-        catch(const detail::unsupported_base_pair_exception& e)
+        // todo: add member for this to save dynamic memory allocation
+        m_invalid_bp_locations.clear();
+        auto compressed_sequence = detail::compress_sequence(m_sequence, m_invalid_bp_locations);
+
+        const size_t hit_count_before_this_read = m_total_hit_count;
+        m_read = read;
+        for (const auto& matrix : m_matrices)
         {
-            // just skipping scoring reads that contain Ns
-            // todo: not sure if it is valid to skip entire read just because it has a single N
-            // todo: test performance with and without exceptions (e.g. could return array of empty vectors instead)
+            matrix.score(compressed_sequence, m_sequence, *this);
+            //matrix.score(m_sequence, *this);
+        }
+        if (m_total_hit_count > hit_count_before_this_read)
+        {
+            ++m_read_hit_count;
+            if (unmapped(*read))
+            {
+                ++m_unmapped_hit_count;
+            }
+            if (m_output)
+            {
+                bam_write1(m_output, read);
+            }
         }
     }
 
@@ -317,6 +324,7 @@ private:
     size_t m_unmapped_hit_count;
     size_t m_total_hit_count;
     std::string m_sequence;
+    std::vector<size_t> m_invalid_bp_locations;
 };
 
 }

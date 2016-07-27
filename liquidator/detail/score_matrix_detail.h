@@ -231,16 +231,9 @@ adjust_background(std::array<double, AlphabetSize> background, bool average_for_
     return background;
 }
 
-class unsupported_base_pair_exception : public std::runtime_error
-{
-public:
-    unsupported_base_pair_exception(char bp)
-    : std::runtime_error("unsupported base pair: " + std::string(1, bp))
-    {}
-};
-
+// invalid ascii bp locations (e.g. N locations) are added in order with push_back to invalid_bp_locations
 inline std::array<std::vector<uint8_t>, 4>
-compress_sequence(const std::string& ascii)
+compress_sequence(const std::string& ascii, std::vector<size_t>& invalid_bp_locations)
 {
     std::array<std::vector<uint8_t>, 4> compressed_indexed_by_offset;
     for (unsigned offset = 0; offset < 4; ++offset)
@@ -263,14 +256,37 @@ compress_sequence(const std::string& ascii)
                 uint8_t binary_base_pair = alphabet_index(ascii_base_pair);
                 if (binary_base_pair > 3)
                 {
-                    // Invalid base pair like an N.
-                    throw unsupported_base_pair_exception(ascii_base_pair);
+                    // e.g. an N base pair can't fit in our 2 bit per base pair encoding
+                    // We can't just throw because the N is not relevant for substrings that don't contain it.
+                    // So just compress it incorrectly and add it the list for the caller to deal with.
+                    invalid_bp_locations.push_back(ascii_position);
+                    binary_base_pair = 0;
                 }
                 compressed[outer] += (binary_base_pair << 2*inner);
             }
         }
     }
     return compressed_indexed_by_offset;
+}
+
+class unsupported_base_pair_exception : public std::runtime_error
+{
+public:
+    unsupported_base_pair_exception()
+    : std::runtime_error("unsupported base pair")
+    {}
+};
+
+inline std::array<std::vector<uint8_t>, 4>
+compress_sequence(const std::string& ascii)
+{
+    std::vector<size_t> invalid_bp_locations;
+    auto rv = compress_sequence(ascii, invalid_bp_locations);
+    if (!invalid_bp_locations.empty())
+    {
+        throw unsupported_base_pair_exception();
+    }
+    return rv;
 }
 
 inline std::vector<std::array<uint16_t, 256>>
