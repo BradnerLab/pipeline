@@ -62,6 +62,16 @@ ScoreMatrix::score_sequence(const std::array<std::vector<uint8_t>, 4>& binary_se
     return Score(ascii_sequence, m_is_reverse_complement, begin, end, pvalue, unscaled_score);
 }
 
+double
+ScoreMatrix::score_sequence(const std::array<std::vector<uint8_t>, 4>& binary_sequence,
+                            size_t begin,
+                            size_t end) const
+{
+    const unsigned scaled_score = detail::score(m_compressed_matrix, binary_sequence, begin);
+    assert(scaled_score < m_pvalues.size());
+    return m_pvalues[scaled_score];
+}
+
 std::vector<ScoreMatrix>
 ScoreMatrix::read(std::istream& meme_style_pwm,
                   const std::array<double, AlphabetSize>& acgt_background,

@@ -92,8 +92,8 @@ public:
         }
     }
 
-    std::string name() { return m_name; }
-    size_t length() { return m_matrix.size(); }
+    std::string name() const { return m_name; }
+    size_t length() const { return m_matrix.size(); }
 
     // Matrix value for the sequence position (row) and base letter (column).
     // Value is a log likelihood ratio, adjusted with a psuedo count and scaled.
@@ -105,6 +105,10 @@ public:
         if ( column >= AlphabetSize ) throw std::runtime_error("Invalid base " + std::string(1, base));
         return m_matrix[position][column];
     }
+
+    double score_sequence(const std::array<std::vector<uint8_t>, 4>& binary_sequence,
+                          size_t begin,
+                          size_t end) const;
 
 private:
     const std::string m_name;

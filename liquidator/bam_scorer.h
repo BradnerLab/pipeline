@@ -245,8 +245,52 @@ private:
         }
     }
 
-    void score_read(const bam1_t* read)
+    inline void
+    compress_sequence(const bam1_core_t *c,
+                      uint8_t *bam_seq,
+                      std::array<std::vector<uint8_t>, 4>& compressed_indexed_by_offset,
+                      std::vector<size_t>& invalid_bp_locations)
     {
+        const size_t ascii_size = c->l_qseq;
+        for (unsigned offset = 0; offset < 4; ++offset)
+        {
+            auto& compressed = compressed_indexed_by_offset[offset];
+            const size_t expected_size = ascii_size > offset
+                                       ? std::ceil((ascii_size-offset)/4.0)
+                                       : 0;
+            if (compressed.size() != expected_size)
+            {
+                // each of the 4 offsets should only be resized once since all the ascii lengths are expected to be the same
+                compressed.resize(expected_size);
+            }
+            for (size_t outer = 0; outer < compressed.size(); ++outer)
+            {
+                const size_t outer_ascii_position = outer*4 + offset;
+                for (size_t inner = 0; inner < 4; ++inner)
+                {
+                    const size_t ascii_position = outer_ascii_position + inner;
+                    if (ascii_position >= ascii_size)
+                    {
+                        break;
+                    }
+                    char ascii_base_pair = bam_nt16_rev_table[bam1_seqi(bam_seq, ascii_position)];
+                    uint8_t binary_base_pair = alphabet_index(ascii_base_pair);
+                    if (binary_base_pair > 3)
+                    {
+                        // e.g. an N base pair can't fit in our 2 bit per base pair encoding
+                        // We can't just throw because the N is not relevant for substrings that don't contain it.
+                        // So just compress it incorrectly and add it the list for the caller to deal with.
+                        invalid_bp_locations.push_back(ascii_position);
+                        binary_base_pair = 0;
+                    }
+                    compressed[outer] += (binary_base_pair << 2*inner);
+                }
+            }
+        }
+    }
+
+    void score_read(const bam1_t* read)
+    {   
         ++m_read_count;
         if (unmapped(*read))
         {
@@ -259,21 +303,22 @@ private:
 
         const bam1_core_t *c = &read->core;
         uint8_t *s = bam1_seq(read);
+        const size_t ascii_length = c->l_qseq;
 
-        // [s, s+c->l_qseq) is the sequence, with two bases packed into each byte.
-        // I bet we could directly search that instead of first copying into a string
-        // but lets get something simple working first. An intermediate step could be
-        // to search integers without using bam_nt16_rev_table (and I wouldn't have
-        // to worry about the packing complexity).
+        const bool tune_for_just_filtered_bam = m_print_style == None;
 
-        if (m_sequence.size() != size_t(c->l_qseq))
+        if (!tune_for_just_filtered_bam)
         {
-            // assuming that all reads are uniform length, this will only happen once
-            m_sequence = std::string(c->l_qseq, ' ');
-        }
-        for (int i = 0; i < c->l_qseq; ++i)
-        {
-            m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
+            // [s, s+ascii_length) is the sequence, with two bases packed into each byte.
+            if (m_sequence.size() != ascii_length)
+            {
+                // assuming that all reads are uniform length, this will only happen once
+                m_sequence = std::string(ascii_length, ' ');
+            }
+            for (size_t i = 0; i < ascii_length; ++i)
+            {
+                m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
+            }
         }
 
         m_invalid_bp_locations.clear();
@@ -281,14 +326,41 @@ private:
         {
             compressed.clear();
         }
-        detail::compress_sequence(m_sequence, m_compressed_sequence, m_invalid_bp_locations);
+        compress_sequence(c, s, m_compressed_sequence, m_invalid_bp_locations);
 
         const size_t hit_count_before_this_read = m_total_hit_count;
         m_read = read;
         for (const auto& matrix : m_matrices)
         {
-            matrix.score(m_compressed_sequence, m_sequence, *this);
-            //matrix.score(m_sequence, *this);
+            if (tune_for_just_filtered_bam)
+            {
+                for (size_t start = 0, stop = matrix.length(); stop <= ascii_length; ++start, ++stop)
+                {
+                    const double pvalue = matrix.score_sequence(m_compressed_sequence, start, stop);
+                    if (pvalue < 0.0001)
+                    {
+                        if (!m_invalid_bp_locations.empty())
+                        {
+                            auto it = std::lower_bound(m_invalid_bp_locations.begin(),
+                                                       m_invalid_bp_locations.end(),
+                                                       start);
+                            if (it != m_invalid_bp_locations.end() && *it < stop)
+                            {
+                                // lower_bound finds the first value greater than or equal to the provided value.
+                                // so we are finding the first invalid location greater than or equal to the start.
+                                // if that value is less than the stop, then our range contains an invalid bp so the score is invalid.
+                                continue;
+                            }
+                        }
+                        ++m_total_hit_count;
+                    }
+                }
+            }
+            else
+            {
+                matrix.score(m_compressed_sequence, m_sequence, *this);
+                //matrix.score(m_sequence, *this);
+            }
         }
         if (m_total_hit_count > hit_count_before_this_read)
         {
