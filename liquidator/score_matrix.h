@@ -81,11 +81,13 @@ public:
 
     // See fimo_style_printer.h for example of a ScoreConsumer.
     template <typename ScoreConsumer>
-    void score(const std::array<std::vector<uint8_t>, 4>& sequence, ScoreConsumer& consumer) const
+    void score(const std::array<std::vector<uint8_t>, 4>& binary_sequence,
+               const std::string& ascii_sequence,
+               ScoreConsumer& consumer) const
     {
-        for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size()*4; ++start, ++stop)
+        for (size_t start = 1, stop = m_matrix.size(); stop <= ascii_sequence.size(); ++start, ++stop)
         {
-            const Score score = score_sequence(sequence, start-1, stop);
+            const Score score = score_sequence(binary_sequence, ascii_sequence, start-1, stop);
             consumer(m_name, start, stop, score);
         }
     }
@@ -114,7 +116,10 @@ private:
     std::vector<double> m_pvalues;
 
     Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
-    Score score_sequence(const std::array<std::vector<uint8_t>, 4>& sequence, size_t begin, size_t end) const;
+    Score score_sequence(const std::array<std::vector<uint8_t>, 4>& binary_sequence,
+                         const std::string& ascii_sequence,
+                         size_t ascii_begin,
+                         size_t ascii_end) const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& score)

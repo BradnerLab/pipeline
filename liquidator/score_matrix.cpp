@@ -50,14 +50,16 @@ ScoreMatrix::score_sequence(const std::string& sequence, size_t begin, size_t en
 }
 
 ScoreMatrix::Score
-ScoreMatrix::score_sequence(const std::array<std::vector<uint8_t>, 4>& sequence, size_t begin, size_t end) const
+ScoreMatrix::score_sequence(const std::array<std::vector<uint8_t>, 4>& binary_sequence,
+                            const std::string& ascii_sequence,
+                            size_t begin,
+                            size_t end) const
 {
-    const unsigned scaled_score = detail::score(m_compressed_matrix, sequence, begin);
+    const unsigned scaled_score = detail::score(m_compressed_matrix, binary_sequence, begin);
     assert(scaled_score < m_pvalues.size());
     const double pvalue = m_pvalues[scaled_score];
     const double unscaled_score = double(scaled_score)/m_scale + m_matrix.size()*m_min_before_scaling;
-    static std::string todo_remove_this;
-    return Score(todo_remove_this, m_is_reverse_complement, begin, end, pvalue, unscaled_score);
+    return Score(ascii_sequence, m_is_reverse_complement, begin, end, pvalue, unscaled_score);
 }
 
 std::vector<ScoreMatrix>

@@ -697,7 +697,9 @@ class MotifLiquidatorTest(TempDirTest):
 
     def helper_check_single_matching_region_read(self, region_file):
         out_bam = os.path.join(self.dir_path, '10a.bam')
-        output = subprocess.check_output([self.executable_path, '-r', region_file, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a])
+        command = [self.executable_path, '-r', region_file, '-p', 'mapped-fimo', '-o', out_bam, self.pwm_10a_path, self.bam_a]
+        #print " ".join(command)
+        output = subprocess.check_output(command)
         self.assertEqual({'total':1, 'mapped':1, 'unmapped':0}, number_hits(output))
         scores = fimo_style_scores(output)
         self.assertEqual(1, len(scores))

@@ -269,7 +269,7 @@ private:
             m_read = read;
             for (const auto& matrix : m_matrices)
             {
-                matrix.score(compressed_sequence, *this);
+                matrix.score(compressed_sequence, m_sequence, *this);
                 // puh: why does below work but not above?
                 //matrix.score(m_sequence, *this);
             }
