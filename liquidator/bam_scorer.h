@@ -3,6 +3,7 @@
 
 #include "bamliquidator_regions.h"
 #include "score_matrix.h"
+#include "detail/score_matrix_detail.h"
 
 #include <samtools/bam.h>
 
@@ -260,24 +261,36 @@ private:
         {
             m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
+        try
+        {
+            auto compressed_sequence = detail::compress_sequence(m_sequence);
 
-        const size_t hit_count_before_this_read = m_total_hit_count;
-        m_read = read;
-        for (const auto& matrix : m_matrices)
-        {
-            matrix.score(m_sequence, *this);
+            const size_t hit_count_before_this_read = m_total_hit_count;
+            m_read = read;
+            for (const auto& matrix : m_matrices)
+            {
+                matrix.score(compressed_sequence, *this);
+                // puh: why does below work but not above?
+                //matrix.score(m_sequence, *this);
+            }
+            if (m_total_hit_count > hit_count_before_this_read)
+            {
+                ++m_read_hit_count;
+                if (unmapped(*read))
+                {
+                    ++m_unmapped_hit_count;
+                }
+                if (m_output)
+                {
+                    bam_write1(m_output, read);
+                }
+            }
         }
-        if (m_total_hit_count > hit_count_before_this_read)
+        catch(const detail::unsupported_base_pair_exception& e)
         {
-            ++m_read_hit_count;
-            if (unmapped(*read))
-            {
-                ++m_unmapped_hit_count;
-            }
-            if (m_output)
-            {
-                bam_write1(m_output, read);
-            }
+            // just skipping scoring reads that contain Ns
+            // todo: not sure if it is valid to skip entire read just because it has a single N
+            // todo: test performance with and without exceptions (e.g. could return array of empty vectors instead)
         }
     }
 

@@ -79,6 +79,17 @@ public:
         }
     }
 
+    // See fimo_style_printer.h for example of a ScoreConsumer.
+    template <typename ScoreConsumer>
+    void score(const std::array<std::vector<uint8_t>, 4>& sequence, ScoreConsumer& consumer) const
+    {
+        for (size_t start = 1, stop = m_matrix.size(); stop <= sequence.size()*4; ++start, ++stop)
+        {
+            const Score score = score_sequence(sequence, start-1, stop);
+            consumer(m_name, start, stop, score);
+        }
+    }
+
     std::string name() { return m_name; }
     size_t length() { return m_matrix.size(); }
 
@@ -97,11 +108,13 @@ private:
     const std::string m_name;
     const bool m_is_reverse_complement;
     std::vector<std::array<unsigned, AlphabetSize>> m_matrix;
+    std::vector<std::array<uint16_t, 256>> m_compressed_matrix;
     double m_scale;
     double m_min_before_scaling;
     std::vector<double> m_pvalues;
 
     Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
+    Score score_sequence(const std::array<std::vector<uint8_t>, 4>& sequence, size_t begin, size_t end) const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& score)

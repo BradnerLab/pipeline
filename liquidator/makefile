@@ -39,7 +39,7 @@ CC=g++
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
 OPTIMIZATION_LEVEL := -O3 -DNDEBUG # normally -O3 with asserts disabled for performance
-OPTIMIZATION_LEVEL := -O0 # -O0 and asserts enabled for easier debugging
+#OPTIMIZATION_LEVEL := -O0 # -O0 and asserts enabled for easier debugging
 CPPFLAGS := -std=c++11 $(OPTIMIZATION_LEVEL) -g -Wall -I ./
 LDFLAGS := $(OPTIMIZATION_LEVEL) -g -Wall
 LDLIBS := -lbam -lz -lpthread
