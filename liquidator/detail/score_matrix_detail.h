@@ -232,16 +232,22 @@ adjust_background(std::array<double, AlphabetSize> background, bool average_for_
 }
 
 // invalid ascii bp locations (e.g. N locations) are added in order with push_back to invalid_bp_locations
-inline std::array<std::vector<uint8_t>, 4>
-compress_sequence(const std::string& ascii, std::vector<size_t>& invalid_bp_locations)
+inline void
+compress_sequence(const std::string& ascii,
+                  std::array<std::vector<uint8_t>, 4>& compressed_indexed_by_offset,
+                  std::vector<size_t>& invalid_bp_locations)
 {
-    std::array<std::vector<uint8_t>, 4> compressed_indexed_by_offset;
     for (unsigned offset = 0; offset < 4; ++offset)
     {
-        std::vector<uint8_t>& compressed = compressed_indexed_by_offset[offset];
-        compressed.resize(ascii.size() > offset
-                        ? std::ceil((ascii.size()-offset)/4.0)
-                        : 0);
+        auto& compressed = compressed_indexed_by_offset[offset];
+        const size_t expected_size = ascii.size() > offset
+                                   ? std::ceil((ascii.size()-offset)/4.0)
+                                   : 0;
+        if (compressed.size() != expected_size)
+        {
+            // each of the 4 offsets should only be resized once since all the ascii lengths are expected to be the same
+            compressed.resize(expected_size);
+        }
         for (size_t outer = 0; outer < compressed.size(); ++outer)
         {
             const size_t outer_ascii_position = outer*4 + offset;
@@ -266,7 +272,6 @@ compress_sequence(const std::string& ascii, std::vector<size_t>& invalid_bp_loca
             }
         }
     }
-    return compressed_indexed_by_offset;
 }
 
 class unsupported_base_pair_exception : public std::runtime_error
@@ -281,7 +286,8 @@ inline std::array<std::vector<uint8_t>, 4>
 compress_sequence(const std::string& ascii)
 {
     std::vector<size_t> invalid_bp_locations;
-    auto rv = compress_sequence(ascii, invalid_bp_locations);
+    std::array<std::vector<uint8_t>, 4> rv;
+    compress_sequence(ascii, rv, invalid_bp_locations);
     if (!invalid_bp_locations.empty())
     {
         throw unsupported_base_pair_exception();

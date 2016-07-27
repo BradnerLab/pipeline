@@ -276,15 +276,18 @@ private:
             m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
 
-        // todo: add member for this to save dynamic memory allocation
         m_invalid_bp_locations.clear();
-        auto compressed_sequence = detail::compress_sequence(m_sequence, m_invalid_bp_locations);
+        for (auto& compressed : m_compressed_sequence)
+        {
+            compressed.clear();
+        }
+        detail::compress_sequence(m_sequence, m_compressed_sequence, m_invalid_bp_locations);
 
         const size_t hit_count_before_this_read = m_total_hit_count;
         m_read = read;
         for (const auto& matrix : m_matrices)
         {
-            matrix.score(compressed_sequence, m_sequence, *this);
+            matrix.score(m_compressed_sequence, m_sequence, *this);
             //matrix.score(m_sequence, *this);
         }
         if (m_total_hit_count > hit_count_before_this_read)
@@ -325,6 +328,7 @@ private:
     size_t m_total_hit_count;
     std::string m_sequence;
     std::vector<size_t> m_invalid_bp_locations;
+    std::array<std::vector<uint8_t>, 4> m_compressed_sequence;
 };
 
 }
