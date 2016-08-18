@@ -13,6 +13,12 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <mutex>
+#include <deque>
+
+static const int MAX_QUEUED_READS = 200;
+static const int MAX_THREAD_CHUNK = 100000;
 
 namespace liquidator
 {
@@ -81,6 +87,8 @@ public:
             std::cout << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
         }
 
+        m_reading = true;
+        std::thread score_thread1(&BamScorer::score_thread_actual, this);
         if (!region_file_path.empty())
         {
             score_regions(region_file_path);
@@ -89,6 +97,8 @@ public:
         {
             score_all_reads();
         }
+        m_reading = false;
+        score_thread1.join();
     }
 
     ~BamScorer()
@@ -179,6 +189,56 @@ public:
     }
 
 private:
+
+    struct BamAllocator
+    {
+        BamAllocator() { }
+
+        ~BamAllocator()
+        {
+            // note: we are not calling bam_destroy1(), which was just free()ing the
+            // bam and the bam data. since the vectors manage the bam memory,
+            // we just need to free the bam dat, but if samtools changes this will
+            // likely break
+            free(bam.data);
+        }
+
+        // note: we are not calling bam_init1(), which was just calloc()ing,
+        // if that ever changes this will likely break
+        bam1_t bam;
+    };
+    
+    typedef std::shared_ptr < std::vector < BamAllocator > > BamVecPtr;
+    
+    void score_thread_actual()
+    {
+        BamVecPtr vec;
+
+        int scored_total = 0;
+        while(m_reading || m_queued_reads.size() > 0)
+        {
+            m_queue_mutex.lock();
+            if(m_queued_reads.empty())
+            {
+                m_queue_mutex.unlock();
+                std::this_thread::yield();
+                continue;
+            }
+
+            vec = m_queued_reads.front();
+            m_queued_reads.pop_front();
+            
+            m_queue_mutex.unlock();
+
+            for(size_t i = 0; i < vec->size(); i++)
+            {
+                scored_total++;
+                BamAllocator &raii_read = (*vec)[i];
+                score_read(&raii_read.bam);
+            }
+        }
+    }
+    
     void score_all_reads()
     {
         // todo: the unmapped reads seem to all be at the very end of the loop.
@@ -187,13 +247,60 @@ private:
         //       also, there seems to be some mechanism for storing unmapped reads that correspond to a chromosome, so that is probably a doubly bad idea.
         //       see https://www.biostars.org/p/86405/#86439
 
-        auto destroyer = [](bam1_t* p) { bam_destroy1(p); };
-        std::unique_ptr<bam1_t, decltype(destroyer)> raii_read(bam_init1(), destroyer);
-        bam1_t* read = raii_read.get();
-        while (bam_read1(m_input, read) >= 0)
+        BamVecPtr vec(new std::vector < BamAllocator >);
+        size_t vec_count = 0;
+        vec->resize(MAX_THREAD_CHUNK);
+        memset(&((*vec)[0]), 0, MAX_THREAD_CHUNK * sizeof(BamAllocator));
+
+        int total_read = 0;
+        int vec_total = 0;
+        while(1)
         {
-            score_read(read);
+            bool break_main = false;
+            
+            m_queue_mutex.lock();
+            if(m_queued_reads.size() > MAX_QUEUED_READS)
+            {
+                m_queue_mutex.unlock();
+                std::this_thread::yield();
+                continue;
+            }
+            m_queue_mutex.unlock();
+            
+            while(vec_count < MAX_THREAD_CHUNK)
+            {
+                int ret;
+                ret = bam_read1(m_input, &(*vec)[vec_count].bam);
+                if(ret < 0)
+                {
+                    break_main = true;
+                    break;
+                }
+                
+                vec_count++;
+                total_read++;
+            }
+
+            // since the vector is allocated in big chunks, we need to remove the
+            // tail end of the vector when we reach EOF
+            if(vec_count != vec->size())
+                vec->erase(vec->begin() + vec_count, vec->end());
+            vec_total += vec->size();
+            m_queue_mutex.lock();
+            m_queued_reads.push_back(vec);
+            m_queue_mutex.unlock();
+            
+            vec.reset(new std::vector < BamAllocator >);
+            vec_count = 0;
+            vec->resize(MAX_THREAD_CHUNK);
+            memset(&((*vec)[0]), 0, MAX_THREAD_CHUNK * sizeof(BamAllocator));
+
+            if(break_main)
+            {
+                break;
+            }            
         }
+
     }
 
     void score_regions(const std::string& region_file_path)
@@ -230,7 +337,7 @@ private:
         }
     }
 
-    void score_read(const bam1_t* read)
+    void score_read(const bam1_t *read)
     {
         ++m_read_count;
         if (unmapped(*read))
@@ -260,7 +367,7 @@ private:
         {
             m_sequence[i] = bam_nt16_rev_table[bam1_seqi(s, i)];
         }
-
+        
         const size_t hit_count_before_this_read = m_total_hit_count;
         m_read = read;
         for (const auto& matrix : m_matrices)
@@ -276,6 +383,8 @@ private:
             }
             if (m_output)
             {
+                // TODO: if we want to run multiple score threads in parallel, we will need to
+                // add an output queue similar to input queue here
                 bam_write1(m_output, read);
             }
         }
@@ -283,8 +392,10 @@ private:
 
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
+        // TODO: region reads are not yet threaded
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
         scorer.score_read(read);
+        
         return 0;
     }
 
@@ -304,6 +415,9 @@ private:
     size_t m_unmapped_hit_count;
     size_t m_total_hit_count;
     std::string m_sequence;
+    std::deque < BamVecPtr > m_queued_reads;
+    std::mutex m_queue_mutex;
+    bool m_reading;
 };
 
 }
