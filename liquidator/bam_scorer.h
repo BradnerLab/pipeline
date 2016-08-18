@@ -7,7 +7,6 @@
 #include <samtools/bam.h>
 
 #include <boost/filesystem.hpp>
-#include <tbb/concurrent_queue.h>
 
 #include <iostream>
 #include <memory>
@@ -90,24 +89,16 @@ public:
 
         m_reading = true;
         std::thread score_thread1(&BamScorer::score_thread_actual, this);
-        //std::thread score_thread2(&BamScorer::score_thread_actual, this);
-        //std::thread score_thread3(&BamScorer::score_thread_actual, this);
-        //std::thread score_thread4(&BamScorer::score_thread_actual, this);
         if (!region_file_path.empty())
         {
-            printf("REGIONS\n");
             score_regions(region_file_path);
         }
         else
         {
-            printf("ALL READS\n");
             score_all_reads();
         }
         m_reading = false;
         score_thread1.join();
-        //score_thread2.join();
-        //score_thread3.join();
-        //score_thread4.join();
     }
 
     ~BamScorer()
@@ -245,8 +236,6 @@ private:
                 BamAllocator &raii_read = (*vec)[i];
                 score_read(&raii_read.bam);
             }
-
-            //printf("scored: %d\n", scored_total);
         }
     }
     
@@ -284,7 +273,6 @@ private:
                 ret = bam_read1(m_input, &(*vec)[vec_count].bam);
                 if(ret < 0)
                 {
-                    printf("EOF? %d\n", total_read);
                     break_main = true;
                     break;
                 }
@@ -309,12 +297,10 @@ private:
 
             if(break_main)
             {
-                printf("Breaking main loop\n");
                 break;
             }            
         }
 
-        printf("vec total: %d\n", vec_total);
     }
 
     void score_regions(const std::string& region_file_path)
@@ -351,7 +337,6 @@ private:
         }
     }
 
-    //void score_read(std::shared_ptr < BamAllocator > raii_read)
     void score_read(const bam1_t *read)
     {
         ++m_read_count;
@@ -405,23 +390,11 @@ private:
         }
     }
 
-    void fetch_helper(const bam1_t *read)
-    {
-        /*std::shared_ptr < BamAllocator > raii_read(new BamAllocator);
-        bam_copy1(raii_read->bam, read);
-
-        while(m_queued_reads.size() >= MAX_QUEUED_READS)
-            std::this_thread::yield();
-        
-            m_queued_reads.push_back(raii_read);*/
-    }
-
     static int bam_fetch_func(const bam1_t* read, void* handle)
     {
+        // TODO: region reads are not yet threaded
         BamScorer& scorer = *static_cast<BamScorer*>(handle);
         scorer.score_read(read);
-        
-        //scorer.fetch_helper(read);        
         
         return 0;
     }
