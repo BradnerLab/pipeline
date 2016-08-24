@@ -9,7 +9,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
-//#define LIQUIDATOR_FASTA_SCORER_TIMINGS
+#define LIQUIDATOR_FASTA_SCORER_TIMINGS
 #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
 #include <boost/timer/timer.hpp>
 #endif
@@ -71,18 +71,23 @@ std::string get_file_contents(const std::string& file_path)
     return contents;
 }
 
+// Note: the memory layout of this struct is intentional.
+//       Changing ordering/sizes may decrease performance by 10%.
+//       Carefully measure performance when making changes.
 struct FimoStyleOutputInfo
 {
     size_t fasta_sequence_name_begin;
-    size_t fasta_sequence_name_length; // todo: try uint8_t
+    size_t fasta_sequence_name_length;
 
-    double score; // todo: try changing to floats
+    double score;
     double pvalue;
 
     const std::string& motif_name;
 
     // FASTA spec suggests sequences must be <= 80 long, so 256 should be plenty.
-    // Assuming this small size for now for best case performance timings.
+    // Changing these to size_t and moving them up top, while also decreasing size of something else
+    // (e.g. fasta_sequence_name_length to uint8_t) gives similar performance -- we can try that if
+    // 256 is not big enough.
     uint8_t sequence_start; // named start instead of begin because this is already 1 indexed for output
     uint8_t sequence_stop;
 
@@ -131,7 +136,6 @@ public:
             output << info.pvalue << '\t'
                    << '\t'; // omit q-value for now
 
-            // todo: should really do toupper
             // sequence_begin +1 for new line between name end and sequence, -1 for start being 1 based (so cancels out)
             const size_t sequence_begin = info.fasta_sequence_name_begin + info.fasta_sequence_name_length + info.sequence_start;
 
@@ -139,6 +143,8 @@ public:
             const size_t sequence_length = info.sequence_stop - info.sequence_start + 1;
             if (info.strand == '+')
             {
+                // Note: might want to do toupper here and in the else (which is done in score_matrix.h).
+                //       Will wait until have test case to validate this need.
                 output.write(fasta.data() + sequence_begin,
                              sequence_length);
             }
@@ -164,7 +170,9 @@ public:
     {
         while(true)
         {
-            // todo: is > a valid char in a sequence name? maybe we should search for "\n>" char* instead of single char
+            // Note: Is > a valid char in a sequence name? maybe we should search for "\n>" char* instead of single char
+            //       If this is needed, this could complicate finding the first start in the file.
+            //       Will wait until have test case to validate this need.
             size_t name_begin = fasta.find_first_of('>', region_begin);
             if (name_begin >= region_end)
             {
@@ -183,7 +191,9 @@ public:
                      end <= sequence_end;
                      ++begin, ++end)
                 {
-                    // todo: experiment with switching loop order: move matrix loop inside sequence loop
+                    // Note: swapping loop order so loop by matrix then by sequence seems slightly slower in one test.
+                    //       This is complicated also by motifs potentially having different lengths,
+                    //       since the sequence substring length being dicated by the motif length.
                     const unsigned scaled_score = detail::score(matrix.matrix(),
                                                                 fasta,
                                                                 begin,
@@ -200,9 +210,8 @@ public:
                                          unscaled_score,
                                          pvalue,
                                          matrix.name(),
-                                         // todo: do a cast or something to silence narrowing warning
-                                         begin - sequence_begin + 1,
-                                         end - sequence_begin,
+                                         static_cast<uint8_t>(begin - sequence_begin + 1),
+                                         static_cast<uint8_t>(end - sequence_begin),
                                          matrix.is_reverse_complement() ? '-' : '+'});
                     }
                 }
@@ -239,7 +248,7 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices,
 {
     tbb::task_scheduler_init init(tbb::task_scheduler_init::automatic);
 
-	#ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
+    #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
     boost::timer::cpu_timer read_timer;
     #endif
     const std::string fasta = get_file_contents(fasta_file_path);
