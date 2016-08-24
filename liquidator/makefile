@@ -39,7 +39,7 @@ CC=g++
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
 OPTIMIZATION_LEVEL := -O3 -DNDEBUG # normally -O3 with asserts disabled for performance
-#OPTIMIZATION_LEVEL := -O0 # -O0 and asserts enabled for easier debugging
+OPTIMIZATION_LEVEL := -O0 # -O0 and asserts enabled for easier debugging
 CPPFLAGS := -std=c++11 $(OPTIMIZATION_LEVEL) -g -Wall -I ./
 LDFLAGS := $(OPTIMIZATION_LEVEL) -g -Wall
 LDLIBS := -lbam -lz -lpthread -ltbb
@@ -94,7 +94,7 @@ bamliquidator_regions: bamliquidator_regions.m.o bamliquidator.o liquidator_util
 	$(CC) $(LDFLAGS) -o bamliquidator_regions bamliquidator.o bamliquidator_regions.m.o liquidator_util.o \
 					$(LDLIBS) $(ADDITIONAL_LDLIBS) 
 
-score_matrix.o: score_matrix.h score_matrix.cpp detail/score_matrix_detail.h fimo_style_printer.h
+score_matrix.o: score_matrix.h score_matrix.cpp detail/score_matrix_detail.h
 	$(CC) $(CPPFLAGS) -c score_matrix.cpp 
 
 define VERSION_H
@@ -120,8 +120,8 @@ version.h: bamliquidatorbatch/common_util.py
 	echo "$$VERSION_H" > version.h
 
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev libboost-filesystem1.54-dev
-motif_liquidator: motif_liquidator.m.cpp score_matrix.o parsing_detail.o fasta_reader.h bam_scorer.h liquidator_util.o version.h
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o parsing_detail.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
+motif_liquidator: motif_liquidator.m.cpp score_matrix.o parsing_detail.o bam_scorer.h liquidator_util.o version.h fasta_scorer.o
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o parsing_detail.o fasta_scorer.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -138,8 +138,11 @@ bamliquidator.o: bamliquidator.cpp bamliquidator.h
 liquidator_util.o: liquidator_util.cpp liquidator_util.h
 	$(CC) $(CPPFLAGS) -c liquidator_util.cpp
 
-parsing_detail.o: detail/parsing_detail.cpp liquidator_util.h detail/pwm_detail.h
+parsing_detail.o: detail/parsing_detail.h detail/parsing_detail.cpp liquidator_util.h detail/pwm_detail.h
 	$(CC) $(CPPFLAGS) -c detail/parsing_detail.cpp
+
+fasta_scorer.o: fasta_scorer.cpp fasta_scorer.h score_matrix.o fimo_style_printer.h fasta_reader.h
+	$(CC) $(CPPFLAGS) -c fasta_scorer.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
