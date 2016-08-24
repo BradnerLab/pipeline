@@ -9,7 +9,10 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
+//#define LIQUIDATOR_FASTA_SCORER_TIMINGS
+#ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
 #include <boost/timer/timer.hpp>
+#endif
 
 #include <cerrno>
 #include <fstream>
@@ -236,10 +239,14 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices,
 {
     tbb::task_scheduler_init init(tbb::task_scheduler_init::automatic);
 
-    boost::timer::cpu_timer timer;
+	#ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
+    boost::timer::cpu_timer read_timer;
+    #endif
     const std::string fasta = get_file_contents(fasta_file_path);
-    timer.stop();
-    //std::cout << "reading " << fasta.size() << " bytes fasta file into memory took" << timer.format() << std::endl;
+    #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
+    read_timer.stop();
+    std::cout << "reading " << fasta.size() << " bytes fasta file into memory took" << read_timer.format() << std::endl;
+    #endif
     // todo: instead of reading entire file into memory, just figure out how many char,
     //       then try having the scorers read the chunks into memory themselves.
     //       or maybe try the pipeline suggested in tbb documentation:
@@ -257,6 +264,9 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices,
     // actually, that documentation might be outdated... maybe grainsize of 1 fine because of auto_partitioner
     const size_t grainsize = 8400; // size of 100 fasta entries from a sample file
 
+    #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
+    boost::timer::cpu_timer tbb_timer;
+    #endif
     tbb::parallel_for(
       tbb::blocked_range<int>(0, fasta.size(), grainsize),
       [&](const tbb::blocked_range<int>& range)
@@ -264,6 +274,10 @@ void process_fasta(const std::vector<ScoreMatrix>& matrices,
         score_fasta(range.begin(), range.end(), scorers);
       },
       tbb::auto_partitioner());
+    #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
+    tbb_timer.stop();
+    std::cout << "tbb // scoring took" << tbb_timer.format() << std::endl;
+    #endif
 }
 
 }
