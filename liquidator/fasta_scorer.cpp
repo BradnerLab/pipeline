@@ -9,7 +9,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
 
-#define LIQUIDATOR_FASTA_SCORER_TIMINGS
+//#define LIQUIDATOR_FASTA_SCORER_TIMINGS
 #ifdef LIQUIDATOR_FASTA_SCORER_TIMINGS
 #include <boost/timer/timer.hpp>
 #endif
@@ -71,29 +71,6 @@ std::string get_file_contents(const std::string& file_path)
     return contents;
 }
 
-// Note: the memory layout of this struct is intentional.
-//       Changing ordering/sizes may decrease performance by 10%.
-//       Carefully measure performance when making changes.
-struct FimoStyleOutputInfo
-{
-    size_t fasta_sequence_name_begin;
-    size_t fasta_sequence_name_length;
-
-    double score;
-    double pvalue;
-
-    const std::string& motif_name;
-
-    // FASTA spec suggests sequences must be <= 80 long, so 256 should be plenty.
-    // Changing these to size_t and moving them up top, while also decreasing size of something else
-    // (e.g. fasta_sequence_name_length to uint8_t) gives similar performance -- we can try that if
-    // 256 is not big enough.
-    uint8_t sequence_start; // named start instead of begin because this is already 1 indexed for output
-    uint8_t sequence_stop;
-
-    char strand;
-};
-
 class Scorer
 {
 public:
@@ -120,48 +97,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(output_mutex);
 
-        for (const auto& info: infos)
-        {
-            output << info.motif_name << '\t';
-            output.write(fasta.data() + info.fasta_sequence_name_begin, info.fasta_sequence_name_length);
-            output << '\t'
-                   << static_cast<unsigned>(info.sequence_start) << '\t'
-                   << static_cast<unsigned>(info.sequence_stop) << '\t'
-                   << info.strand << '\t';
-
-            output.precision(6);
-            output << info.score << '\t';
-            output.precision(3);
-
-            output << info.pvalue << '\t'
-                   << '\t'; // omit q-value for now
-
-            // sequence_begin +1 for new line between name end and sequence, -1 for start being 1 based (so cancels out)
-            const size_t sequence_begin = info.fasta_sequence_name_begin + info.fasta_sequence_name_length + info.sequence_start;
-
-            // sequence_length +1 because start is 1 based
-            const size_t sequence_length = info.sequence_stop - info.sequence_start + 1;
-            if (info.strand == '+')
-            {
-                // Note: might want to do toupper here and in the else (which is done in score_matrix.h).
-                //       Will wait until have test case to validate this need.
-                output.write(fasta.data() + sequence_begin,
-                             sequence_length);
-            }
-            else
-            {
-                for (size_t i=sequence_begin + sequence_length - 1; ; --i)
-                {
-                    output << complement(fasta[i]);
-                    if (i==sequence_begin)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            output << std::endl;
-        }
+        output << ss.str();
     }
 
     Scorer& operator=(const Scorer& other) = delete;
@@ -203,16 +139,45 @@ public:
                     const double pvalue = pvalues[scaled_score];
                     if (pvalue < 0.0001)
                     {
+                        const size_t name_length = name_end-name_begin;
+                        const size_t sequence_start = begin - sequence_begin + 1;
+                        const size_t sequence_stop = end - sequence_begin;
                         const double unscaled_score = double(scaled_score)/matrix.scale()
                             + matrix.matrix().size()*matrix.min_before_scaling();
-                        infos.push_back({name_begin,
-                                         name_end-name_begin,
-                                         unscaled_score,
-                                         pvalue,
-                                         matrix.name(),
-                                         static_cast<uint8_t>(begin - sequence_begin + 1),
-                                         static_cast<uint8_t>(end - sequence_begin),
-                                         matrix.is_reverse_complement() ? '-' : '+'});
+                        ss << matrix.name()<< '\t';
+                        ss.write(fasta.data() + name_begin, name_length);
+                        ss << '\t'
+                           << sequence_start << '\t'
+                           << sequence_stop << '\t'
+                           << (matrix.is_reverse_complement() ? '-' : '+') << '\t';
+
+                        ss.precision(6);
+                        ss << unscaled_score << '\t';
+                        ss.precision(3);
+
+                        ss << pvalue << '\t'
+                           << '\t'; // omit q-value for now
+
+                        if (matrix.is_reverse_complement())
+                        {
+                            // Note: might want to do toupper here and in the else (which is done in score_matrix.h).
+                            //       Will wait until have test case to validate this need.
+                            for (size_t i=begin + matrix.matrix().size() - 1; ; --i)
+                            {
+                                ss << complement(fasta[i]);
+                                if (i==begin)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            ss.write(fasta.data() + begin,
+                                     matrix.matrix().size());
+                        }
+
+                        ss << std::endl;
                     }
                 }
             }
@@ -225,10 +190,10 @@ private:
     const std::vector<ScoreMatrix>& matrices;
     const std::string& fasta;
 
+    std::stringstream ss;
+
     std::ofstream& output;
     std::mutex& output_mutex;
-
-    std::vector<FimoStyleOutputInfo> infos;
 };
 
 typedef tbb::enumerable_thread_specific<Scorer,
