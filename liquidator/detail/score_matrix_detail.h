@@ -79,10 +79,10 @@ scale(const PWM& pwm, const std::pair<double, double>& min_max, const unsigned r
 }
 
 // returns score; sequences with invalid characters return 0.
-unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
-               const std::string& sequence,
-               const size_t begin,
-               const size_t end)
+inline unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
+                      const std::string& sequence,
+                      const size_t begin,
+                      const size_t end)
 {
     assert(end >= begin);
     assert((end-begin) <= matrix.size());
@@ -106,7 +106,7 @@ unsigned score(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
     return score;
 }
 
-unsigned max(const std::vector<std::array<unsigned, AlphabetSize>>& matrix)
+inline unsigned max(const std::vector<std::array<unsigned, AlphabetSize>>& matrix)
 {
     unsigned max = 0;
     for (const auto& row : matrix)
@@ -121,7 +121,7 @@ unsigned max(const std::vector<std::array<unsigned, AlphabetSize>>& matrix)
 
 // returns probability distribution values (based on background) indexed by
 // all possible integer scores (with the max_score = matrix_max_value * number_of_rows)
-std::vector<double>
+inline std::vector<double>
 probability_distribution(const std::vector<std::array<unsigned, AlphabetSize>>& matrix,
                          const std::array<double, AlphabetSize>& background)
 {
@@ -163,7 +163,7 @@ probability_distribution(const std::vector<std::array<unsigned, AlphabetSize>>& 
     return current;
 }
 
-void pdf_to_pvalues(std::vector<double>& p)
+inline void pdf_to_pvalues(std::vector<double>& p)
 {
     if (p.size() <= 1) return;
 
@@ -177,7 +177,7 @@ void pdf_to_pvalues(std::vector<double>& p)
     }
 }
 
-void reverse_complement(std::vector<std::array<double, AlphabetSize>>& matrix)
+inline void reverse_complement(std::vector<std::array<double, AlphabetSize>>& matrix)
 {
     std::reverse(matrix.begin(), matrix.end());
     for (auto& row: matrix)
@@ -186,7 +186,7 @@ void reverse_complement(std::vector<std::array<double, AlphabetSize>>& matrix)
     }
 }
 
-std::array<double, AlphabetSize> adjust_background(std::array<double, AlphabetSize> background, bool average_for_reverse)
+inline std::array<double, AlphabetSize> adjust_background(std::array<double, AlphabetSize> background, bool average_for_reverse)
 {
     if (average_for_reverse)
     {

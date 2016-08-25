@@ -93,6 +93,36 @@ public:
         return m_matrix[position][column];
     }
 
+    const std::string& name() const
+    {
+        return m_name;
+    }
+
+    bool is_reverse_complement() const
+    {
+        return m_is_reverse_complement;
+    }
+
+    const std::vector<std::array<unsigned, AlphabetSize>>& matrix() const
+    {
+        return m_matrix;
+    }
+
+    double scale() const
+    {
+        return m_scale;
+    }
+
+    double min_before_scaling() const
+    {
+        return m_min_before_scaling;
+    }
+
+    const std::vector<double>& pvalues() const
+    {
+        return m_pvalues;
+    }
+
 private:
     const std::string m_name;
     const bool m_is_reverse_complement;

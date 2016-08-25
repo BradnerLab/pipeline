@@ -1,6 +1,5 @@
 #include "bam_scorer.h"
-#include "fasta_reader.h"
-#include "fimo_style_printer.h"
+#include "fasta_scorer.h"
 #include "score_matrix.h"
 #include "version.h"
 
@@ -158,30 +157,6 @@ int process_command_line(int argc,
     }
 
     return 0;
-}
-
-void process_fasta(const std::vector<ScoreMatrix>& matrices, const std::string& fasta_file_path, const std::string& output_file_path)
-{
-    std::ifstream fasta_input(fasta_file_path);
-    if (!fasta_input)
-    {
-        throw std::runtime_error("failed to open " + fasta_file_path);
-    }
-
-    std::ofstream output(output_file_path);
-    FimoStylePrinter printer(output);
-
-    FastaReader fasta_reader(fasta_input);
-    std::string sequence;
-    std::string sequence_name;
-    while (fasta_reader.next_read(sequence, sequence_name))
-    {
-        for (const auto& matrix : matrices)
-        {
-            printer.sequence_name = &sequence_name;
-            matrix.score(sequence, printer);
-        }
-    }
 }
 
 int main(int argc, char** argv)
