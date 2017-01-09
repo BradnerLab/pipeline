@@ -121,8 +121,8 @@ version.h: bamliquidatorbatch/common_util.py
 	echo "$$VERSION_H" > version.h
 
 # todo: add to dev checklist: sudo apt-get install libboost-program-options1.54-dev libboost-filesystem1.54-dev
-motif_liquidator: motif_liquidator.m.cpp score_matrix.o parsing_detail.o bam_scorer.h liquidator_util.o version.h fasta_scorer.o bam_scorer_mt.o
-	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o parsing_detail.o fasta_scorer.o bam_scorer_mt.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
+motif_liquidator: motif_liquidator.m.cpp score_matrix.o parsing_detail.o bam_scorer.h liquidator_util.o version.h fasta_scorer.o
+	$(CC) $(CPPFLAGS) motif_liquidator.m.cpp $(LDFLAGS) -o motif_liquidator score_matrix.o liquidator_util.o parsing_detail.o fasta_scorer.o $(LDLIBS) -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
 
 bamliquidator.m.o: bamliquidator.m.cpp
 	$(CC) $(CPPFLAGS) -c bamliquidator.m.cpp
@@ -144,9 +144,6 @@ parsing_detail.o: detail/parsing_detail.h detail/parsing_detail.cpp liquidator_u
 
 fasta_scorer.o: fasta_scorer.cpp fasta_scorer.h score_matrix.o fimo_style_printer.h fasta_reader.h
 	$(CC) $(CPPFLAGS) -c fasta_scorer.cpp
-
-bam_scorer_mt.o: bam_scorer_mt.cpp bam_scorer_mt.h score_matrix.o bam_scorer.h
-	$(CC) $(CPPFLAGS) -c bam_scorer_mt.cpp
 
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions motif_liquidator
 
