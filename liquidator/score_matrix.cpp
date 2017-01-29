@@ -70,7 +70,7 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
 std::array<double, AlphabetSize>
 ScoreMatrix::read_background(std::istream& background_file)
 {
-    std::array<unsigned, AlphabetSize> counts = {0, 0, 0, 0};
+    std::array<unsigned, AlphabetSize> counts{ {0, 0, 0, 0} };
     std::array<double, AlphabetSize> background;
     for(std::string line; getline(background_file, line); )
     {

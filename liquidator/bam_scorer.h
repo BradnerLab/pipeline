@@ -221,7 +221,7 @@ private:
             if(m_queued_reads.empty())
             {
                 m_queue_mutex.unlock();
-                std::this_thread::yield();
+                //std::this_thread::yield();
                 continue;
             }
 
@@ -262,7 +262,7 @@ private:
             if(m_queued_reads.size() > MAX_QUEUED_READS)
             {
                 m_queue_mutex.unlock();
-                std::this_thread::yield();
+                //std::this_thread::yield();
                 continue;
             }
             m_queue_mutex.unlock();
