@@ -137,6 +137,59 @@ TEST(ScoreMatrix, read_multiple_pwm)
     }
 }
 
+TEST(ScoreMatrix, read_pwm_misc)
+{
+    // adopted from .meme files in http://meme-suite.org/meme-software/Databases/motifs/motif_databases.12.15.tgz
+    const std::string input_str = R"(MEME version 4.4
+                                  MEME BigFoot DMMPMM version MAY-26-2009
+
+                                  ALPHABET= ACGT
+
+                                  strands: + -
+
+                                  Background letter frequencies (from uniform background):
+                                  A 0.25000 C 0.25000 G 0.25000 T 0.25000
+
+                                  MOTIF MYB52 MYB52
+
+                                  log-odds matrix: alength= 4 w= 8 E= 0
+                                      98	    27	   -77	  -208
+                                      -7	   106	  -129	   -83
+                                    -127	  -123	  -283	   159
+                                     189	  -422	  -297	  -306
+                                     179	  -137	  -417	  -343
+                                    -389	   189	  -300	  -315
+                                    -149	  -224	   166	  -186
+                                     -95	  -347	   166	  -205
+
+                                  letter-probability matrix: alength= 4 w= 8 nsites= 20 E= 4.9e-949
+                                    0.493200	  0.300600	  0.147100	  0.059100
+                                    0.237500	  0.519800	  0.102500	  0.140200
+                                    0.103890	  0.106689	  0.035196	  0.754225
+                                    0.924900	  0.013400	  0.031800	  0.029900
+                                    0.865913	  0.096990	  0.013899	  0.023198
+                                    0.016900	  0.923700	  0.031200	  0.028200
+                                    0.089100	  0.053000	  0.788800	  0.069100
+                                    0.129400	  0.022500	  0.787800	  0.060300
+
+                                  URL http://floresta.eead.csic.es/footprintdb/index.php?db=ArabidopsisPBM:20140210&motif=MYB52
+
+                                  MOTIF abd-A
+                                  letter-probability matrix: alength= 4 w= 6 nsites= 45 E= 0
+                                   0.609756097560976  0.121951219512195  0.0975609756097561  0.170731707317073
+                                   0.0  0.0731707317073171  0.024390243902439  0.902439024390244
+                                   0.902439024390244  0.024390243902439  0.0731707317073171  0.0
+                                   0.902439024390244  0.0  0.0  0.0975609756097561
+                                   0.317073170731707  0.0  0.0  0.682926829268293
+                                   0.0  0.0731707317073171  0.146341463414634  0.780487804878049
+                                  URL http://autosome.ru/DMMPMM/DMMPMM_18_MAR_RELEASE/comparison-DMMPMM/ABD_A.html
+)";
+
+    std::istringstream ss(input_str);
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    ASSERT_EQ(2, pwms.size());
+}
+
 TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 {
     const unsigned number_of_sites = 18;
