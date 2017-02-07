@@ -25,7 +25,6 @@ std::vector<PWM> read_pwm(std::istream& input)
     namespace ascii = boost::spirit::ascii;
     namespace phoenix = boost::phoenix;
 
-    uint meme_version = 0;
     const std::string default_alphabet = "ACGT";
     std::string alphabet = default_alphabet;
     std::string strands = "+ -";
@@ -42,8 +41,7 @@ std::vector<PWM> read_pwm(std::istream& input)
     std::vector<double> current_line;
 
     bool success = qi::parse(begin, end,
-          qi::lit("MEME version ")
-          >> qi::uint_[ phoenix::ref(meme_version) = qi::_1 ] >> *ascii::space
+          *(qi::lit("MEME") >> *(qi::print - qi::eol) >> *ascii::space)
           >> -(qi::lit("ALPHABET= ")
                >> qi::as_string[ +qi::upper ]
                                [ phoenix::ref(alphabet) = qi::_1 ]
@@ -55,9 +53,9 @@ std::vector<PWM> read_pwm(std::istream& input)
               )
           >> *ascii::space
 
-          // we ignore motif file specified background frequencies, and I am pretty sure fimo ignores these too
           >> -(qi::lit("Background letter frequencies")
-               >> *ascii::space
+               >> *(qi::print - qi::eol) // Background letter frequencies may be followed by "(from uniform background):"
+               >> qi::eol
                >> *(qi::print - qi::eol)
                >> *ascii::space
               )
@@ -75,6 +73,11 @@ std::vector<PWM> read_pwm(std::istream& input)
                // ignore any alternative motif name
                >> -(ascii::blank >> +(qi::print - ascii::space))
 
+               // ignore any log-odds matrix
+               >> -(*ascii::space >> qi::lit("log-odds matrix") >> *(qi::print - qi::eol) >> qi::eol // ignore whatever trails the "log-odds matrix"
+                    >> *( *ascii::blank >> +(qi::graph) >> *((qi::print | qi::blank) - qi::eol) >> qi::eol) // ignore all non-empty lines until an empty line
+                   )
+
                >> *ascii::space
                >> qi::lit("letter-probability matrix:")
 
@@ -87,7 +90,7 @@ std::vector<PWM> read_pwm(std::istream& input)
                     >> qi::lit("nsites= ") >> qi::uint_[ phoenix::ref(number_of_sites) = qi::_1 ])
 
                // ignore any E-value
-               >> -(ascii::blank >> qi::lit("E= ") >> qi::double_)
+               >> -(ascii::blank >> qi::lit("E= ") >> *(qi::print - qi::eol))
 
                >> *ascii::space
 
@@ -102,6 +105,9 @@ std::vector<PWM> read_pwm(std::istream& input)
                        >> *ascii::blank
                       )
                      >> *ascii::space
+
+                     // ignore URL
+                     >> -(qi::lit("URL") >> *(qi::print - qi::eol) >> *ascii::space)
                    )[ phoenix::bind([&] ()
                       {
                         current_matrix.push_back(current_line);
