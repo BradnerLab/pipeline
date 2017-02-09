@@ -6,6 +6,7 @@
 #include "parsing_detail.h"
 
 #include <iostream>
+#include <cassert>
 
 namespace liquidator { namespace detail {
 

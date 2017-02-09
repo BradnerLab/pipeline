@@ -8,6 +8,7 @@
 #include <vector>
 #include <utility>
 #include <cstring>
+#include <stdexcept>
 
 #include <boost/lexical_cast.hpp>
 

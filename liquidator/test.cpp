@@ -5,7 +5,7 @@
 
 using namespace liquidator;
 
-const std::array<double, AlphabetSize> uniform_bg = {.25, .25, .25, .25};
+const std::array<double, AlphabetSize> uniform_bg { {.25, .25, .25, .25} };
 
 TEST(ScoreMatrix, read_pwm_matrix)
 {
@@ -194,8 +194,8 @@ TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 {
     const unsigned number_of_sites = 18;
     detail::PWM pwm { /*number_of_sites =*/ number_of_sites };
-    pwm.matrix = { {.25, .25, .25, .25},
-                   {0, 0, 1, 0} };
+    pwm.matrix = { { { {.25, .25, .25, .25} },
+                     { {0, 0, 1, 0        } } } };
     const double number_of_pseudo_sites=.1;
 
     const auto min_max = detail::log_adjusted_likelihood_ratio(pwm, uniform_bg, uniform_bg);
@@ -222,8 +222,8 @@ TEST(ScoreMatrix, log_adjusted_likelihood_ratio)
 TEST(ScoreMatrix, scale)
 {
     detail::PWM pwm { /*number_of_sites =*/ 10 };
-    pwm.matrix = { {0, 0, 0, 0},
-                   {-8, -8, 2, -8} };
+    pwm.matrix = { { { {0, 0, 0, 0   } },
+                     { {-8, -8, 2, -8} } } };
     const detail::ScaledPWM scaled = detail::scale(pwm, std::make_pair(-8.0, 2.0), 30);
 
     const auto& matrix = scaled.matrix;
@@ -249,8 +249,8 @@ TEST(ScoreMatrix, scaled_score)
 {
     const std::vector<std::array<unsigned, AlphabetSize>> matrix =
     //  A   C   G   T
-    { { 24, 24, 24, 0 },
-      { 0,  0,  30, 0 } };
+    { { { { 24, 24, 24, 0 } },
+        { { 0,  0,  30, 0 } } } };
 
     EXPECT_EQ(0, detail::score(matrix, "", 0, 0));
     EXPECT_EQ(0, detail::score(matrix, "AA", 0, 0));
@@ -282,15 +282,15 @@ TEST(ScoreMatrix, probability_distribution)
     // score of 0 is 100% probable for a zero matrix
     const std::vector<std::array<unsigned, AlphabetSize>> zero_matrix =
     //  A   C   G   T
-    { { 0,  0,  0, 0 },
-      { 0,  0,  0, 0 } };
+    {{ {{ 0,  0,  0, 0 }},
+       {{ 0,  0,  0, 0 }} }};
     probabilities = probability_distribution(zero_matrix, uniform_bg);
     ASSERT_EQ(1, probabilities.size());
     EXPECT_FLOAT_EQ(1, probabilities[0]);
 
     const std::vector<std::array<unsigned, AlphabetSize>> length_one_matrix =
     //  A   C   G   T
-    { { 0,  0,  1, 0 } };
+    {{ {{ 0,  0,  1, 0 }} }};
 
     // sequence length 1 with max 1 per base can have values 0 or 1
     // value of 0 with 75% probability
@@ -302,8 +302,8 @@ TEST(ScoreMatrix, probability_distribution)
 
     const std::vector<std::array<unsigned, AlphabetSize>> length_two_matrix =
     //  A   C   G   T
-    { { 0,  0,  1, 1 },
-      { 1,  0,  1, 0 } };
+    {{ {{ 0,  0,  1, 1 }},
+       {{ 1,  0,  1, 0 }} }};
     // Scores for every possible sequence:
     // AA: 1, AC: 0, AG: 1, AT: 0
     // CA: 1, CC: 0, CG: 1, CT: 0
@@ -355,17 +355,17 @@ TEST(ScoreMatrix, pvalues)
 TEST(ScoreMatrix, reverse_complement)
 {
     std::vector<std::array<double, AlphabetSize>> matrix =
-    { {1, 0, 0, 0},
-      {0, 2, 0, 0},
-      {0, 0, 3, 0},
-      {0, 0, 0, 4},
-      {1, 2, 3, 4} };
+    {{ {{1, 0, 0, 0}},
+       {{0, 2, 0, 0}},
+       {{0, 0, 3, 0}},
+       {{0, 0, 0, 4}},
+       {{1, 2, 3, 4}} }};
     const std::vector<std::array<double, AlphabetSize>> reverse_complement =
-    { {4, 3, 2, 1},
-      {4, 0, 0, 0},
-      {0, 3, 0, 0},
-      {0, 0, 2, 0},
-      {0, 0, 0, 1} };
+    {{ {{4, 3, 2, 1}},
+       {{4, 0, 0, 0}},
+       {{0, 3, 0, 0}},
+       {{0, 0, 2, 0}},
+       {{0, 0, 0, 1}} }};
     detail::reverse_complement(matrix);
     EXPECT_EQ(reverse_complement, matrix);
 }
