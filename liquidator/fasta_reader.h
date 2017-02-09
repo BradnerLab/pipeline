@@ -35,7 +35,7 @@ bool FastaReader::next_read(std::string& sequence, std::string& sequence_name)
     }
     sequence_name.erase(0, 1); // remove the '>' from the name
     std::getline(m_fasta_file, sequence);
-    return m_fasta_file;
+    return static_cast<bool>(m_fasta_file);
 }
 
 }
