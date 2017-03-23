@@ -50,6 +50,7 @@ ScoreMatrix::score_sequence(const std::string& sequence, size_t begin, size_t en
 std::vector<ScoreMatrix>
 ScoreMatrix::read(std::istream& meme_style_pwm,
                   const std::array<double, AlphabetSize>& acgt_background,
+                  const std::string& motif_name,
                   bool include_reverse_complement,
                   double pseudo_sites)
 {
@@ -57,6 +58,10 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
     std::vector<ScoreMatrix> score_matrices;
     for (auto& pwm : pwms)
     {
+        if (!motif_name.empty() && pwm.name != motif_name)
+        {
+            continue;
+        }
         score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, include_reverse_complement, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
         if (include_reverse_complement)
         {

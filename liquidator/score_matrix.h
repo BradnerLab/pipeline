@@ -22,6 +22,7 @@ public:
     // Psuedo count logic described at http://meme-suite.org/doc/general-faq.html .
     static std::vector<ScoreMatrix> read(std::istream& meme_style_pwm,
                                          const std::array<double, AlphabetSize>& acgt_background = default_acgt_background,
+                                         const std::string &motif_name = "",
                                          bool include_reverse_complement = true,
                                          double pseudo_sites = 0.1);
 
