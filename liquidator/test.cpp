@@ -370,6 +370,108 @@ TEST(ScoreMatrix, reverse_complement)
     EXPECT_EQ(reverse_complement, matrix);
 }
 
+TEST(ScoreMatrix, read_arguments)
+{
+    const std::string motif = R"(MEME version 4
+
+        ALPHABET= ACGT
+
+        strands: + -
+
+        Background letter frequencies (from file `../HOCOMOCO/bkg.txt'):
+        A 0.29182 C 0.20818 G 0.20818 T 0.29182
+        MOTIF AP2D_f1 AP2D
+
+        letter-probability matrix: alength= 4 w= 14 nsites= 5 E= 0
+          0.200000	  0.400000	  0.200000	  0.200000
+          0.000000	  0.000000	  1.000000	  0.000000
+          0.000000	  0.600000	  0.200000	  0.200000
+          0.000000	  1.000000	  0.000000	  0.000000
+          0.000000	  0.600000	  0.000000	  0.400000
+          0.000000	  0.000000	  1.000000	  0.000000
+          0.400000	  0.200000	  0.400000	  0.000000
+          0.000000	  0.000000	  1.000000	  0.000000
+          0.000000	  0.000000	  1.000000	  0.000000
+          0.000000	  0.800000	  0.200000	  0.000000
+          0.200000	  0.200000	  0.400000	  0.200000
+          0.000000	  0.800000	  0.200000	  0.000000
+          0.000000	  0.200000	  0.800000	  0.000000
+          0.200000	  0.200000	  0.000000	  0.600000
+
+        MOTIF AHR_si AHR
+
+        letter-probability matrix: alength= 4 w= 9 nsites= 154 E= 0
+          0.266234	  0.116883	  0.363636	  0.253247
+          0.071429	  0.077922	  0.227273	  0.623377
+          0.142857	  0.285714	  0.136364	  0.435065
+          0.019481	  0.006494	  0.948052	  0.025974
+          0.006494	  0.974026	  0.006494	  0.012987
+          0.019481	  0.006494	  0.967532	  0.006494
+          0.000000	  0.019481	  0.006494	  0.974026
+          0.000000	  0.000000	  1.000000	  0.000000
+          0.279221	  0.435065	  0.103896	  0.181818
+)";
+    {
+        std::stringstream motif_ss(motif);
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
+
+        // 2 motifs, each with matrix in both the forward and reverse direction
+        ASSERT_EQ(4, matrices.size());
+
+        ASSERT_EQ("AP2D_f1", matrices[0].name());
+        ASSERT_EQ(false, matrices[0].is_reverse_complement());
+        ASSERT_EQ("AP2D_f1", matrices[1].name());
+        ASSERT_EQ(true, matrices[1].is_reverse_complement());
+
+        ASSERT_EQ("AHR_si", matrices[2].name());
+        ASSERT_EQ(false, matrices[2].is_reverse_complement());
+        ASSERT_EQ("AHR_si", matrices[3].name());
+        ASSERT_EQ(true, matrices[3].is_reverse_complement());
+    }
+
+    {
+        std::stringstream motif_ss(motif);
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
+                                                              ScoreMatrix::default_acgt_background,
+                                                              "", // all motifs
+                                                              false); // don't include reverse
+
+        // 2 motifs, each with matrix in just the forward direction
+        ASSERT_EQ(2, matrices.size());
+        ASSERT_EQ("AP2D_f1", matrices[0].name());
+        ASSERT_EQ(false, matrices[0].is_reverse_complement());
+        ASSERT_EQ("AHR_si", matrices[1].name());
+        ASSERT_EQ(false, matrices[1].is_reverse_complement());
+    }
+
+    {
+        std::stringstream motif_ss(motif);
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
+                                                              ScoreMatrix::default_acgt_background,
+                                                              "AHR_si");
+
+        // 1 named motif
+        ASSERT_EQ(2, matrices.size());
+        ASSERT_EQ("AHR_si", matrices[0].name());
+        ASSERT_EQ(false, matrices[0].is_reverse_complement());
+        ASSERT_EQ("AHR_si", matrices[1].name());
+        ASSERT_EQ(true, matrices[1].is_reverse_complement());
+    }
+
+    {
+        std::stringstream motif_ss(motif);
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
+                                                              ScoreMatrix::default_acgt_background,
+                                                              "AHR_si",
+                                                              false); // don't include reverse
+
+        // 1 named motif, only forward
+        ASSERT_EQ(1, matrices.size());
+        ASSERT_EQ("AHR_si", matrices[0].name());
+        ASSERT_EQ(false, matrices[0].is_reverse_complement());
+    }
+}
+
 int main(int argc, char **argv)
 {
   ::testing::InitGoogleTest(&argc, argv);

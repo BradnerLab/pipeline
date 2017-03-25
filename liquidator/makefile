@@ -175,7 +175,7 @@ gtest:
 	(cd gtest/build; cmake ..; make)
 
 cpp_test: gtest test.cpp score_matrix.o parsing_detail.o
-	$(CC) $(CPPFLAGS) -o cpp_test parsing_detail.o -I gtest/include test.cpp gtest/build/libgtest.a -pthread 
+	$(CC) $(CPPFLAGS) -o cpp_test parsing_detail.o score_matrix.o -I gtest/include test.cpp gtest/build/libgtest.a -pthread
 
 test: cpp_test all
 	./cpp_test
