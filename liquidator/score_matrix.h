@@ -80,6 +80,13 @@ public:
         }
     }
 
+    Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
+
+    Score score_sequence(const std::string& sequence) const
+    {
+        return score_sequence(sequence, 0, sequence.size());
+    }
+
     std::string name() { return m_name; }
     size_t length() { return m_matrix.size(); }
 
@@ -131,8 +138,6 @@ private:
     double m_scale;
     double m_min_before_scaling;
     std::vector<double> m_pvalues;
-
-    Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const ScoreMatrix::Score& score)

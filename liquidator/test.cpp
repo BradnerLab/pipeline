@@ -2,6 +2,7 @@
 
 #include "score_matrix.h"
 #include "detail/score_matrix_detail.h"
+#include "fimo_style_printer.h"
 
 using namespace liquidator;
 
@@ -410,7 +411,7 @@ TEST(ScoreMatrix, read_arguments)
           0.000000	  0.019481	  0.006494	  0.974026
           0.000000	  0.000000	  1.000000	  0.000000
           0.279221	  0.435065	  0.103896	  0.181818
-)";
+    )";
     {
         std::stringstream motif_ss(motif);
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
@@ -470,6 +471,81 @@ TEST(ScoreMatrix, read_arguments)
         ASSERT_EQ("AHR_si", matrices[0].name());
         ASSERT_EQ(false, matrices[0].is_reverse_complement());
     }
+}
+
+std::string fimo_style_line(const ScoreMatrix& matrix, const std::string& sequence)
+{
+    std::stringstream ss;
+    FimoStylePrinter printer(ss, false);
+    matrix.score(sequence, printer);
+    return ss.str();
+}
+
+TEST(ScoreMatrix, score_misc_fimo_style)
+{
+    const std::string motif = R"(MEME version 4
+    ALPHABET= ACGT
+
+    strands: + -
+
+    Background letter frequencies (from file `../HOCOMOCO/bkg.txt'):
+    A 0.29182 C 0.20818 G 0.20818 T 0.29182
+    MOTIF AP2D_f1 AP2D
+
+    letter-probability matrix: alength= 4 w= 14 nsites= 5 E= 0
+      0.200000	  0.400000	  0.200000	  0.200000
+      0.000000	  0.000000	  1.000000	  0.000000
+      0.000000	  0.600000	  0.200000	  0.200000
+      0.000000	  1.000000	  0.000000	  0.000000
+      0.000000	  0.600000	  0.000000	  0.400000
+      0.000000	  0.000000	  1.000000	  0.000000
+      0.400000	  0.200000	  0.400000	  0.000000
+      0.000000	  0.000000	  1.000000	  0.000000
+      0.000000	  0.000000	  1.000000	  0.000000
+      0.000000	  0.800000	  0.200000	  0.000000
+      0.200000	  0.200000	  0.400000	  0.200000
+      0.000000	  0.800000	  0.200000	  0.000000
+      0.000000	  0.200000	  0.800000	  0.000000
+      0.200000	  0.200000	  0.000000	  0.600000
+
+    MOTIF AIRE_f2 AIRE
+
+    letter-probability matrix: alength= 4 w= 18 nsites= 41 E= 0
+    0.390244	  0.268293	  0.121951	  0.219512
+    0.195122	  0.195122	  0.146341	  0.463415
+    0.146341	  0.146341	  0.195122	  0.512195
+    0.048780	  0.000000	  0.878049	  0.073171
+    0.000000	  0.000000	  0.804878	  0.195122
+    0.317073	  0.048780	  0.024390	  0.609756
+    0.390244	  0.097561	  0.024390	  0.487805
+    0.365854	  0.146341	  0.146341	  0.341463
+    0.341463	  0.073171	  0.146341	  0.439024
+    0.512195	  0.097561	  0.146341	  0.243902
+    0.390244	  0.048780	  0.073171	  0.487805
+    0.219512	  0.146341	  0.073171	  0.560976
+    0.000000	  0.024390	  0.878049	  0.097561
+    0.000000	  0.000000	  0.975610	  0.024390
+    0.219512	  0.097561	  0.243902	  0.439024
+    0.073171	  0.195122	  0.195122	  0.536585
+    0.439024	  0.024390	  0.170732	  0.365854
+    0.414634	  0.268293	  0.097561	  0.219512
+
+    )";
+    std::stringstream motif_ss(motif);
+    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
+    ASSERT_EQ(4, matrices.size());
+    auto& AP2D_f1 = matrices[0];
+    ASSERT_EQ("AP2D_f1", AP2D_f1.name());
+    ASSERT_EQ(false, AP2D_f1.is_reverse_complement());
+    auto& AIRE_f2 = matrices[2];
+    ASSERT_EQ("AIRE_f2", AIRE_f2.name());
+    ASSERT_EQ(false, AIRE_f2.is_reverse_complement());
+
+    ASSERT_EQ("AP2D_f1\t\t1\t14\t+\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
+              fimo_style_line(AP2D_f1, "GGCCTGCGGGGGGT"));
+
+    ASSERT_EQ("AIRE_f2\t\t1\t18\t+\t15.0111\t7.74e-07\t\tCTTGGATTTATTGGACTA\n",
+              fimo_style_line(AIRE_f2, "CTTGGATTTATTGGACTA"));
 }
 
 int main(int argc, char **argv)

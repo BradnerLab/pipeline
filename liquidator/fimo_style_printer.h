@@ -11,13 +11,16 @@ namespace liquidator
 class FimoStylePrinter
 {
 public:
-    FimoStylePrinter(std::ostream& out, double threshold = 0.0001)
+    FimoStylePrinter(std::ostream& out, bool include_header = true, double threshold = 0.0001)
     :
         sequence_name(0),
         m_out(out),
         m_threshold(threshold)
     {
-        m_out << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
+        if (include_header)
+        {
+            m_out << "#pattern name\tsequence name\tstart\tstop\tstrand\tscore\tp-value\tq-value\tmatched sequence" << std::endl;
+        }
     }
 
     void operator()(const std::string& motif_name,
