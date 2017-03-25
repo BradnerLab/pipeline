@@ -6,29 +6,8 @@
 
 namespace liquidator
 {
+
 constexpr std::array<double, 4> ScoreMatrix::default_acgt_background;
-
-std::array<double, AlphabetSize> ensure_no_zeros_in_background(const std::array<double, AlphabetSize>& original_background)
-{
-    // I found this behavior in meme 4.11.3.  Comments suggest this is new behavior from Feb 2017.
-    // Seems like bad logic, but ensuring bug for bug compatability to ease testing.
-    const double small_ammount_to_add = 0.0000005;
-    std::array<double, AlphabetSize> bg_no_zeros = original_background;
-    double length = 0;
-    for (double& bg : bg_no_zeros)
-    {
-        bg += small_ammount_to_add;
-        length += bg;
-    }
-
-    // normalize
-    for (double& bg : bg_no_zeros)
-    {
-        bg = bg/length;
-    }
-
-    return bg_no_zeros;
-}
 
 ScoreMatrix::ScoreMatrix(const std::string& name,
                          const std::array<double, AlphabetSize>& original_background,
@@ -75,8 +54,6 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
                   bool include_reverse_complement,
                   double pseudo_sites)
 {
-    const std::array<double, AlphabetSize>& acgt_background_with_no_zeros = ensure_no_zeros_in_background(acgt_background);
-
     std::vector<detail::PWM> pwms = detail::read_pwm(meme_style_pwm);
     std::vector<ScoreMatrix> score_matrices;
     for (auto& pwm : pwms)
@@ -85,11 +62,11 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
         {
             continue;
         }
-        score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background_with_no_zeros, include_reverse_complement, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
+        score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, include_reverse_complement, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
         if (include_reverse_complement)
         {
             detail::reverse_complement(pwm.matrix);
-            score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background_with_no_zeros, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
+            score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
         }
     }
     return score_matrices;
