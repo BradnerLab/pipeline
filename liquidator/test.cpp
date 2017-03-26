@@ -534,19 +534,20 @@ TEST(ScoreMatrix, score_misc_fimo_style)
     std::stringstream motif_ss(motif);
     std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
     ASSERT_EQ(4, matrices.size());
-    auto& AP2D_f1 = matrices[0];
+    auto& AP2D_f1 = matrices[1];
     ASSERT_EQ("AP2D_f1", AP2D_f1.name());
-    ASSERT_EQ(false, AP2D_f1.is_reverse_complement());
+    ASSERT_EQ(true, AP2D_f1.is_reverse_complement());
     auto& AIRE_f2 = matrices[2];
     ASSERT_EQ("AIRE_f2", AIRE_f2.name());
     ASSERT_EQ(false, AIRE_f2.is_reverse_complement());
 
-    ASSERT_EQ("AP2D_f1\t\t1\t14\t+\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
-              fimo_style_line(AP2D_f1, "GGCCTGCGGGGGGT"));
-    ASSERT_EQ("AP2D_f1\t\t1\t14\t+\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
-              fimo_style_line(AP2D_f1, "GGTGTAACTGGAC")); // CCCCCGCAGGCCCAAGGGAAGGCTGTN
-    //const auto score = AP2D_f1.score_sequence("GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN", 1, 14);
+    // todo: either add unit tests for score_sequence or make them private
+    //const auto score = AP2D_f1.score_sequence("GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN", 12, 25);
     //std::cout << score.score() << "\t" << score.pvalue() << std::endl;
+
+    // currently failing returning AP2D_f1\t\t12\t25\t-\t15.6341\t3.62e-06\t\tGGCCTGCGGGGGGT\n
+    ASSERT_EQ("AP2D_f1\t\t12\t25\t-\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
+              fimo_style_line(AP2D_f1, "GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN"));
 
     // In meme version 4.11.3, following pvalue changes from 7.75e-07 to 7.74e-07.
     // More recent meme versions behavior changes seem somewhat arbitrary,
