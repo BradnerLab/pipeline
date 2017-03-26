@@ -28,7 +28,7 @@ inline std::pair<double, double>
 log_adjusted_likelihood_ratio(PWM& pwm, 
                               const std::array<double, AlphabetSize>& original_background,
                               const std::array<double, AlphabetSize>& adjusted_background,
-                              const double number_of_pseudo_sites=.1)
+                              const double number_of_pseudo_sites)
 {
     double min = std::numeric_limits<double>::infinity();
     double max = -std::numeric_limits<double>::infinity();

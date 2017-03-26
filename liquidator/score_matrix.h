@@ -19,6 +19,7 @@ class ScoreMatrix
 {
 public:
     static constexpr std::array<double, AlphabetSize> default_acgt_background = {{0.281774, 0.222020, 0.228876, 0.267330}};
+    static constexpr double DEFAULT_PSEUDO_SITES = 0.1;
 
     // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
     // Psuedo count logic described at http://meme-suite.org/doc/general-faq.html .
@@ -28,7 +29,7 @@ public:
                                          boost::optional<std::array<double, AlphabetSize>>& acgt_background,
                                          const std::string& motif_name = "",
                                          bool include_reverse_complement = true,
-                                         double pseudo_sites = 0.1);
+                                         double pseudo_sites = DEFAULT_PSEUDO_SITES);
 
     // Background format described at http://meme.ebi.edu.au/meme/doc/bfile-format.html .
     // Note that only order 0 values are used.
@@ -40,7 +41,7 @@ public:
                 const std::vector<std::array<double, AlphabetSize>>& pwm,
                 unsigned number_of_sites,
                 bool is_reverse_complement = false,
-                double pseudo_sites = 0.1);
+                double pseudo_sites = DEFAULT_PSEUDO_SITES);
  
     // Scores reference a sequence string so are intended to be used only
     // in the scope of a ScoreConsumer operator.
