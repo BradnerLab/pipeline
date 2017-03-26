@@ -49,16 +49,12 @@ ScoreMatrix::score_sequence(const std::string& sequence, size_t begin, size_t en
 
 std::vector<ScoreMatrix>
 ScoreMatrix::read(std::istream& meme_style_pwm,
-                  boost::optional<std::array<double, AlphabetSize>>& acgt_background,
+                  const std::array<double, AlphabetSize>& acgt_background,
                   const std::string& motif_name,
                   bool include_reverse_complement,
                   double pseudo_sites)
 {
-    std::vector<detail::PWM> pwms = detail::read_pwm(meme_style_pwm, acgt_background);
-    if (!acgt_background)
-    {
-        acgt_background = default_acgt_background;
-    }
+    std::vector<detail::PWM> pwms = detail::read_pwm(meme_style_pwm);
     std::vector<ScoreMatrix> score_matrices;
     for (auto& pwm : pwms)
     {
@@ -66,11 +62,11 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
         {
             continue;
         }
-        score_matrices.push_back(ScoreMatrix(pwm.name, *acgt_background, include_reverse_complement, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
+        score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, include_reverse_complement, pwm.matrix, pwm.number_of_sites, false, pseudo_sites));
         if (include_reverse_complement)
         {
             detail::reverse_complement(pwm.matrix);
-            score_matrices.push_back(ScoreMatrix(pwm.name, *acgt_background, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
+            score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
         }
     }
     return score_matrices;

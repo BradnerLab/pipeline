@@ -12,7 +12,7 @@
 namespace liquidator { namespace detail {
 
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
-std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double, AlphabetSize>>& acgt_background)
+std::vector<PWM> read_pwm(std::istream& input)
 {
     // todo: use spirit::istream_iterator instead of copying to a string
     std::stringstream input_buffer;
@@ -31,9 +31,6 @@ std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double
 
     std::vector<std::string> motif_names;
 
-    std::vector<char> background_letters;
-    std::vector<double> background_frequencies;
-
     // todo: learn how to use spirit properly so we don't need this current and vector non-sense
     std::vector<unsigned> number_of_sites_vector;
     const unsigned default_number_of_sites = 20; // match meme's default of 20
@@ -41,7 +38,7 @@ std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double
 
     std::vector<std::vector<std::vector<double>>> matrices;
     std::vector<std::vector<double>> current_matrix;
-    std::vector<double> current_line;    
+    std::vector<double> current_line;
 
     bool success = qi::parse(begin, end,
           *(qi::lit("MEME") >> *(qi::print - qi::eol) >> *ascii::space)
@@ -59,21 +56,8 @@ std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double
           >> -(qi::lit("Background letter frequencies")
                >> *(qi::print - qi::eol) // Background letter frequencies may be followed by "(from uniform background):"
                >> qi::eol
-               >> +(*ascii::blank
-                     >> qi::char_("actgACTG")[ phoenix::bind([&] (char& value)
-                                               {
-                                                   background_letters.push_back(value);
-                                               },
-                                               qi::_1)
-                                 ]
-                     >> +ascii::blank
-                     >> qi::double_[ phoenix::bind([&] (double& value)
-                                     {
-                                        background_frequencies.push_back(value);
-                                     },
-                                     qi::_1)
-                                   ]
-                   )
+               >> *(qi::print - qi::eol)
+               >> *ascii::space
               )
           >> *ascii::space
 
@@ -153,26 +137,6 @@ std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double
     if (strands != "+ -")
     {
         throw std::runtime_error("only + - motif pwm strands supported, but found " + strands);
-    }
-
-    if (!acgt_background && (!background_letters.empty() || !background_frequencies.empty()))
-    {
-        if (background_letters.size() != 4 || background_frequencies.size() != 4)
-        {
-            std::stringstream msg;
-            msg << "Any background needs 4 chacters and 4 frequencies, but found "
-                << background_letters.size() << " letters and "
-                << background_frequencies.size() << " frequencies";
-            throw std::runtime_error(msg.str());
-        }
-        if (background_letters != std::vector<char>({'A', 'C', 'G', 'T'}))
-        {
-            throw std::runtime_error("Expected background letters to be ACGT -- please re-order the meme file background or file a bug report");
-        }
-        acgt_background = std::array<double, AlphabetSize>({background_frequencies[0],
-                                                            background_frequencies[1],
-                                                            background_frequencies[2],
-                                                            background_frequencies[3]});
     }
 
     if (matrices.size() != motif_names.size()

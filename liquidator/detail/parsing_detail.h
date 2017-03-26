@@ -3,16 +3,13 @@
 
 #include "pwm_detail.h"
 
-#include <boost/optional.hpp>
-
 #include <istream>
 #include <vector>
 
 namespace liquidator { namespace detail {
 
 // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
-// acgt_background is not overwritten if already set.
-std::vector<PWM> read_pwm(std::istream& input, boost::optional<std::array<double, AlphabetSize>>& acgt_background);
+std::vector<PWM> read_pwm(std::istream& input);
 
 }}
 
