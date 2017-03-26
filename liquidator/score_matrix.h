@@ -3,6 +3,8 @@
 
 #include "liquidator_util.h"
 
+#include <boost/optional.hpp>
+
 #include <array>
 #include <cctype>
 #include <iostream>
@@ -20,8 +22,10 @@ public:
 
     // Input format described at http://meme.ebi.edu.au/meme/doc/meme-format.html .
     // Psuedo count logic described at http://meme-suite.org/doc/general-faq.html .
+    // ScoreMatrix will use provided acgt_background if set, then falls back on meme file background, then falls back on default_acgt_background.
+    // If not already set, acgt_background is set to the used background.
     static std::vector<ScoreMatrix> read(std::istream& meme_style_pwm,
-                                         const std::array<double, AlphabetSize>& acgt_background = default_acgt_background,
+                                         boost::optional<std::array<double, AlphabetSize>>& acgt_background,
                                          const std::string& motif_name = "",
                                          bool include_reverse_complement = true,
                                          double pseudo_sites = 0.1);

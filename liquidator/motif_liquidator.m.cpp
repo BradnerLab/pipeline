@@ -5,6 +5,7 @@
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/optional.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -25,7 +26,7 @@ int process_command_line(int argc,
                          std::string& input_file_path,
                          InputType& input_type,
                          std::ifstream& motif_file,
-                         std::array<double, AlphabetSize>& background_array,
+                         boost::optional<std::array<double, AlphabetSize>>& background_array,
                          std::string& region_file_path,
                          std::string& ouput_file_path,
                          std::string& motif_name,
@@ -46,12 +47,18 @@ int process_command_line(int argc,
                                   + "\n\noptional arguments");
     options.add_options()
         ("motif-name,m", po::value(&motif_name), "Motif name (default is all motifs in the motif file)")
-        ("background,b", po::value(&background_file_path), "MEME style background frequency file.  Note that only 0-order background (single nucleotide) frequenceis are currently used (just like FIMO).  Backgrounds specified in the motif file are never used (just like default FIMO behavior).")
+        ("background,b", po::value(&background_file_path), "(MEME style background frequency file.  Note that only 0-order background "
+                                                           "(single nucleotide) frequenceis are currently used (just like FIMO).  If "
+                                                           "unspecified, then the motif file's background is used.  If neither are "
+                                                           "specified, then a default background is used.")
         ("help,h", "Display this help and exit.")
-        ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a (sorted/indexed) .bam for bam input.")
+        ("output,o", po::value(&ouput_file_path), "File to write matches to. Output is fimo style for fasta input, and output is a "
+                                                  "(sorted/indexed) .bam for bam input.")
         ("region,r", po::value(&region_file_path), ".bed or .gff region file for filtering bam input.")
         ("unmapped-only,u", "Only scores unmapped reads from bam.")
-        ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify '-p fimo' for fimo style output or '-p mapped-fimo' for the sequence name to include the chromosome and the for start/stop values to be the mapped positions.")
+        ("print,p", po::value(&print_argument), "For bams, additionally prints detailed fimo style output to stdout.  Specify '-p fimo' "
+                                                "for fimo style output or '-p mapped-fimo' for the sequence name to include the chromosome "
+                                                "and the for start/stop values to be the mapped positions.")
     ;
 
     po::options_description hidden;
@@ -120,13 +127,13 @@ int process_command_line(int argc,
 
         if (vm.count("background"))
         {
-            std::ifstream background(background_file_path);
-            if (!background)
+            std::ifstream background_file(background_file_path);
+            if (!background_file)
             {
                 std::cerr << "failed to open background file " << background_file_path << std::endl;
                 return 1;
             }
-            background_array = ScoreMatrix::read_background(background);
+            background_array = ScoreMatrix::read_background(background_file);
         }
 
         if (vm.count("print"))
@@ -170,7 +177,7 @@ int main(int argc, char** argv)
         InputType input_type = invalid_input_type;
         BamScorer::PrintStyle bam_print_style = BamScorer::None;
         bool unmapped_only = false;
-        std::array<double, AlphabetSize> background = ScoreMatrix::default_acgt_background;
+        boost::optional<std::array<double, AlphabetSize>> background;
 
         const int rc = process_command_line(argc, argv, input_file_path, input_type, motif_file, background, region_file_path, ouput_file_path, motif_name, bam_print_style, unmapped_only);
         if (rc) return rc;

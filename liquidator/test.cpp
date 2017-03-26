@@ -34,8 +34,16 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
   0.000000        1.000000        0.000000        0.000000)";
 
     std::istringstream ss(input_str);
-    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss, opt_acgt_background);
     ASSERT_EQ(1, pwms.size());
+
+    ASSERT_TRUE(opt_acgt_background);
+    const auto& acgt_background = *opt_acgt_background;
+    ASSERT_EQ(0.29, acgt_background[0]);
+    ASSERT_EQ(0.21, acgt_background[1]);
+    ASSERT_EQ(0.21, acgt_background[2]);
+    ASSERT_EQ(0.29, acgt_background[3]);
     
     const auto& name = pwms[0].name;
     EXPECT_EQ("JASPAR2014.MA0107.1", name);
@@ -50,6 +58,76 @@ letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
     EXPECT_FLOAT_EQ(0.388889, matrix[3][2]);
     EXPECT_FLOAT_EQ(1, matrix[6][3]);
     EXPECT_FLOAT_EQ(1, matrix[9][1]);
+}
+
+TEST(ScoreMatrix, read_pwm_matrix_no_background)
+{
+    const std::string input_str = R"(MEME version 4
+
+ALPHABET= ACGT
+
+strands: + -
+
+MOTIF JASPAR2014.MA0107.1 RELA
+
+letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
+  0.000000        0.222222        0.611111        0.166667
+  0.000000        0.000000        0.944444        0.055556
+  0.000000        0.000000        1.000000        0.000000
+  0.611111        0.000000        0.388889        0.000000
+  0.555556        0.166667        0.222222        0.055556
+  0.111111        0.000000        0.000000        0.888889
+  0.000000        0.000000        0.000000        1.000000
+  0.000000        0.111111        0.000000        0.888889
+  0.000000        1.000000        0.000000        0.000000
+  0.000000        1.000000        0.000000        0.000000)";
+
+    std::istringstream ss(input_str);
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss, opt_acgt_background);
+    ASSERT_EQ(1, pwms.size());
+
+    ASSERT_FALSE(opt_acgt_background);
+}
+
+TEST(ScoreMatrix, read_pwm_matrix_ignore_background)
+{
+    const std::string input_str = R"(MEME version 4
+
+ALPHABET= ACGT
+
+strands: + -
+
+Background letter frequencies
+A 0.29 C 0.21 G 0.21 T 0.29
+
+MOTIF JASPAR2014.MA0107.1 RELA
+
+letter-probability matrix: alength= 4 w= 10 nsites= 18 E= 0
+  0.000000        0.222222        0.611111        0.166667
+  0.000000        0.000000        0.944444        0.055556
+  0.000000        0.000000        1.000000        0.000000
+  0.611111        0.000000        0.388889        0.000000
+  0.555556        0.166667        0.222222        0.055556
+  0.111111        0.000000        0.000000        0.888889
+  0.000000        0.000000        0.000000        1.000000
+  0.000000        0.111111        0.000000        0.888889
+  0.000000        1.000000        0.000000        0.000000
+  0.000000        1.000000        0.000000        0.000000)";
+
+    std::istringstream ss(input_str);
+
+    // if background already specified, shouldn't be overwritten
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background({0.1, 0.2, 0.3, 0.4});
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss, opt_acgt_background);
+    ASSERT_EQ(1, pwms.size());
+
+    ASSERT_TRUE(opt_acgt_background);
+    const auto& acgt_background = *opt_acgt_background;
+    ASSERT_EQ(0.1, acgt_background[0]);
+    ASSERT_EQ(0.2, acgt_background[1]);
+    ASSERT_EQ(0.3, acgt_background[2]);
+    ASSERT_EQ(0.4, acgt_background[3]);
 }
 
 TEST(ScoreMatrix, read_multiple_pwm)
@@ -108,7 +186,8 @@ TEST(ScoreMatrix, read_multiple_pwm)
 )";
 
     std::istringstream ss(input_str);
-    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss, opt_acgt_background);
     ASSERT_EQ(2, pwms.size());
 
     EXPECT_EQ("crp", pwms[0].name);
@@ -187,7 +266,8 @@ TEST(ScoreMatrix, read_pwm_misc)
 )";
 
     std::istringstream ss(input_str);
-    std::vector<detail::PWM> pwms = detail::read_pwm(ss);
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+    std::vector<detail::PWM> pwms = detail::read_pwm(ss, opt_acgt_background);
     ASSERT_EQ(2, pwms.size());
 }
 
@@ -414,7 +494,8 @@ TEST(ScoreMatrix, read_arguments)
     )";
     {
         std::stringstream motif_ss(motif);
-        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
+        boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+        std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss, opt_acgt_background);
 
         // 2 motifs, each with matrix in both the forward and reverse direction
         ASSERT_EQ(4, matrices.size());
@@ -432,8 +513,9 @@ TEST(ScoreMatrix, read_arguments)
 
     {
         std::stringstream motif_ss(motif);
+        boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
-                                                              ScoreMatrix::default_acgt_background,
+                                                              opt_acgt_background,
                                                               "", // all motifs
                                                               false); // don't include reverse
 
@@ -447,8 +529,9 @@ TEST(ScoreMatrix, read_arguments)
 
     {
         std::stringstream motif_ss(motif);
+        boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
-                                                              ScoreMatrix::default_acgt_background,
+                                                              opt_acgt_background,
                                                               "AHR_si");
 
         // 1 named motif
@@ -461,8 +544,9 @@ TEST(ScoreMatrix, read_arguments)
 
     {
         std::stringstream motif_ss(motif);
+        boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
         std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss,
-                                                              ScoreMatrix::default_acgt_background,
+                                                              opt_acgt_background,
                                                               "AHR_si",
                                                               false); // don't include reverse
 
@@ -532,7 +616,8 @@ TEST(ScoreMatrix, score_misc_fimo_style)
 
     )";
     std::stringstream motif_ss(motif);
-    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss);
+    boost::optional<std::array<double, AlphabetSize>> opt_acgt_background;
+    std::vector<ScoreMatrix> matrices = ScoreMatrix::read(motif_ss, opt_acgt_background);
     ASSERT_EQ(4, matrices.size());
     auto& AP2D_f1 = matrices[0];
     ASSERT_EQ("AP2D_f1", AP2D_f1.name());
@@ -543,6 +628,11 @@ TEST(ScoreMatrix, score_misc_fimo_style)
 
     ASSERT_EQ("AP2D_f1\t\t1\t14\t+\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
               fimo_style_line(AP2D_f1, "GGCCTGCGGGGGGT"));
+
+    ASSERT_EQ("AP2D_f1\t\t1\t14\t+\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
+              fimo_style_line(AP2D_f1, "GGTGTAACTGGAC")); // CCCCCGCAGGCCCAAGGGAAGGCTGTN
+    //const auto score = AP2D_f1.score_sequence("GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN", 1, 14);
+    //std::cout << score.score() << "\t" << score.pvalue() << std::endl;
 
     // In meme version 4.11.3, following pvalue changes from 7.75e-07 to 7.74e-07.
     // More recent meme versions behavior changes seem somewhat arbitrary,
