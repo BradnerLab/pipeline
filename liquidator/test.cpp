@@ -541,10 +541,6 @@ TEST(ScoreMatrix, score_misc_fimo_style)
     ASSERT_EQ("AIRE_f2", AIRE_f2.name());
     ASSERT_EQ(false, AIRE_f2.is_reverse_complement());
 
-    // todo: either add unit tests for score_sequence or make them private
-    //const auto score = AP2D_f1.score_sequence("GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN", 12, 25);
-    //std::cout << score.score() << "\t" << score.pvalue() << std::endl;
-
     // Expected value is from meme version 4.11.3
     ASSERT_EQ("AP2D_f1\t\t12\t25\t-\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
               fimo_style_line(AP2D_f1, "GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN"));

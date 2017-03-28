@@ -81,13 +81,6 @@ public:
         }
     }
 
-    Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
-
-    Score score_sequence(const std::string& sequence) const
-    {
-        return score_sequence(sequence, 0, sequence.size());
-    }
-
     std::string name() { return m_name; }
     size_t length() { return m_matrix.size(); }
 
@@ -133,6 +126,8 @@ public:
     }
 
 private:
+    Score score_sequence(const std::string& sequence, size_t begin, size_t end) const;
+
     const std::string m_name;
     const bool m_is_reverse_complement;
     std::vector<std::array<unsigned, AlphabetSize>> m_matrix;
