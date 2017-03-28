@@ -25,7 +25,7 @@
 
 # For dependencies, please see https://github.com/BradnerLab/pipeline/wiki/bamliquidator
 
-VERSION := $(shell grep "version =" bamliquidatorbatch/common_util.py | cut -d' ' -f 3 | sed "s/'//g")
+VERSION := $(shell grep "version =" bamliquidatorbatch/common_util.py | cut -d' ' -f 3 | sed "s/'//g")-$(shell git rev-parse --short HEAD)
 export VERSION
 
 # The directory to install in:
