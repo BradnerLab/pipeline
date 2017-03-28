@@ -546,13 +546,12 @@ TEST(ScoreMatrix, score_misc_fimo_style)
     //std::cout << score.score() << "\t" << score.pvalue() << std::endl;
 
     // currently failing returning AP2D_f1\t\t12\t25\t-\t15.6341\t3.62e-06\t\tGGCCTGCGGGGGGT\n
+    // Expected value is meme version 4.11.3
     ASSERT_EQ("AP2D_f1\t\t12\t25\t-\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
               fimo_style_line(AP2D_f1, "GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN"));
 
     // In meme version 4.11.3, following pvalue changes from 7.75e-07 to 7.74e-07.
-    // More recent meme versions behavior changes seem somewhat arbitrary,
-    // so sticking with meme version 4.10.1 as expected values for now.
-    ASSERT_EQ("AIRE_f2\t\t1\t18\t+\t15.0111\t7.75e-07\t\tCTTGGATTTATTGGACTA\n",
+    ASSERT_EQ("AIRE_f2\t\t1\t18\t+\t15.0111\t7.74e-07\t\tCTTGGATTTATTGGACTA\n",
               fimo_style_line(AIRE_f2, "CTTGGATTTATTGGACTA"));
 }
 
