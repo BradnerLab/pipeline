@@ -545,8 +545,7 @@ TEST(ScoreMatrix, score_misc_fimo_style)
     //const auto score = AP2D_f1.score_sequence("GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN", 12, 25);
     //std::cout << score.score() << "\t" << score.pvalue() << std::endl;
 
-    // currently failing returning AP2D_f1\t\t12\t25\t-\t15.6341\t3.62e-06\t\tGGCCTGCGGGGGGT\n
-    // Expected value is meme version 4.11.3
+    // Expected value is from meme version 4.11.3
     ASSERT_EQ("AP2D_f1\t\t12\t25\t-\t15.626\t3.66e-06\t\tGGCCTGCGGGGGGT\n",
               fimo_style_line(AP2D_f1, "GGTGTAACTGGACCCCCCGCAGGCCCAAGGGAAGGCTGTN"));
 

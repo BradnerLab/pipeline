@@ -148,8 +148,7 @@ std::vector<PWM> read_pwm(std::istream& input)
     std::vector<PWM> pwms;
     for (size_t i=0; i < matrices.size(); ++i)
     {
-        const auto& matrix = matrices
-                [i];
+        const auto& matrix = matrices[i];
 
         PWM pwm { number_of_sites_vector[i], motif_names[i] };
         for (const auto& row: matrix)

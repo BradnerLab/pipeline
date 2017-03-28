@@ -75,7 +75,7 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
                   bool include_reverse_complement,
                   double pseudo_sites)
 {
-    const std::array<double, AlphabetSize>& acgt_background_with_no_zeros = ensure_no_zeros_in_background(acgt_background);
+    const std::array<double, AlphabetSize> acgt_background_with_no_zeros = ensure_no_zeros_in_background(acgt_background);
 
     std::vector<detail::PWM> pwms = detail::read_pwm(meme_style_pwm);
     std::vector<ScoreMatrix> score_matrices;
@@ -89,7 +89,9 @@ ScoreMatrix::read(std::istream& meme_style_pwm,
         if (include_reverse_complement)
         {
             detail::reverse_complement(pwm.matrix);
-            score_matrices.push_back(ScoreMatrix(pwm.name, acgt_background_with_no_zeros, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
+            auto reversed_acgt_background_with_no_zeros = acgt_background_with_no_zeros;
+            std::reverse(reversed_acgt_background_with_no_zeros.begin(), reversed_acgt_background_with_no_zeros.end());
+            score_matrices.push_back(ScoreMatrix(pwm.name, reversed_acgt_background_with_no_zeros, true, pwm.matrix, pwm.number_of_sites, true, pseudo_sites));
         }
     }
     return score_matrices;
