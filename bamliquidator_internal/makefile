@@ -110,12 +110,14 @@ bamliquidator_util.o: bamliquidator_util.cpp bamliquidator_util.h
 EXECUTABLES = bamliquidator bamliquidator_bins bamliquidator_regions
 
 archive:
-	mkdir bamliquidator-$(VERSION)
+	mkdir -p bamliquidator-$(VERSION)/bamliquidatorbatch
 	cp *.h *.cpp makefile bamliquidator-$(VERSION)
+	cp bamliquidatorbatch/bamliquidator_batch.py bamliquidator-$(VERSION)/bamliquidatorbatch
 	tar -czf bamliquidator-$(VERSION).tar.gz bamliquidator-$(VERSION)
 	rm -rf bamliquidator-$(VERSION)
 	mkdir bamliquidatorbatch_$(VERSION)
 	cp -r bamliquidatorbatch bamliquidatorbatch_$(VERSION)
+	rm bamliquidatorbatch_$(VERSION)/bamliquidatorbatch/test.py
 	echo "$$SETUP_PY" > bamliquidatorbatch_$(VERSION)/setup.py
 	tar -czf bamliquidatorbatch_$(VERSION).orig.tar.gz bamliquidatorbatch_$(VERSION)
 
