@@ -27,30 +27,25 @@ py2dsc -m "$UPLOADER <$UPLOADER_EMAIL>" bamliquidatorbatch_$VERSION.orig.tar.gz
 cp python-bamliquidatorbatch.preinst deb_dist/bamliquidatorbatch-$VERSION/debian/
 cp python-bamliquidatorbatch.control deb_dist/bamliquidatorbatch-$VERSION/debian/control
 
-cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-precise
-pushd deb_dist/bamliquidatorbatch-$VERSION-precise
-printf "$CHANGELOG" bamliquidatorbatch precise precise > debian/changelog
-debuild $debuild_args
-popd
-
-cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-trusty
-pushd deb_dist/bamliquidatorbatch-$VERSION-trusty
-printf "$CHANGELOG" bamliquidatorbatch trusty trusty > debian/changelog
-debuild $debuild_args
-popd
+for ubuntu_version in "precise" "trusty" "xenial"
+do
+  cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-$ubuntu_version
+  pushd deb_dist/bamliquidatorbatch-$VERSION-$ubuntu_version
+  printf "$CHANGELOG" bamliquidatorbatch $ubuntu_version $ubuntu_version > debian/changelog
+  debuild $debuild_args
+  popd
+done
 
 mv bamliquidator-$VERSION.tar.gz bamliquidator_$VERSION.orig.tar.gz 
 tar xf bamliquidator_$VERSION.orig.tar.gz
+
 cp -R debian bamliquidator-$VERSION
-cp -R bamliquidator-$VERSION bamliquidator-$VERSION-precise
-mv bamliquidator-$VERSION bamliquidator-$VERSION-trusty
-printf "$CHANGELOG" bamliquidator precise precise > bamliquidator-$VERSION-precise/debian/changelog 
-printf "$CHANGELOG" bamliquidator trusty trusty > bamliquidator-$VERSION-trusty/debian/changelog 
-
-pushd bamliquidator-$VERSION-precise/debian
-debuild $debuild_args
-popd
-
-pushd bamliquidator-$VERSION-trusty/debian
-debuild $debuild_args
-popd
+for ubuntu_version in "precise" "trusty" "xenial"
+do
+  cp -R bamliquidator-$VERSION bamliquidator-$VERSION-$ubuntu_version
+  printf "$CHANGELOG" bamliquidator $ubuntu_version $ubuntu_version > bamliquidator-$VERSION-$ubuntu_version/debian/changelog
+  pushd bamliquidator-$VERSION-$ubuntu_version/debian
+  debuild $debuild_args
+  popd
+done
+rm -rf bamliquidator-$VERSION

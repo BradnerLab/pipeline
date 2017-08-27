@@ -124,10 +124,10 @@ deb: clean archive
 
 dput: clean archive
 	debuild_args=-S ./make_deb.sh
-	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*precise_source.changes
-	dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*trusty_source.changes
-	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*precise_source.changes
-	dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*trusty_source.changes
+	for ubuntu_version in "precise" "trusty" "xenial" ; do \
+		dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*$$(ubuntu_version)_source.changes ; \
+		dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*$$(ubuntu_version)_source.changes ; \
+	done
 
 clean:
 	rm -f $(EXECUTABLES) *.o MANIFEST setup.py bamliquidator*.tar.gz
