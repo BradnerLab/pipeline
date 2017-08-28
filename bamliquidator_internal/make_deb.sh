@@ -27,7 +27,7 @@ py2dsc -m "$UPLOADER <$UPLOADER_EMAIL>" bamliquidatorbatch_$VERSION.orig.tar.gz
 cp python-bamliquidatorbatch.preinst deb_dist/bamliquidatorbatch-$VERSION/debian/
 cp python-bamliquidatorbatch.control deb_dist/bamliquidatorbatch-$VERSION/debian/control
 
-for ubuntu_version in "precise" "trusty" "xenial"
+for ubuntu_version in "xenial"
 do
   cp -R deb_dist/bamliquidatorbatch-$VERSION deb_dist/bamliquidatorbatch-$VERSION-$ubuntu_version
   pushd deb_dist/bamliquidatorbatch-$VERSION-$ubuntu_version
@@ -40,7 +40,7 @@ mv bamliquidator-$VERSION.tar.gz bamliquidator_$VERSION.orig.tar.gz
 tar xf bamliquidator_$VERSION.orig.tar.gz
 
 cp -R debian bamliquidator-$VERSION
-for ubuntu_version in "precise" "trusty" "xenial"
+for ubuntu_version in "xenial"
 do
   cp -R bamliquidator-$VERSION bamliquidator-$VERSION-$ubuntu_version
   printf "$CHANGELOG" bamliquidator $ubuntu_version $ubuntu_version > bamliquidator-$VERSION-$ubuntu_version/debian/changelog
