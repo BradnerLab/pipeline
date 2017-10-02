@@ -38,7 +38,7 @@ CC=g++
 
 # CPPFLAGS used to include march=native, but was removed so executables would 
 # work on platforms besides the one used for the build
-CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -I/usr/include/hdf5/serial
+CPPFLAGS := -std=c++0x -O3 -g -Wall -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -I/usr/include/hdf5/serial -I/usr/local/include
 LDFLAGS := -O3 -g -Wall -L/usr/lib/x86_64-linux-gnu/hdf5/serial
 LDLIBS := -lbam -lz -lpthread
 ADDITIONAL_LDLIBS := -lhdf5 -lhdf5_hl -ltcmalloc_minimal -ltbb
