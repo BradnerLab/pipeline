@@ -34,12 +34,14 @@ import scipy.stats as stats
 import collections
 import logging
 
+bokeh_install_command = 'sudo pip install bokeh==0.9.3 "openpyxl>=1.6.1,<2.0.0"'
+
 try:
     try:
         import bokeh.plotting as bp
     except:
-        bokeh_import_error = ('Bokeh module not found; consider running the following command to install: '
-                              'sudo pip install bokeh')
+        bokeh_import_error = 'Bokeh module not found; consider running the following command to install:\n%s' % (
+                bokeh_install_command)
         raise
 
     try:
@@ -48,8 +50,8 @@ try:
         # I confirmed things work with version 0.9.3, and I hope future versions maintain compatability.
         bp.vplot
     except:
-        bokeh_import_error = ('Bokeh version is incompatible; consider running the following command to upgrade: '
-                              'sudo pip install bokeh --upgrade')
+        bokeh_import_error = 'Bokeh version is incompatible; consider running the following command to upgrade:\n%s' % (
+                bokeh_install_command)
         raise
 except:
     bp = None 
