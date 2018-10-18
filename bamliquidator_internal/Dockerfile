@@ -60,4 +60,7 @@ ENV PATH="$PATH:/opt/liquidator"
 
 RUN python bamliquidatorbatch/test.py
 
+ARG GIT_COMMIT
+LABEL git_commit=$GIT_COMMIT
+
 ENTRYPOINT ["bamliquidatorbatch/bamliquidator_batch.py"]
