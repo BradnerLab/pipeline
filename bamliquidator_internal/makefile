@@ -126,7 +126,7 @@ deb: clean archive
 
 dput: clean archive
 	debuild_args=-S ./make_deb.sh
-	for ubuntu_version in "trusty" "xenial" ; do \
+	for ubuntu_version in "trusty" "xenial bionic" ; do \
 		dput ppa:bradner-computation/pipeline deb_dist/bamliquidatorbatch_$(VERSION)-*$$(ubuntu_version)_source.changes ; \
 		dput ppa:bradner-computation/pipeline bamliquidator_$(VERSION)-*$$(ubuntu_version)_source.changes ; \
 	done
