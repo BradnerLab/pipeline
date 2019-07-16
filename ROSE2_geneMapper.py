@@ -320,8 +320,7 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     # matter
     tssCollection = utils.LocusCollection(tssLoci, 50)
 
-    geneDict = {'overlapping': defaultdict(
-        list), 'proximal': defaultdict(list)}
+    geneDict = {'overlapping': defaultdict(list), 'proximal': defaultdict(list)}
 
     # dictionaries to hold ranks and superstatus of gene nearby enhancers
     rankDict = defaultdict(list)
@@ -347,16 +346,13 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
     else:
         # set up the output tables
         # first by enhancer
-        enhancerToGeneTable = [
-            header[0:9] + ['OVERLAP_GENES', 'PROXIMAL_GENES', 'CLOSEST_GENE'] + header[-2:]]
+        enhancerToGeneTable = [header[0:9] + ['OVERLAP_GENES', 'PROXIMAL_GENES', 'CLOSEST_GENE'] + header[-2:]]
 
         # next by gene
-        geneToEnhancerTable = [
-            ['GENE_NAME', 'REFSEQ_ID', 'PROXIMAL_ENHANCERS']]
+        geneToEnhancerTable = [['GENE_NAME', 'REFSEQ_ID', 'PROXIMAL_ENHANCERS']]
 
     # next make the gene to enhancer table
-    geneToEnhancerTable = [
-        ['GENE_NAME', 'REFSEQ_ID', 'PROXIMAL_ENHANCERS', 'ENHANCER_RANKS', 'IS_SUPER', 'ENHANCER_SIGNAL']]
+    geneToEnhancerTable = [['GENE_NAME', 'REFSEQ_ID', 'PROXIMAL_ENHANCERS', 'ENHANCER_RANKS', 'IS_SUPER', 'ENHANCER_SIGNAL']]
 
     for line in enhancerTable:
         if line[0][0] == '#' or line[0][0] == 'R':
@@ -405,16 +401,21 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
                 distalGenes.remove(refID)
 
         # Now find the closest gene
+        closestGene = ''
         if len(allEnhancerGenes) == 0:
             closestGene = ''
         else:
             # get enhancerCenter
             enhancerCenter = (int(line[2]) + int(line[3])) / 2
 
-            # get absolute distance to enhancer center
-            distList = [abs(enhancerCenter - list(startDict[geneID]['start'])[0]) for geneID in allEnhancerGenes]
-            # get the ID and convert to name
-            closestGene = startDict[allEnhancerGenes[distList.index(min(distList))]]['name']
+            try:
+                # get absolute distance to enhancer center
+                distList = [abs(enhancerCenter - list(startDict[geneID]['start'])[0]) for geneID in allEnhancerGenes]
+                
+                # get the ID and convert to name
+                closestGene = startDict[allEnhancerGenes[distList.index(min(distList))]]['name']
+            except:
+                pass
 
         # NOW WRITE THE ROW FOR THE ENHANCER TABLE
         if noFormatTable:
@@ -458,14 +459,15 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
 
     #get the chromLists from the various bams here
     cmd = 'samtools idxstats %s' % (rankByBamFile)
-    idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
-    idxStats= idxStats.communicate()
-    bamChromList = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
+    idxStats = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True,
+                                universal_newlines=True).communicate()[0]
+    
+    bamChromList = [bytes(line.split('\t')[0]) for line in idxStats[0].split('\n')[0:-2]]
     
     if len(controlBamFile) > 0:
         cmd = 'samtools idxstats %s' % (controlBamFile)
         idxStats = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
-        idxStats= idxStats.communicate()
+        idxStats = idxStats.communicate()
         bamChromListControl = [line.split('\t')[0] for line in idxStats[0].split('\n')[0:-2]]
         bamChromList = [chrom for chrom in bamChromList if bamChromListControl.count(chrom) != 0]
 

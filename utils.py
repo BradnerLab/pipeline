@@ -299,7 +299,7 @@ def getParentFolder(inputFile):
     returns the parent folder for any file
     '''
 
-    parentFolder = join(inputFile.split('/')[:-1],'/') +'/'
+    parentFolder = '/'.join(inputFile.split('/')[:-1]) +'/'
     if parentFolder =='':
         return './'
     else:
@@ -1287,7 +1287,7 @@ def order(x, NoneIsLast = True, decreasing = False):
         omitNone = True
 
     n  = len(x)
-    ix = range(n)
+    ix = list(range(n))
     if None not in x:
         ix.sort(reverse = decreasing, key = lambda j : x[j])
     else:
