@@ -40,7 +40,7 @@ import utils
 
 import os
 import subprocess
-from string import join
+# from string import join
 
 from collections import defaultdict
 
@@ -189,14 +189,14 @@ def mapEnhancerToGene(annotFile,enhancerFile,transcribedFile='',uniqueGenes=True
         if noFormatTable:
 
             newEnhancerLine = list(line)
-            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]),','))
-            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]),','))
+            newEnhancerLine.append(','.join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes])))
+            newEnhancerLine.append(','.join(utils.uniquify([startDict[x]['name'] for x in proximalGenes])))
             newEnhancerLine.append(closestGene)
 
         else:
             newEnhancerLine = line[0:9]
-            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]),','))
-            newEnhancerLine.append(join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]),','))
+            newEnhancerLine.append(','.join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes])))
+            newEnhancerLine.append(','.join(utils.uniquify([startDict[x]['name'] for x in proximalGenes])))
             newEnhancerLine.append(closestGene)
             newEnhancerLine += line[-2:]
 
@@ -238,9 +238,9 @@ def mapEnhancerToGene(annotFile,enhancerFile,transcribedFile='',uniqueGenes=True
         proxEnhancers = geneDict['overlapping'][refID]+geneDict['proximal'][refID]
         
         superStatus = max(superDict[refID])
-        enhancerRanks = join([str(x) for x in rankDict[refID]],',')
+        enhancerRanks = ','.join([str(x) for x in rankDict[refID]])
     
-        newLine = [geneName,refID,join(proxEnhancers,','),enhancerRanks,superStatus]
+        newLine = [geneName,refID,','.join(proxEnhancers),enhancerRanks,superStatus]
         geneToEnhancerTable.append(newLine)
 
     #resort enhancerToGeneTable
@@ -412,28 +412,26 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
             enhancerCenter = (int(line[2]) + int(line[3])) / 2
 
             # get absolute distance to enhancer center
-            distList = [abs(enhancerCenter - startDict[geneID]['start'][0])
-                        for geneID in allEnhancerGenes]
+            distList = [abs(enhancerCenter - list(startDict[geneID]['start'])[0]) for geneID in allEnhancerGenes]
             # get the ID and convert to name
-            closestGene = startDict[
-                allEnhancerGenes[distList.index(min(distList))]]['name']
+            closestGene = startDict[allEnhancerGenes[distList.index(min(distList))]]['name']
 
         # NOW WRITE THE ROW FOR THE ENHANCER TABLE
         if noFormatTable:
 
             newEnhancerLine = list(line)
             newEnhancerLine.append(
-                join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]), ','))
+                ','.join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes])))
             newEnhancerLine.append(
-                join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]), ','))
+                ','.join(utils.uniquify([startDict[x]['name'] for x in proximalGenes])))
             newEnhancerLine.append(closestGene)
 
         else:
             newEnhancerLine = line[0:9]
             newEnhancerLine.append(
-                join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes]), ','))
+                ','.join(utils.uniquify([startDict[x]['name'] for x in overlappingGenes])))
             newEnhancerLine.append(
-                join(utils.uniquify([startDict[x]['name'] for x in proximalGenes]), ','))
+                ','.join(utils.uniquify([startDict[x]['name'] for x in proximalGenes])))
             newEnhancerLine.append(closestGene)
             newEnhancerLine += line[-2:]
 
@@ -572,13 +570,12 @@ def mapEnhancerToGeneTop(rankByBamFile, controlBamFile, genome, annotFile, enhan
             refID] + geneDict['proximal'][refID]
 
         superStatus = max(superDict[refID])
-        enhancerRanks = join([str(x) for x in rankDict[refID]], ',')
+        enhancerRanks = ','.join([str(x) for x in rankDict[refID]])
 
         enhancerSignal = signalDict[refID]
         geneNameSigDict[geneName].append(enhancerSignal)
 
-        newLine = [geneName, refID, join(
-            proxEnhancers, ','), enhancerRanks, superStatus, enhancerSignal]
+        newLine = [geneName, refID, ','.join(proxEnhancers), enhancerRanks, superStatus, enhancerSignal]
         geneToEnhancerTable.append(newLine)
     #utils.unParseTable(geneToEnhancerTable,'/grail/projects/newRose/geneMapper/foo.txt','\t')
     print('MAKING ENHANCER TO TOP GENE TABLE')
@@ -711,7 +708,7 @@ def main():
     if options.out:
         outFolder = utils.formatFolder(options.out, True)
     else:
-        outFolder = join(enhancerFile.split('/')[0:-1], '/') + '/'
+        outFolder = '/'.join(enhancerFile.split('/')[0:-1]) + '/'
 
     # GETTING BAM INFO
     rankByBamFile = options.rankby

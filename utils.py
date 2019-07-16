@@ -53,7 +53,7 @@ try:
 except ImportError:
     pass
 
-from string import join, maketrans
+# from string import join, maketrans
 
 import subprocess
 import datetime
@@ -327,7 +327,7 @@ def makeStartDict(annotFile, geneList=[]):
             geneList = refseqDict.keys()
         startDict = {}
         for gene in geneList:
-            if refseqDict.has_key(gene) == False:
+            if gene not in refseqDict:
                 continue
             startDict[gene]={}
             startDict[gene]['sense'] = refseqTable[refseqDict[gene][0]][3]
@@ -374,7 +374,7 @@ def importRefseq(refseqFile, returnMultiples = False):
     refseqDict = {}
     ticker = 1
     for line in refseqTable[1:]:
-        if refseqDict.has_key(line[1]):
+        if line[1] in refseqDict:
             refseqDict[line[1]].append(ticker)
         else:
             refseqDict[line[1]] = [ticker]
@@ -397,7 +397,7 @@ def importRefseq(refseqFile, returnMultiples = False):
 def refseqFromKey(refseqKeyList,refseqDict,refseqTable):
     typeRefseq = []
     for name in refseqKeyList:
-        if refseqDict.has_key(name):
+        if name in refseqDict:
             typeRefseq.append(refseqTable[refseqDict[name][0]])
     return typeRefseq
 
@@ -563,7 +563,7 @@ class Locus:
         coords = sorted([int(start), int(end)])
         # this method for assigning chromosome should help avoid storage of
         # redundant strings.
-        if not(self.__chrDict.has_key(chr)): self.__chrDict[chr] = chr
+        if not(chr in self.__chrDict): self.__chrDict[chr] = chr
         self._chr = self.__chrDict[chr]
         self._sense = self.__senseDict[sense]
         self._start = int(coords[0])
@@ -663,9 +663,9 @@ class Locus:
                 phastBases += lineLen
 
         if phastBases > self.len():
-            print "this locus is sad %s. please debug me" % (self.__str__())
-            print "locus length is %s" % (self.len())
-            print "phastBases are %s" % (phastBases)
+            print("this locus is sad %s. please debug me" % (self.__str__()))
+            print("locus length is %s" % (self.len()))
+            print("phastBases are %s" % (phastBases))
 
 
         return phastSum/self.len()
@@ -680,19 +680,19 @@ class LocusCollection:
         for lcs in loci: self.__addLocus(lcs)
 
     def __addLocus(self,lcs):
-        if not(self.__loci.has_key(lcs)):
+        if not(lcs in self.__loci):
             self.__loci[lcs] = None
             if lcs.sense()=='.': chrKeyList = [lcs.chr()+'+', lcs.chr()+'-']
             else: chrKeyList = [lcs.chr()+lcs.sense()]
             for chrKey in chrKeyList:
-                if not(self.__chrToCoordToLoci.has_key(chrKey)): self.__chrToCoordToLoci[chrKey] = dict()
+                if not(chrKey in self.__chrToCoordToLoci): self.__chrToCoordToLoci[chrKey] = dict()
                 for n in self.__getKeyRange(lcs):
-                    if not(self.__chrToCoordToLoci[chrKey].has_key(n)): self.__chrToCoordToLoci[chrKey][n] = []
+                    if not(n in self.__chrToCoordToLoci[chrKey]): self.__chrToCoordToLoci[chrKey][n] = []
                     self.__chrToCoordToLoci[chrKey][n].append(lcs)
 
     def __getKeyRange(self,locus):
-        start = locus.start() / self.__winSize
-        end = locus.end() / self.__winSize + 1 ## add 1 because of the range
+        start = locus.start() // self.__winSize
+        end = locus.end() // self.__winSize + 1 ## add 1 because of the range
         return range(start,end)
 
     def __len__(self): return len(self.__loci)
@@ -701,9 +701,9 @@ class LocusCollection:
     def extend(self,newList):
         for lcs in newList: self.__addLocus(lcs)
     def hasLocus(self,locus):
-        return self.__loci.has_key(locus)
+        return locus in self.__loci
     def remove(self,old):
-        if not(self.__loci.has_key(old)): raise ValueError("requested locus isn't in collection")
+        if not(old in self.__loci): raise ValueError("requested locus isn't in collection")
         del self.__loci[old]
         if old.sense()=='.': senseList = ['+','-']
         else: senseList = [old.sense()]
@@ -740,9 +740,9 @@ class LocusCollection:
         else: raise ValueError("sense value was inappropriate: '"+sense+"'.")
         for s in filter(lamb, senses):
             chrKey = locus.chr()+s
-            if self.__chrToCoordToLoci.has_key(chrKey):
+            if chrKey in self.__chrToCoordToLoci:
                 for n in self.__getKeyRange(locus):
-                    if self.__chrToCoordToLoci[chrKey].has_key(n):
+                    if n in self.__chrToCoordToLoci[chrKey]:
                         for lcs in self.__chrToCoordToLoci[chrKey][n]:
                             matches[lcs] = None
         return matches.keys()
@@ -1029,7 +1029,7 @@ def makeTSSLocus(gene,startDict,upstream,downstream):
     given a startDict, make a locus for any gene's TSS w/ upstream and downstream windows
     '''
 
-    start = startDict[gene]['start'][0]
+    start = list(startDict[gene]['start'])[0]
     if startDict[gene]['sense'] == '-':
         return Locus(startDict[gene]['chr'],start-downstream,start+upstream,'-',gene)
     else:
@@ -1261,7 +1261,7 @@ def uniquify(seq, idfun=None):
     for item in seq:
         marker = idfun(item)
         # in old Python versions:
-        # if seen.has_key(marker)
+        # if marker in seen
         # but in new ones:
         if marker in seen: continue
         seen[marker] = 1
@@ -1392,7 +1392,7 @@ def gffToFasta(genome,directory,gff,UCSC = True,useID=False):
 
 def pair(nuc):
     pairDict = {'A':'T','C':'G','G':'C','T':'A','U':'A','a':'t','c':'g','g':'c','t':'a','u':'a'}
-    if pairDict.has_key(nuc):
+    if nuc in pairDict:
         return pairDict[nuc]
     else:
         return nuc
