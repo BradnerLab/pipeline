@@ -198,11 +198,13 @@ std::vector<double> liquidate(const samfile_t* fp, const bam_index_t* bamidx,
   only deal with coord, so use generic item
   */
   int startArr[spnum], stopArr[spnum];
-  int pieceLength = (stop-start) / spnum;
+	
+   // gff has fully closed intervals thus the length needs +1
+  int pieceLength = (stop-start+1) / spnum;
   for(int i=0; i<spnum; i++)
   {
-    startArr[i] = start + pieceLength*i;
-    stopArr[i] = start + pieceLength*(i+1);
+    startArr[i] = start + pieceLength*i; 
+    stopArr[i] = startArr[i] + pieceLength -1;
   }
 
   std::deque<ReadItem> items = bamQuery_region(fp,bamidx,coord,strand,extendlen);
