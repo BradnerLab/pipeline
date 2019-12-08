@@ -63,9 +63,12 @@ def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
 
     return with_no_counts
 
+# ABC compatible with Python 2 *and* 3 -- see explanation at https://stackoverflow.com/a/38668373
+ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
+
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
 # that implement the abstract methods.
-class BaseLiquidator(object, metaclass=abc.ABCMeta):
+class BaseLiquidator(ABC):
     @abc.abstractmethod
     def liquidate(self, bam_file_path, extension, sense = None):
         pass
