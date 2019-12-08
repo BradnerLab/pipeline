@@ -69,7 +69,7 @@ chromosome_name_length = 64 # Includes 1 for null terminator, so really max of 6
 def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:
         if table.name != "bin_counts" and table.name != "files" and table.name != "file_names":
-            for index in table.colindexes.values():
+            for index in list(table.colindexes.values()):
                 index.column.remove_index()
             table.remove()
 
@@ -102,7 +102,7 @@ def all_chromosomes(counts):
     for row in counts:
         chromosomes[row["chromosome"]] = None
 
-    return chromosomes.keys() 
+    return list(chromosomes.keys()) 
 
 # todo: if this used the files table and we added the cell_type to the files table, this would be much faster,
 #       but it is probably necessary to leave cell_type in counts table as well (for queries)
@@ -146,7 +146,7 @@ def plot_summary(normalized_counts, chromosome):
 
     plot = bp.figure()
     plot.title = chromosome + " counts per bin across all bam files"
-    plot.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
+    plot.scatter(list(chromosome_count_by_bin.keys()), list(chromosome_count_by_bin.values()))
     return plot
 
 def plot(output_directory, normalized_counts, chromosome, cell_types):
@@ -263,7 +263,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
             if processed_a_single_file:
                 chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] += row["count"]
             else:
-                if not chromosome_to_summed_counts.has_key(row["chromosome"]):
+                if row["chromosome"] not in chromosome_to_summed_counts:
                     chromosome_to_summed_counts[row["chromosome"]] = []
                 chromosome_to_summed_counts[row["chromosome"]].append(row["count"])
         processed_a_single_file = True
@@ -272,7 +272,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
 
     len_file_keys = len(file_keys)
 
-    for chromosome, summed_counts in chromosome_to_summed_counts.iteritems():
+    for chromosome, summed_counts in chromosome_to_summed_counts.items():
         for i, summed_count in enumerate(summed_counts):
             normalized_counts.row["bin_number"] = i
             normalized_counts.row["cell_type"] = cell_type 
@@ -355,7 +355,7 @@ def populate_summary(summary, normalized_counts, chromosome):
 
     logging.debug(" - populating summary table with calculated summaries")
 
-    for bin_number in xrange(max_bin+1):
+    for bin_number in range(max_bin+1):
         summary.row["bin_number"] = bin_number
         summary.row["chromosome"] = chromosome
         summary.row["avg_cell_type_percentile"] = summed_cell_type_percentiles_by_bin[bin_number] / len(cell_types)

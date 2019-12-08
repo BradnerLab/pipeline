@@ -16,7 +16,7 @@ def write_tab(table, file_names, output_directory, log=False):
         if chromosome not in chromosome_to_file_writer_pair:
             tab_file_path = os.path.join(output_directory, table.name + "_" + chromosome + ".tab")
             if log:
-                print "Writing", tab_file_path
+                print("Writing", tab_file_path)
 
             tab_file = open(tab_file_path, 'wb')
             writer = csv.writer(tab_file, delimiter='\t')
@@ -35,7 +35,7 @@ def write_tab(table, file_names, output_directory, log=False):
             
         writer.writerow(row_list)
 
-    for tab_file, _ in chromosome_to_file_writer_pair.values():
+    for tab_file, _ in list(chromosome_to_file_writer_pair.values()):
         tab_file.close()
 
 def write_tab_for_all(h5_file, output_directory, log=False):
