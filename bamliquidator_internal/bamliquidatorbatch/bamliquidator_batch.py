@@ -5,7 +5,6 @@ from flattener import write_tab_for_all
 
 import argparse
 import csv
-import datetime
 import errno
 import os
 import subprocess

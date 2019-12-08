@@ -12,13 +12,13 @@ def write_tab(table, file_names, output_directory, log=False):
     columns = [col if col != "file_key" else "file_name" for col in columns]
 
     for row in table:
-        chromosome = row["chromosome"]
+        chromosome = row["chromosome"].decode()
         if chromosome not in chromosome_to_file_writer_pair:
             tab_file_path = os.path.join(output_directory, table.name + "_" + chromosome + ".tab")
             if log:
                 print("Writing", tab_file_path)
 
-            tab_file = open(tab_file_path, 'wb')
+            tab_file = open(tab_file_path, 'w')
             writer = csv.writer(tab_file, delimiter='\t')
             writer.writerow(columns)
             chromosome_to_file_writer_pair[chromosome] = (tab_file, writer)

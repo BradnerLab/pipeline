@@ -47,14 +47,14 @@ try:
     try:
         # bamliquidatorbatch was originally developed for bokeh 0.4.4, but
         # around version 0.7 the bokeh API had some breaking changes (like requiring the explicit use of vplot).
-        # I confirmed things work with version 0.9.3, and I hope future versions maintain compatability.
+        # I confirmed things work with version 0.9.3, and I hope future versions maintain comparability.
         bp.vplot
     except:
         bokeh_import_error = 'Bokeh version is incompatible; consider running the following command to upgrade:\n%s' % (
                 bokeh_install_command)
         raise
 except:
-    bp = None 
+    bp = None
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right).
@@ -92,15 +92,16 @@ def all_cell_types(counts):
     types = set()
 
     for row in counts:
-        types.add(row["cell_type"])
+        types.add(row["cell_type"].decode())
 
     return types 
 
 def all_chromosomes(counts):
+    # use an ordered dict to preserve the chromosome order in the returned list
     chromosomes = collections.OrderedDict() 
 
     for row in counts:
-        chromosomes[row["chromosome"]] = None
+        chromosomes[row["chromosome"].decode()] = None
 
     return list(chromosomes.keys()) 
 
@@ -305,7 +306,7 @@ def create_summary_table(h5file):
     return table
    
 
-def populate_summary(summary, normalized_counts, chromosome):
+def populate_summary(summary, normalized_counts, chromosome_str):
     high = 95 # 95th percentile
     low  = 5  # 5th percentile
 
@@ -324,7 +325,7 @@ def populate_summary(summary, normalized_counts, chromosome):
 
     # note populating the dictionaries this way is much faster than looping through
     # each bin and finding the matching fraction rows
-    for row in normalized_counts.where("chromosome == '%s'" % chromosome):
+    for row in normalized_counts.where("chromosome == chromosome_str"):
         bin_number = row["bin_number"]
         max_bin = max(max_bin, bin_number)
         percentile = row["percentile"]
@@ -357,7 +358,7 @@ def populate_summary(summary, normalized_counts, chromosome):
 
     for bin_number in range(max_bin+1):
         summary.row["bin_number"] = bin_number
-        summary.row["chromosome"] = chromosome
+        summary.row["chromosome"] = chromosome_str
         summary.row["avg_cell_type_percentile"] = summed_cell_type_percentiles_by_bin[bin_number] / len(cell_types)
         summary.row["cell_types_gte_95th_percentile"] = cell_types_gte_high_percentile_by_bin[bin_number]
         summary.row["cell_types_lt_95th_percentile"] = cell_types_lt_high_percentile_by_bin[bin_number]
