@@ -7,10 +7,12 @@
 ##############################################################
 # ##### Please replace PATHTO with your own directory ###### #
 ##############################################################
-PATHTO=/PATH/TO/BAM2GFF
-PYTHONPATH=$PATHTO/lib
-export PYTHONPATH
-export PATH=$PATH:$PATHTO/src
+# NOTE: We now assume the PATH and PYTHONPATH has been set up before 
+# entering this script
+#PATHTO=/PATH/TO/BAM2GFF
+#PYTHONPATH=$PATHTO/lib
+#export PYTHONPATH
+#export PATH=$PATH:$PATHTO/src
 
 if [ $# -lt 3 ]; then
   echo ""
