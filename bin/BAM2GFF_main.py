@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #bamToGFF.py
 
 '''
@@ -64,19 +64,19 @@ def getUniquelyMappingReads(bamFile):
     bamName = fullPath.split('/')[-1].split('.')[0]
     pathFolder = join(fullPath.split('/')[0:-1],'/')
     bamFiles = os.listdir(pathFolder)
-    statsFile = filter(lambda x: x.count(bamName) ==1 and x.count('stats.') ==1,bamFiles)
+    statsFile = [x for x in bamFiles if x.count(bamName) ==1 and x.count('stats.') ==1]
     if len(statsFile) == 1:
-        print('USING STATS FILE %s' % (pathFolder+'/'+statsFile[0]))
+        print(('USING STATS FILE %s' % (pathFolder+'/'+statsFile[0])))
         samDict = parseSamHeader(pathFolder+'/'+statsFile[0])
         return int(samDict['UniquelyMappingSequenceTags'])
     elif len(statsFile) > 1:
-        statsFile = filter(lambda x: x.count(bamName) ==1 and x.count('stats.concise') ==1,bamFiles)
-        print('USING STATS FILE %s' % (pathFolder+'/'+statsFile[0]))
+        statsFile = [x for x in bamFiles if x.count(bamName) ==1 and x.count('stats.concise') ==1]
+        print(('USING STATS FILE %s' % (pathFolder+'/'+statsFile[0])))
         samDict = parseSamHeader(pathFolder+'/'+statsFile[0])
         return int(samDict['UniquelyMappingSequenceTags'])
 
     else:
-        print('no precomputed stats file found for %s.' % (bamFile))
+        print(('no precomputed stats file found for %s.' % (bamFile)))
         return None
         
         
@@ -118,7 +118,7 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
 
 
 
-    print('using a MMR value of %s' % (MMR))
+    print(('using a MMR value of %s' % (MMR)))
     
     senseTrans = maketrans('-+.','+-+')
 
@@ -155,7 +155,7 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
     for line in gff:
         line = line[0:9]
         if ticker%100 == 0:
-            print ticker
+            print(ticker)
         ticker+=1
         gffLocus = Locus(line[0],int(line[3]),int(line[4]),line[6],line[1])
         searchLocus = makeSearchLocus(gffLocus,int(extension),int(extension))
@@ -170,11 +170,11 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
                 locus = Locus(locus.chr(),locus.start()-extension,locus.end(),locus.sense(),locus.ID())
             extendedReads.append(locus)
         if gffLocus.sense() == '+' or gffLocus.sense == '.':
-            senseReads = filter(lambda x:x.sense() == '+' or x.sense() == '.',extendedReads)
-            antiReads = filter(lambda x:x.sense() == '-',extendedReads)
+            senseReads = [x for x in extendedReads if x.sense() == '+' or x.sense() == '.']
+            antiReads = [x for x in extendedReads if x.sense() == '-']
         else:
-            senseReads = filter(lambda x:x.sense() == '-' or x.sense() == '.',extendedReads)
-            antiReads = filter(lambda x:x.sense() == '+',extendedReads)
+            senseReads = [x for x in extendedReads if x.sense() == '-' or x.sense() == '.']
+            antiReads = [x for x in extendedReads if x.sense() == '+']
     
         #at this point can output starts onto the GFF unless density is called
 
@@ -195,12 +195,12 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
                         antiHash[x]+=1
 
             #now apply flooring and filtering for coordinates
-            keys = uniquify(senseHash.keys()+antiHash.keys())
+            keys = uniquify(list(senseHash.keys())+list(antiHash.keys()))
             if floor > 0:
                     
-                keys = filter(lambda x: (senseHash[x]+antiHash[x]) > floor,keys)
+                keys = [x for x in keys if (senseHash[x]+antiHash[x]) > floor]
             #coordinate filtering
-            keys = filter(lambda x: gffLocus.start() < x < gffLocus.end(),keys)
+            keys = [x for x in keys if gffLocus.start() < x < gffLocus.end()]
 
             if clusterGram or matrix:
                 clusterLine = [gffLocus.ID(),gffLocus.__str__()]
@@ -219,7 +219,7 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
                     
                     while n <nBins:
                         n+=1
-                        binKeys = filter(lambda x: i < x < i+binSize,keys)
+                        binKeys = [x for x in keys if i < x < i+binSize]
                         binDen = float(sum([senseHash[x]+antiHash[x] for x in binKeys]))/binSize
                         clusterLine+=[round(binDen/MMR,4)]
                         i = i+binSize
@@ -227,7 +227,7 @@ def mapBamToGFF(bamFile,gff,sense = 'both',unique = 0,extension = 200,floor = 0,
                     i = gffLocus.end()
                     while n < nBins:
                         n+=1
-                        binKeys = filter(lambda x: i-binSize < x < i,keys)
+                        binKeys = [x for x in keys if i-binSize < x < i]
                         binDen = float(sum([senseHash[x]+antiHash[x] for x in binKeys]))/binSize
                         clusterLine+=[round(binDen/MMR,4)]
                         i = i-binSize
@@ -429,7 +429,7 @@ def main():
                 NEWcontent[summation] = {}
             NEWcontent[summation][linenumber] = line
         
-        for each, content in sorted(NEWcontent.items(), reverse=True):
+        for each, content in sorted(list(NEWcontent.items()), reverse=True):
             for key in content:
                 otherGFF.append(content[key]) 
         unParseTable(otherGFF,output,'\t')
