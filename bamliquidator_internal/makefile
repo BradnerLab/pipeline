@@ -28,6 +28,9 @@
 VERSION := $(shell grep "__version__ =" bamliquidatorbatch/bamliquidator_batch.py | cut -d' ' -f 3 | sed "s/'//g")
 export VERSION
 
+GIT_COMMIT := $(shell git rev-parse HEAD)
+export GIT_COMMIT
+
 # The directory to install in:
 prefix = /usr/local
 bindir = $(prefix)/bin
@@ -137,3 +140,11 @@ clean:
 
 install: all
 	install $(EXECUTABLES) $(DESTDIR)$(bindir)
+
+docker:
+	docker build . --build-arg GIT_COMMIT=$(GIT_COMMIT) -t bioliquidator/bamliquidator:latest -t bioliquidator/bamliquidator:$(VERSION)
+
+docker-hub: docker
+	docker login --username bioliquidator
+	docker push bioliquidator/bamliquidator:latest
+	docker push bioliquidator/bamliquidator:$(VERSION)
