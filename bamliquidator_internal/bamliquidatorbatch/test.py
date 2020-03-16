@@ -2,11 +2,7 @@
 
 from __future__ import division
 
-from os import sys, path
-from itertools import izip
-
 import bamliquidator_batch as blb
-import normalize_plot_and_summarize as nps
 
 import os
 import shutil
@@ -88,7 +84,7 @@ class SingleFullReadBamTest(TempDirTest):
            
             record = counts.root.bin_counts[0]
             self.assertEqual(0, record['bin_number'])
-            self.assertEqual(self.chromosome, record['chromosome'])
+            self.assertEqual(self.chromosome, record['chromosome'].decode())
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
 
@@ -119,7 +115,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
            
             record = counts.root.region_counts[0]
-            self.assertEqual(region_name, record['region_name'])
+            self.assertEqual(region_name, record['region_name'].decode())
             self.assertEqual(start, record['start'])
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
@@ -190,9 +186,9 @@ class SingleFullReadBamTest(TempDirTest):
                
                 record = counts.root.region_counts[0]
                 if number_of_columns >= 4:
-                   self.assertEqual(region_name, record['region_name'])
+                   self.assertEqual(region_name, record['region_name'].decode())
                 else:
-                   self.assertEqual("", record['region_name'])
+                   self.assertEqual("", record['region_name'].decode())
                 self.assertEqual(start, record['start'])
                 self.assertEqual(stop,  record['stop'])
                 self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
@@ -277,7 +273,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
            
             record = counts.root.region_counts[0]
-            self.assertEqual(truncated_region_name, record['region_name'])
+            self.assertEqual(truncated_region_name, record['region_name'].decode())
             self.assertEqual(start, record['start'])
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
@@ -304,7 +300,7 @@ class SingleFullReadBamTest(TempDirTest):
             self.assertEqual(1, len(counts.root.region_counts)) # 1 since only a single region 
            
             record = counts.root.region_counts[0]
-            self.assertEqual(truncated_region_name, record['region_name'])
+            self.assertEqual(truncated_region_name, record['region_name'].decode())
             self.assertEqual(start, record['start'])
             self.assertEqual(stop,  record['stop'])
             self.assertEqual(stop-start, record['count']) # count represents how many base pair reads intersected
@@ -400,7 +396,7 @@ class MultipleChromosomeTest(TempDirTest):
             for record_index, chromosome in enumerate(chromosomes):
                 record = counts.root.bin_counts[record_index]
                 self.assertEqual(0, record['bin_number'])
-                self.assertEqual(chromosome, record['chromosome'])
+                self.assertEqual(chromosome, record['chromosome'].decode())
                 self.assertEqual(len(sequence), record['count']) # count represents how many base pair reads 
                                                                       # intersected the bin
 
@@ -427,7 +423,7 @@ class MultipleChromosomeTest(TempDirTest):
             for record_index, chromosome in enumerate(chromosomes_that_should_be_liquidated):
                 record = counts.root.bin_counts[record_index]
                 self.assertEqual(0, record['bin_number'])
-                self.assertEqual(chromosome, record['chromosome'])
+                self.assertEqual(chromosome, record['chromosome'].decode())
                 self.assertEqual(len(sequence), record['count']) # count represents how many base pair reads 
 
     def testOverridingBlackList(self):
@@ -453,7 +449,7 @@ class MultipleChromosomeTest(TempDirTest):
             for record_index, chromosome in enumerate(chromosomes):
                 record = counts.root.bin_counts[record_index]
                 self.assertEqual(0, record['bin_number'])
-                self.assertEqual(chromosome, record['chromosome'])
+                self.assertEqual(chromosome, record['chromosome'].decode())
                 self.assertEqual(len(sequence), record['count']) # count represents how many base pair reads 
 
 class AppendingTest(TempDirTest):
@@ -524,8 +520,8 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
            
             record = counts.root.bin_counts[0]
             self.assertEqual(0, record['bin_number'])
-            self.assertEqual("-", record['cell_type'])
-            self.assertEqual(self.chromosome, record['chromosome'])
+            self.assertEqual("-", record['cell_type'].decode())
+            self.assertEqual(self.chromosome, record['chromosome'].decode())
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
 
@@ -548,8 +544,8 @@ class LiquidateBamInDifferentDirectories(unittest.TestCase):
            
             record = counts.root.bin_counts[0]
             self.assertEqual(0, record['bin_number'])
-            self.assertEqual(truncated_cell_type, record['cell_type'])
-            self.assertEqual(self.chromosome, record['chromosome'])
+            self.assertEqual(truncated_cell_type, record['cell_type'].decode())
+            self.assertEqual(self.chromosome, record['chromosome'].decode())
             self.assertEqual(len(self.sequence), record['count']) # count represents how many base pair reads 
                                                                   # intersected the bin
 

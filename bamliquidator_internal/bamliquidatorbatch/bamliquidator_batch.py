@@ -5,7 +5,6 @@ from flattener import write_tab_for_all
 
 import argparse
 import csv
-import datetime
 import errno
 import os
 import subprocess
@@ -20,7 +19,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '1.3.8'
+__version__ = '1.5.0'
 
 default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
@@ -63,11 +62,12 @@ def bam_file_paths_with_no_file_entries(file_names, bam_file_paths):
 
     return with_no_counts
 
+# ABC compatible with Python 2 *and* 3 -- see explanation at https://stackoverflow.com/a/38668373
+ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
+
 # BaseLiquidator is an abstract base class, with concrete classes BinLiquidator and RegionLiquidator
 # that implement the abstract methods.
-class BaseLiquidator(object):
-    __metaclass__ = abc.ABCMeta
-
+class BaseLiquidator(ABC):
     @abc.abstractmethod
     def liquidate(self, bam_file_path, extension, sense = None):
         pass
@@ -162,7 +162,7 @@ class BaseLiquidator(object):
 
         for bam_file_path in self.bam_file_paths:
             args = ["samtools", "idxstats", bam_file_path]
-            output = subprocess.check_output(args)
+            output = subprocess.check_output(args).decode('utf-8')
             # skip last two lines: the unmapped chromosome line and the empty line
             reader = csv.reader(output.split('\n')[:-2], delimiter='\t')
             file_name = basename(bam_file_path)
@@ -239,7 +239,7 @@ class BaseLiquidator(object):
 
     def write_timings_to_junit_xml(self):
         with open(os.path.join(self.output_directory, 'timings.xml'), 'w') as xml:
-            xml.write('<testsuite tests="%d">\n' % len(self.timings.keys()))
+            xml.write('<testsuite tests="%d">\n' % len(list(self.timings.keys())))
             for title in self.timings:
                 xml.write('\t<testcase classname="bamliquidator" name="%s" time="%f"/>\n' % (title, self.timings[title]))
             xml.write('</testsuite>\n')
@@ -359,13 +359,13 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
 
             output.write("GENE_ID\tlocusLine")
             for file_record in counts_file.root.files:
-                file_key = file_record["key"] 
+                file_key = file_record["key"]
                 file_keys.append(file_key)
-                output.write("\tbin_1_%s" % counts_file.root.file_names[file_key])
+                output.write("\tbin_1_%s" % counts_file.root.file_names[file_key].decode('utf-8'))
             output.write("\n")
 
             number_of_files = len(file_keys)
-            number_of_regions = counts_file.root.region_counts.nrows / number_of_files 
+            number_of_regions = int(counts_file.root.region_counts.nrows / number_of_files)
 
             # first loop through all but the last file index, storing those counts 
             prior_region_counts = numpy.zeros((number_of_regions,  number_of_files - 1))
@@ -377,8 +377,12 @@ def write_bamToGff_matrix(output_file_path, h5_region_counts_file_path):
             # printing the region columns and the counts for the prior files,
             # along with the count for the last index
             for row, region in enumerate(counts_file.root.region_counts.where("file_key == %d" % file_keys[-1])):
-                output.write("%s\t%s(%s):%d-%d" % (region["region_name"], region["chromosome"],
-                    region["strand"], region["start"], region["stop"]))
+                output.write("%s\t%s(%s):%d-%d" % (
+                    region["region_name"].decode('utf-8'),
+                    region["chromosome"].decode('utf-8'),
+                    region["strand"].decode('utf-8'),
+                    region["start"], region["stop"]),
+                )
                 for col in range(0, number_of_files-1):
                     output.write("\t%s" % round(prior_region_counts[row, col], 4))
                 output.write("\t%s\n" % round(region["normalized_count"], 4))

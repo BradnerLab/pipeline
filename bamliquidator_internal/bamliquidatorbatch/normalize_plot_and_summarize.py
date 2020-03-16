@@ -47,14 +47,14 @@ try:
     try:
         # bamliquidatorbatch was originally developed for bokeh 0.4.4, but
         # around version 0.7 the bokeh API had some breaking changes (like requiring the explicit use of vplot).
-        # I confirmed things work with version 0.9.3, and I hope future versions maintain compatability.
+        # I confirmed things work with version 0.9.3, and I hope future versions maintain comparability.
         bp.vplot
     except:
         bokeh_import_error = 'Bokeh version is incompatible; consider running the following command to upgrade:\n%s' % (
                 bokeh_install_command)
         raise
 except:
-    bp = None 
+    bp = None
 
 # note that my initial version didn't do any flush calls, which lead to bogus rows being added
 # to the normalized_counts table (which was evident when the normalized counts <= 95 + > 95 didn't add up right).
@@ -69,7 +69,7 @@ chromosome_name_length = 64 # Includes 1 for null terminator, so really max of 6
 def delete_all_but_bin_counts_and_files_table(h5file):
     for table in h5file.root:
         if table.name != "bin_counts" and table.name != "files" and table.name != "file_names":
-            for index in table.colindexes.values():
+            for index in list(table.colindexes.values()):
                 index.column.remove_index()
             table.remove()
 
@@ -92,17 +92,18 @@ def all_cell_types(counts):
     types = set()
 
     for row in counts:
-        types.add(row["cell_type"])
+        types.add(row["cell_type"].decode())
 
     return types 
 
 def all_chromosomes(counts):
+    # use an ordered dict to preserve the chromosome order in the returned list
     chromosomes = collections.OrderedDict() 
 
     for row in counts:
-        chromosomes[row["chromosome"]] = None
+        chromosomes[row["chromosome"].decode()] = None
 
-    return chromosomes.keys() 
+    return list(chromosomes.keys()) 
 
 # todo: if this used the files table and we added the cell_type to the files table, this would be much faster,
 #       but it is probably necessary to leave cell_type in counts table as well (for queries)
@@ -146,7 +147,7 @@ def plot_summary(normalized_counts, chromosome):
 
     plot = bp.figure()
     plot.title = chromosome + " counts per bin across all bam files"
-    plot.scatter(chromosome_count_by_bin.keys(), chromosome_count_by_bin.values())
+    plot.scatter(list(chromosome_count_by_bin.keys()), list(chromosome_count_by_bin.values()))
     return plot
 
 def plot(output_directory, normalized_counts, chromosome, cell_types):
@@ -263,7 +264,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
             if processed_a_single_file:
                 chromosome_to_summed_counts[row["chromosome"]][row["bin_number"]] += row["count"]
             else:
-                if not chromosome_to_summed_counts.has_key(row["chromosome"]):
+                if row["chromosome"] not in chromosome_to_summed_counts:
                     chromosome_to_summed_counts[row["chromosome"]] = []
                 chromosome_to_summed_counts[row["chromosome"]].append(row["count"])
         processed_a_single_file = True
@@ -272,7 +273,7 @@ def populate_normalized_counts_for_cell_type(normalized_counts, cell_type, file_
 
     len_file_keys = len(file_keys)
 
-    for chromosome, summed_counts in chromosome_to_summed_counts.iteritems():
+    for chromosome, summed_counts in chromosome_to_summed_counts.items():
         for i, summed_count in enumerate(summed_counts):
             normalized_counts.row["bin_number"] = i
             normalized_counts.row["cell_type"] = cell_type 
@@ -305,7 +306,7 @@ def create_summary_table(h5file):
     return table
    
 
-def populate_summary(summary, normalized_counts, chromosome):
+def populate_summary(summary, normalized_counts, chromosome_str):
     high = 95 # 95th percentile
     low  = 5  # 5th percentile
 
@@ -324,7 +325,7 @@ def populate_summary(summary, normalized_counts, chromosome):
 
     # note populating the dictionaries this way is much faster than looping through
     # each bin and finding the matching fraction rows
-    for row in normalized_counts.where("chromosome == '%s'" % chromosome):
+    for row in normalized_counts.where("chromosome == chromosome_str"):
         bin_number = row["bin_number"]
         max_bin = max(max_bin, bin_number)
         percentile = row["percentile"]
@@ -355,9 +356,9 @@ def populate_summary(summary, normalized_counts, chromosome):
 
     logging.debug(" - populating summary table with calculated summaries")
 
-    for bin_number in xrange(max_bin+1):
+    for bin_number in range(max_bin+1):
         summary.row["bin_number"] = bin_number
-        summary.row["chromosome"] = chromosome
+        summary.row["chromosome"] = chromosome_str
         summary.row["avg_cell_type_percentile"] = summed_cell_type_percentiles_by_bin[bin_number] / len(cell_types)
         summary.row["cell_types_gte_95th_percentile"] = cell_types_gte_high_percentile_by_bin[bin_number]
         summary.row["cell_types_lt_95th_percentile"] = cell_types_lt_high_percentile_by_bin[bin_number]
