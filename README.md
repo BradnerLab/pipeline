@@ -5,6 +5,9 @@ bradner lab computation pipeline scripts
 
 [![Build Status](https://travis-ci.org/BradnerLab/pipeline.svg)](https://travis-ci.org/BradnerLab/pipeline)
 
+For more documentation, see the [wiki](https://github.com/BradnerLab/pipeline/wiki/bamliquidator)
+associated with this repository.
+
 ## Containers
 
 You can use the software here easily using containers, either Docker or Singularity.
