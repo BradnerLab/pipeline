@@ -38,7 +38,7 @@ bokeh_install_command = 'sudo pip install bokeh==0.9.3 "openpyxl>=1.6.1,<2.0.0"'
 
 try:
     try:
-        import bokeh.plotting as bp
+        import bokeh.plotting as bp  # pylint: disable=import-error
     except:
         bokeh_import_error = 'Bokeh module not found; consider running the following command to install:\n%s' % (
                 bokeh_install_command)

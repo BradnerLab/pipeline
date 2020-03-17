@@ -1,16 +1,12 @@
 language: python
 python:
   - "2.7"
-#  - "3.3"
-#  - "3.4"
+  - "3.6"
 notifications:
   email: false
-before_install:
-#  - "sudo apt-get update"
-#  - "sudo apt-get install libhdf5-serial-dev"
 install:
   - "pip install pep8 pylint"
+  - "pip install tables scipy"
   # TODO: Move tables, etc. to requirements.txt, specify versions.
 script:
-  - "pylint --rcfile=.pylintrc --disable=fixme,import-error --errors-only bamliquidator_internal/"
-#  - "pep8 --ignore=E501,E302,E303 bamliquidator_internal/"
+  - "pylint --rcfile=.pylintrc --errors-only bamliquidator_internal/"
