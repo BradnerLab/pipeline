@@ -1,2 +1,4 @@
 *.pyc
 *~
+*.sif
+__pycache__
