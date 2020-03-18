@@ -7,4 +7,3 @@ following:
 * [Collaboration Workflow](collaboration-workflow.md)
 * [Packaging](bamliquidator-packaging.md)
 * [Bamplot Turbo](bamplot-turbo.md)
-* [Motif Liquidator](motif-liquidator.md): High Performance DNA Motif Analysis
