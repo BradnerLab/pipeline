@@ -11,11 +11,11 @@ RUN make -j6
 
 FROM ubuntu:bionic as runner
 
-RUN apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python \
-    python-setuptools python-pip python-tables python-scipy  \
+RUN apt-get -y update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 \
+    python3-setuptools python3-pip python3-tables python3-scipy  \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install bokeh==0.9.3 "openpyxl>=1.6.1,<2.0.0"
+RUN pip3 install bokeh==0.9.3 "openpyxl>=1.6.1,<2.0.0"
 
 WORKDIR /opt/liquidator
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4 \
@@ -57,10 +57,10 @@ COPY --from=builder /opt/liquidator/bamliquidatorbatch /opt/liquidator/bamliquid
 
 ENV PATH="$PATH:/opt/liquidator"
 
-RUN python bamliquidatorbatch/test.py
+RUN python3 bamliquidatorbatch/test.py
 RUN chmod +rx /opt/liquidator/bamliquidatorbatch/*.py
 
 ARG GIT_COMMIT
 LABEL git_commit=$GIT_COMMIT
 
-ENTRYPOINT ["/usr/bin/python","/opt/liquidator/bamliquidatorbatch/bamliquidator_batch.py"]
+ENTRYPOINT ["/usr/bin/python3","/opt/liquidator/bamliquidatorbatch/bamliquidator_batch.py"]
