@@ -58,7 +58,7 @@ COPY --from=builder /opt/liquidator/bamliquidatorbatch /opt/liquidator/bamliquid
 ENV PATH="$PATH:/opt/liquidator"
 
 RUN python bamliquidatorbatch/test.py
-RUN chmod 777 /opt/liquidator/bamliquidatorbatch/*.py
+RUN chmod +rx /opt/liquidator/bamliquidatorbatch/*.py
 
 ARG GIT_COMMIT
 LABEL git_commit=$GIT_COMMIT
