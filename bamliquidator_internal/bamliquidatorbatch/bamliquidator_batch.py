@@ -19,7 +19,7 @@ from time import time
 from os.path import basename
 from os.path import dirname
 
-__version__ = '1.5.1'
+__version__ = '1.5.3'
 
 default_black_list = ["chrUn", "_random", "Zv9_", "_hap"]
 
