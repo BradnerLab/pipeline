@@ -1,6 +1,9 @@
 pipeline
 ========
 
+No longer actively maintained :(
+Bradner Lab 4 Lyfe!
+
 bradner lab computation pipeline scripts
 
 [![Build Status](https://travis-ci.org/BradnerLab/pipeline.svg)](https://travis-ci.org/BradnerLab/pipeline)
